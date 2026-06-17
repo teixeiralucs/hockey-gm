@@ -231,3 +231,7 @@ A cada fim de temporada será possível acompanhar os vencedores da liga, dos tr
 ## 15. Salvamento e Carregamento de Estado
 
 O jogador poderá salvar até 3 jogos simultâneos, cada jogo terá sua própria pasta e deverá conter suas próprias informações.
+
+## 16. Regular Standings e Playoff Standings
+
+Na página incial o jogador poderá ver a tabela de classificação atual da liga, com as posições dos times, vitórias, derrotas, pontos, etc. Essa tabela deverá ser atualizada ao fim de cada rodada e será dividida pelas duas conferências da liga.

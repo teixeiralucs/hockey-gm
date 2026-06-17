@@ -3,12 +3,24 @@
    Color palette, variables, and global styles
 */
 
+@font-face {
+    font-family: 'Blockletter';
+    src: url('../assets/fonts/Blockletter.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
-    --bg-color: #0f172a;
-    --text-color: #f8fafc;
-    --primary-color: #3b82f6;
+    --bg-color: #0b1121; /* Midnight blue base */
+    --surface-color: #151e32;
+    --text-color: #ffffff;
+    --text-muted: #94a3b8;
+    --primary-color: #3b82f6; /* Blue tone */
+    --primary-hover: #2563eb;
+    --primary-active: #1d4ed8;
     --secondary-color: #1e293b;
-    --accent-color: #eab308;
+    --accent-color: #60a5fa;
+    --border-color: rgba(59, 130, 246, 0.2);
 }
 
 * {
@@ -18,10 +30,18 @@
 }
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Roboto', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.5;
+    background-image: radial-gradient(circle at top right, rgba(30, 58, 138, 0.2), transparent 40%),
+                      radial-gradient(circle at bottom left, rgba(30, 58, 138, 0.1), transparent 40%);
+    background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Blockletter', sans-serif;
+    letter-spacing: 1px;
 }
 
 #app {
@@ -29,3 +49,150 @@ body {
     display: flex;
     flex-direction: column;
 }
+
+/* Typography Utils */
+.title-main {
+    font-size: 4rem;
+    text-align: center;
+    margin: 2rem 0 0.5rem;
+    color: var(--text-color);
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--accent-color);
+    font-size: 1.2rem;
+    margin-bottom: 3rem;
+    font-weight: 300;
+}
+
+/* Layout */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    width: 100%;
+}
+
+/* Team Selection Grid */
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.team-card {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.team-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.team-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.3);
+    border-color: var(--primary-color);
+}
+
+.team-card:hover::before {
+    transform: scaleX(1);
+}
+
+.team-card-title {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.team-card-conf {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+/* Modifiers for League Selection */
+.team-card-square {
+    max-width: 350px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.league-logo {
+    max-width: 120px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+    transition: transform 0.3s ease;
+}
+
+.team-card:hover .league-logo {
+    transform: scale(1.1);
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    font-family: 'Blockletter', sans-serif;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    letter-spacing: 1px;
+}
+
+.btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn:active {
+    background-color: var(--primary-active);
+    transform: scale(0.98);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: var(--primary-hover);
+    color: var(--primary-hover);
+}
+
+.btn-secondary:active {
+    background-color: rgba(59, 130, 246, 0.2);
+}
+

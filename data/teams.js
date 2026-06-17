@@ -1,0 +1,22 @@
+export const ohlTeams = [
+    { id: 'brantford', name: 'Brantford Bulldogs', conference: 'East' },
+    { id: 'barrie', name: 'Barrie Colts', conference: 'East' },
+    { id: 'ottawa', name: 'Ottawa 67\'s', conference: 'East' },
+    { id: 'peterborough', name: 'Peterborough Petes', conference: 'East' },
+    { id: 'north-bay', name: 'North Bay Battalion', conference: 'East' },
+    { id: 'kingston', name: 'Kingston Frontenacs', conference: 'East' },
+    { id: 'niagara', name: 'Niagara IceDogs', conference: 'East' },
+    { id: 'sudbury', name: 'Sudbury Wolves', conference: 'East' },
+    { id: 'brampton', name: 'Brampton Steelheads', conference: 'East' },
+    { id: 'oshawa', name: 'Oshawa Generals', conference: 'East' },
+    { id: 'kitchener', name: 'Kitchener Rangers', conference: 'West' },
+    { id: 'windsor', name: 'Windsor Spitfires', conference: 'West' },
+    { id: 'flint', name: 'Flint Firebirds', conference: 'West' },
+    { id: 'london', name: 'London Knights', conference: 'West' },
+    { id: 'soo', name: 'Soo Greyhounds', conference: 'West' },
+    { id: 'guelph', name: 'Guelph Storm', conference: 'West' },
+    { id: 'saginaw', name: 'Saginaw Spirit', conference: 'West' },
+    { id: 'sarnia', name: 'Sarnia Sting', conference: 'West' },
+    { id: 'erie', name: 'Erie Otters', conference: 'West' },
+    { id: 'owen-sound', name: 'Owen Sound Attack', conference: 'West' }
+];
