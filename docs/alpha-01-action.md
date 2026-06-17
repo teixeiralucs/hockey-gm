@@ -1,8 +1,10 @@
-# Hockey GM 0.1 Alpha - Ações de Implementação
+# Hockey GM - Ações de Implementação
 
-Este documento rastreia as implementações reais feitas para a versão Alpha 0.1, explicando *o que* foi construído e *como* foi estruturado tecnicamente.
+Este documento rastreia as implementações reais feitas, explicando *o que* foi construído e *como* foi estruturado tecnicamente, versionado por iterações.
 
-## 1. Estrutura e Fundamentos do Projeto
+## [Alpha 0.1.0] - Fundação Inicial
+
+### 1. Estrutura e Fundamentos do Projeto
 
 ### 1.1 Arquitetura e Stack
 - **Stack**: Vanilla HTML, CSS e JavaScript com ES Modules (`type="module"`).
@@ -20,7 +22,7 @@ Este documento rastreia as implementações reais feitas para a versão Alpha 0.
   - **Roboto**: Carregada via Google Fonts para textos de apoio limpos e legíveis.
 - **Efeitos Visuais**: Gradientes radiais no CSS para textura de fundo, efeitos de brilho (glow) no hover, e transições CSS nos elementos interativos para criar o fator "wow" moderno.
 
-## 2. Features Implementadas
+### 2. Features Implementadas
 
 ### 2.1 Tela de Seleção de Liga (League Selection)
 - **O que é**: A primeira tela que o usuário vê ao iniciar um novo jogo. Permite a escolha da liga onde a carreira será iniciada.
@@ -35,3 +37,16 @@ Este documento rastreia as implementações reais feitas para a versão Alpha 0.
   - **Back Button**: Permite voltar para a tela de Seleção de Ligas.
   - **Seleção do Time**: Clicar em um card de time confirma a seleção (atualmente exibe um alert como placeholder da lógica de criação do save).
 - **Idioma**: Totalmente localizado para o Inglês, facilitando a base global de jogadores.
+
+## [Alpha 0.1.1] - Refinamentos e QoL
+
+### 1. Refinamentos Visuais e de UI
+- **Logo da OHL em Vetor**: O card da liga OHL foi remodelado (formato quadrado perfeito) e agora apresenta o logo oficial em formato SVG vetorial nativo, removendo as marcações antigas de tier.
+- **Formatação Uniforme de Nomes**: Desenvolvida lógica javascript que separa a "Cidade" do "Nome do Time" (Mascote), renderizando de forma padronizada todos os 20 cards da UI em exatas duas linhas (Cidade cima/translúcido, Nome baixo/destaque).
+
+### 2. Navegação (Quality of Life)
+- **Botão de Retorno**: Adicionado o botão secundário "Back to Leagues" na tela de Seleção de Franquia para reverter o fluxo ao estado anterior.
+
+### 3. Organização de Documentação e Git
+- **Atualização de Requisitos**: O requisito funcional de Tabelas de Classificação (Standings) teve sua prioridade elevada para a posição RF04 na documentação principal.
+- **Branching**: As modificações foram testadas e comitadas de forma sincronizada entre `development`, `featured` e `bugs`.
