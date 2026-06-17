@@ -227,3 +227,7 @@ O objetivo final do jogador é chegar nas ligas de S-Tier (NHL e PWHL) mas para 
 ## 14. Hall of Fame e Track de Campeões
 
 A cada fim de temporada será possível acompanhar os vencedores da liga, dos troféus individuais e das equipes, além das grandes taças.
+
+## 15. Salvamento e Carregamento de Estado
+
+O jogador poderá salvar até 3 jogos simultâneos, cada jogo terá sua própria pasta e deverá conter suas próprias informações.
