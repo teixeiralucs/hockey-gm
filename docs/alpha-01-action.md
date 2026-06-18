@@ -73,3 +73,4 @@ Este documento rastreia as implementações reais feitas, explicando *o que* foi
 - **Mock Data Generator**: Criado um script temporário na `initNewGame` para sortear nomes e sobrenomes de jogadores falsos, associá-los a um time aleatório do banco de dados para renderizar sua logo, e criar atributos de liderança em 4 modalidades (`PTS`, `G`, `A`, `SV%`).
 - **Navegação em Abas**: Micro-sistema de abas idêntico ao Standings que permite ao usuário filtrar o Top 3 da liga nas 4 categorias.
 - **Design de Lista Premium**: Cada linha lista o `#Rank`, a logo em miniatura do time de origem, o nome do jogador e seu stat enorme na direita. A linha possui highlight ao passar o mouse e uma borda à esquerda puxando a cor primária da franquia de origem do jogador.
+
