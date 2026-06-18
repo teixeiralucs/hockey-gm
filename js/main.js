@@ -60,14 +60,21 @@ function initFranchiseSelection() {
     }).join('');
 
     app.innerHTML = `
-        <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;">
-            <div style="text-align: center;">
-                <h1 class="title-main">HOCKEY GM</h1>
-                <p class="subtitle">Select your franchise to start the journey</p>
-            </div>
-            
-            <div class="team-grid">
-                ${teamsHTML}
+        <div style="min-height: 100vh; background: linear-gradient(135deg, rgba(4, 122, 196, 0.15) 0%, rgba(170, 170, 170, 0.25) 100%); padding: 2rem 0;">
+            <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 4rem); position: relative;">
+                
+                <button id="btn-back-league" class="btn btn-sm" style="position: absolute; top: 0; left: 1rem; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i> Back to Leagues
+                </button>
+
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <h1 class="title-main" style="text-shadow: 0 4px 15px rgba(4, 122, 196, 0.3);">HOCKEY GM</h1>
+                    <p class="subtitle">Select your franchise to start the journey</p>
+                </div>
+                
+                <div class="team-grid">
+                    ${teamsHTML}
+                </div>
             </div>
         </div>
     `;
@@ -75,6 +82,10 @@ function initFranchiseSelection() {
     if (window.lucide) {
         window.lucide.createIcons();
     }
+    
+    document.getElementById('btn-back-league').addEventListener('click', () => {
+        initLeagueSelection();
+    });
     
     // Add event listeners
     const teamCards = document.querySelectorAll('.team-card');
@@ -957,7 +968,7 @@ function openBackConfirmationModal() {
         <div id="back-confirm-modal" class="modal-overlay">
             <div class="modal-content" style="border-color: #ef4444;">
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem;">Go Back?</h2>
-                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Are you sure you want to return to Franchise Selection? <strong style="color: #ef4444;">All unsaved progress will be lost.</strong></p>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Are you sure you want to return to League Selection? <strong style="color: #ef4444;">All unsaved progress will be lost.</strong></p>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="btn-cancel-back">Cancel</button>
                     <button class="btn btn-danger" id="btn-confirm-back" style="background-color: #ef4444; color: #fff;">Yes, Go Back</button>
@@ -974,10 +985,13 @@ function openBackConfirmationModal() {
     document.getElementById('btn-confirm-back').addEventListener('click', () => {
         document.getElementById('back-confirm-modal').remove();
         
-        // Remove a cor de fundo primária para voltar ao tema base
+        // Remove as propriedades de fundo para voltar ao tema base original do style.css
         document.body.style.removeProperty('--bg-color');
+        document.body.style.removeProperty('background-color');
+        document.body.style.removeProperty('background');
+        document.body.style.removeProperty('background-attachment');
         currentTeam = null;
         
-        initFranchiseSelection();
+        initLeagueSelection();
     });
 }

@@ -135,3 +135,8 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 
 ### 3. Bypass Anti-Bugs na Base de Dados Oficial
 - **Fuga do Person ID**: Escrita uma lógica inteligente para bypassar IDs incorretos fornecidos pela HockeyTech/CHL (Ex: o caso "Mason Roy com foto de Matthew Schaefer"). A engine frontal ignora o metadado `person_id` maculado do JSON e força a chamada HTTP extraindo matematicamente o `player_id` puro encapsulado no nó de identificação interna. Resolvendo assim de forma limpa o problema das fotos duplicadas/inválidas sem necessidade de web scraping adicional.
+
+### Hotfix v0.1.5.1 (UI State & Routing)
+- **Degradê Nativo**: Injeção da cor principal e secundária da OHL diretamente no seletor de franquia, utilizando as cores designadas no sistema de cores base (`#047ac4` e `#aaaaaa`).
+- **Botão Voltar Dinâmico**: Restaurado o botão *Back to Leagues* no topo da tela de seleção de franquia.
+- **Vazamento de CSS Controlado**: Corrigido um bug onde o *Leave Game* limpava as variáveis dinâmicas mas mantinha a injeção em linha de `background`, causando poluição da tela preta/azul estelar na seleção de Ligas.
