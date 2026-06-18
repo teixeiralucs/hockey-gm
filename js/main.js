@@ -705,9 +705,77 @@ window.openPlayerCardModal = function(playerId) {
                     <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0 1rem 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
                     
+                    ${player.attributes ? `
+                    <div style="background-color: rgba(255,255,255,0.03); border-radius: 8px; padding: 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; width: 100%;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left;">
+                            
+                            <!-- SKATING -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Skating</span>
+                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.skating.total}</span>
+                                </div>
+                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
+                                    <div style="width: ${(player.attributes.skating.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                    <span>SPD: <span style="color: #cbd5e1;">${player.attributes.skating.speed}</span></span>
+                                    <span>AGI: <span style="color: #cbd5e1;">${player.attributes.skating.agility}</span></span>
+                                </div>
+                            </div>
+
+                            <!-- CREATIVITY -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Creativity</span>
+                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.creativity.total}</span>
+                                </div>
+                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
+                                    <div style="width: ${(player.attributes.creativity.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                    <span>VIS: <span style="color: #cbd5e1;">${player.attributes.creativity.vision}</span></span>
+                                    <span>INT: <span style="color: #cbd5e1;">${player.attributes.creativity.intelligence}</span></span>
+                                </div>
+                            </div>
+
+                            <!-- SHOOTING -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Shooting</span>
+                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.shooting.total}</span>
+                                </div>
+                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
+                                    <div style="width: ${(player.attributes.shooting.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                    <span>POW: <span style="color: #cbd5e1;">${player.attributes.shooting.power}</span></span>
+                                    <span>ACC: <span style="color: #cbd5e1;">${player.attributes.shooting.accuracy}</span></span>
+                                </div>
+                            </div>
+
+                            <!-- DEFENSE -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Defense</span>
+                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.defense.total}</span>
+                                </div>
+                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
+                                    <div style="width: ${(player.attributes.defense.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                    <span>CON: <span style="color: #cbd5e1;">${player.attributes.defense.contact}</span></span>
+                                    <span>POS: <span style="color: #cbd5e1;">${player.attributes.defense.positioning}</span></span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    ` : `
                     <div style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.85rem;">
                         <i data-lucide="bar-chart-2" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Game Stats Will Appear Here During Sim
                     </div>
+                    `}
                 </div>
                 
                 <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="margin-top: 1.5rem; border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>

@@ -140,3 +140,7 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 - **Degradê Nativo**: Injeção da cor principal e secundária da OHL diretamente no seletor de franquia, utilizando as cores designadas no sistema de cores base (`#047ac4` e `#aaaaaa`).
 - **Botão Voltar Dinâmico**: Restaurado o botão *Back to Leagues* no topo da tela de seleção de franquia.
 - **Vazamento de CSS Controlado**: Corrigido um bug onde o *Leave Game* limpava as variáveis dinâmicas mas mantinha a injeção em linha de `background`, causando poluição da tela preta/azul estelar na seleção de Ligas.
+
+### Iteração Alpha 0.1.6 (Atributos Avançados)
+- **Engine Estatística**: Foi implementado um script Python gerador de sub-atributos baseado em orçamentos paramétricos de multiplicadores (Ratios). Cada jogador recebeu uma fração exata de seu rating nos pilares de `Skating, Creativity, Shooting, Defense`, divididos com uma variância randômica justa de `45%-55%` para suas 8 *skills* diretas (Speed, Agility, Vision, Intelligence, Power, Accuracy, Contact, Positioning).
+- **Player Card Analytics**: O Modal Premium das cartas foi refatorado. Onde antes existia o bloco *"Game Stats Will Appear Here"*, agora há uma tabela rica 2x2 com Barras de Progresso de neón dinâmicas refletindo as 4 habilidades Macro, e a contagem explícita de suas 8 Sub-habilidades. Goleiros usam a aba estendida com os mesmos atributos genéricos como abstrações de técnica no Gelo.
