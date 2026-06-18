@@ -50,3 +50,26 @@ Este documento rastreia as implementações reais feitas, explicando *o que* foi
 ### 3. Organização de Documentação e Git
 - **Atualização de Requisitos**: O requisito funcional de Tabelas de Classificação (Standings) teve sua prioridade elevada para a posição RF04 na documentação principal.
 - **Branching**: As modificações foram testadas e comitadas de forma sincronizada entre `development`, `featured` e `bugs`.
+
+## [Alpha 0.1.2] - Dashboard e Tematização Dinâmica
+
+### 1. Tematização e Layout Dinâmico (Design System)
+- **Cores Dinâmicas da Franquia**: A interface do jogo (`index.html`) agora absorve completamente a paleta oficial da franquia escolhida (`primary` e `secondary` colors importados do BD de times).
+- **Background Global**: O fundo do app implementa um elegante `linear-gradient` misturando a cor Primária e a cor Secundária em 60% de opacidade fundidos a uma base escura (`#0b1121`).
+- **Cards e Opacidade**: Os painéis de conteúdo do Dashboard (Standings, Matches) usam 60% da cor secundária fundida, gerando contraste e legibilidade sem usar pretos chapados.
+- **Iconografia Premium**: O Sidebar abandonou emojis e agora integra dinamicamente a biblioteca **Lucide Icons** via CDN (usando os ícones `layout-dashboard`, `users`, `calendar`, `library`, `save` e `log-out`).
+
+### 2. Standings Component (Tabela de Classificação)
+- **Tabela Sortable**: O usuário consegue reorganizar a tabela dinamicamente clicando nos headers de GP, W, L, OTL, PTS e Team Name.
+- **Ranking Absoluto (#)**: A coluna de Posição (#) foi isolada do mecanismo de sorteio HTML. Ela sempre calcula a posição "real" do time baseada no seguinte Tiebreaker: `Maior PTS > Maior Wins > Maior OTL`. Clicar na coluna `#` reseta a tabela para a ordem oficial.
+- **Sistema de Conferências**: O painel exibe abas alternáveis entre `East` e `West`, renderizando apenas os times daquela conferência. A aba ativa por padrão é a da conferência na qual a franquia do jogador se encontra.
+
+### 3. Next Match Component
+- **Engine de Sorteio**: A `initNewGame` cria e define um oponente aleatório para o Match 1 de 68. Também determina o mando de gelo (Home ou Away).
+- **Duelo Visual**: O Card de próxima partida exibe um formato `<AWAY> VS <HOME>`. Logo, nomes e recordes da temporada (`0-0-0`) de ambos aparecem lado a lado.
+- **Botão Gradiente**: O botão de "Play Match" implementa um gradiente único fundindo visualmente 50/50 da Cor Primária do visitante com a Cor Primária do mandante.
+
+### 4. League Leaders Component
+- **Mock Data Generator**: Criado um script temporário na `initNewGame` para sortear nomes e sobrenomes de jogadores falsos, associá-los a um time aleatório do banco de dados para renderizar sua logo, e criar atributos de liderança em 4 modalidades (`PTS`, `G`, `A`, `SV%`).
+- **Navegação em Abas**: Micro-sistema de abas idêntico ao Standings que permite ao usuário filtrar o Top 3 da liga nas 4 categorias.
+- **Design de Lista Premium**: Cada linha lista o `#Rank`, a logo em miniatura do time de origem, o nome do jogador e seu stat enorme na direita. A linha possui highlight ao passar o mouse e uma borda à esquerda puxando a cor primária da franquia de origem do jogador.
