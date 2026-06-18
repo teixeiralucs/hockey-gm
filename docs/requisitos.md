@@ -6,8 +6,8 @@
 - **RF02 - Tela Inicial (Dashboard):** ✅ O sistema deve fornecer um hub central exibindo o time escolhido pelo jogador, com resumo da temporada e navegação para as demais áreas do jogo (Roster, Standings, etc).
 - **RF03 - Estrutura do Roster:** ✅ O sistema deve gerenciar um roster ativo contendo exatamente 20 jogadores exigidos (12 Forwards, 6 Defensemen e 2 Goalies), distribuídos em hierarquia de linhas (1ª a 4ª).
 - **RF04 - Validação de Salvamento:** ✅ O sistema de Roster deve impedir o salvamento da escalação e o avanço para a simulação caso existam espaços vazios na formação.
-- **RF05 - Criação de Card dos Jogadores:** O sistema deve gerar cartas visuais para cada jogador contendo sua Foto oficial, Nome, Idade, Posição, Número da camisa e Local de Nascimento, adotando um visual premium e moderno.
-- **RF06 - Cálculo de Overall Base:** O sistema deve calcular o Overall inicial de cada jogador com base em suas estatísticas ou de forma programática antes da aplicação de modificadores dinâmicos.
+- **RF05 - Criação de Card dos Jogadores:** ✅ O sistema deve gerar cartas visuais para cada jogador contendo sua Foto oficial, Nome, Idade, Posição, Número da camisa e Local de Nascimento, adotando um visual premium e moderno.
+- **RF06 - Cálculo de Overall Base:** ✅ O sistema deve calcular o Overall inicial de cada jogador com base em suas estatísticas ou de forma programática antes da aplicação de modificadores dinâmicos.
 - **RF07 - Tabelas de Classificação (Standings):** O sistema deve exibir e atualizar a tabela de classificação das conferências a cada rodada da temporada regular, bem como exibir as chaves de mata-mata (brackets) durante os Playoffs.
 - **RF08 - Drag and Drop (Benching):** ✅ O sistema deve fornecer 4 interações de arraste: alocar titular, manter no banco, vender ou arquivar na coleção.
 - **RF09 - Cálculo de Modificadores (Buffs/Debuffs):** O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).

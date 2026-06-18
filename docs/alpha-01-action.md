@@ -104,3 +104,34 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 
 ### 3. Ajustes no League Leaders
 - **Lógica de Fallback Vazio**: Com a remoção dos dummy data gerados aleatoriamente, as tabelas de líderes implementam tratamento para Arrays vazios, exibindo a mensagem: "No stats available yet. Play matches to see leaders." nas categorias de PTS, G, A e SV%.
+
+## [Alpha 0.1.4] - OHL Ultimate Draft & Premium Cards (RF05/RF06)
+
+### 1. Stats Reais e True Overalls
+- **Nova lógica do Scraper**: O Scraper agora coleta ativamente estatísticas oficiais da API CHL (Temporada 83) para Top Scorers e Goalies, preenchendo Gols, Assistências, Pontos, Vitórias e Porcentagem de Defesa (SV%).
+- **Balanceamento do Overall (RF06)**: As pontuações geram um Rating de Overall perfeitamente escalonado de 12 a 23, simulando os valores fiéis de ligas de base (juniores). 
+- **Sistema de Tiers Visual**: O banco de dados classifica e armazena os Tiers (Gold, Silver e Bronze) baseados puramente no mérito numérico do novo Overall.
+
+### 2. Sorteio de 20 Jogadores (Random Draft - RF03)
+- **Quebra do Roster Fixo**: O jogo abandona o fornecimento da Roster original da franquia selecionada. A engine embaralha os 730+ jogadores da OHL em um pool gigante e transfere exatamente 20 jogadores aleatórios, de diversos times e em diferentes quantidades posicionais, gerando um "Pack" inicial completamente randômico. As demais franquias controladas pela CPU mantém seus elencos originais intactos.
+- **Roster Dinâmico**: A interface fina de arraste (`.player-card`) passa a exibir a logomarca da franquia original de onde o jogador foi sorteado.
+
+### 3. Player Cards Premium Interativos (RF05)
+- **Modal Glassmorphism**: Desenvolvido um modal escuro e estético ativado através do clique nativo no `.player-card`.
+- **Anatomia do Card**:
+  - Máscara vetorial no topo tingida de acordo com a Posição do jogador no gelo.
+  - Foto em alta resolução com formato circular flutuante, abraçada por anéis dourados, prateados ou acobreados com sombras estendidas (`box-shadow`), ditadas pelo atributo `tier`.
+  - Distintivos absolutos com Badge do Overall enorme no canto superior esquerdo e logo original do time à direita.
+  - Stats dinâmicos com ícones para PTS/G/A (Forwards e Defensors) e WINS/SV% (Goalies), assim como metadados geográficos e faixa etária (`age`).
+
+## Iteração Alpha 0.1.5 (Atual)
+### 1. Refinamento de UI e UX
+- **Correção Visual de Logos**: O script JavaScript responsável pela manipulação de URLs e IDs das logos foi corrigido. Substituído o escape inválido `\s` por espaço literal no Regex, permitindo renderização perfeita dos escudos nas cartas.
+- **Transição de SVG para PNG**: Implementado fallback e priorização global para ícones `.png` devido a vetores encápsulados (base64) corrompidos na fonte original, melhorando a clareza da UI no Roster e nos Cards de Franquia.
+- **Roster Slot Consistente**: Adicionado `min-height: 48px` nas zonas de *drop* vazias do Roster no gelo, abolindo "saltos" visuais durante o Drag and Drop.
+
+### 2. Otimização do Bench
+- **Cabeçalhos Interativos (Sortáveis)**: Implementada uma barra de atributos flutuante no topo da Pool de Reservas (`P`, `T`, `NAME`, `OVR`), copiando o mesmo comportamento dinâmico e flexível da tabela de Standings.
+
+### 3. Bypass Anti-Bugs na Base de Dados Oficial
+- **Fuga do Person ID**: Escrita uma lógica inteligente para bypassar IDs incorretos fornecidos pela HockeyTech/CHL (Ex: o caso "Mason Roy com foto de Matthew Schaefer"). A engine frontal ignora o metadado `person_id` maculado do JSON e força a chamada HTTP extraindo matematicamente o `player_id` puro encapsulado no nó de identificação interna. Resolvendo assim de forma limpa o problema das fotos duplicadas/inválidas sem necessidade de web scraping adicional.

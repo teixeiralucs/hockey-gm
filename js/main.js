@@ -49,7 +49,7 @@ function initFranchiseSelection() {
         
         return `
         <div class="team-card" data-team-id="${team.id}" style="align-items: center; display: flex; flex-direction: column; --team-primary: ${team.colors.primary}; --team-secondary: ${team.colors.secondary};">
-            <img src="assets/logos/ohl/${logoFile}.svg" alt="${team.name} Logo" class="team-card-logo">
+            <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" class="team-card-logo">
             <h3 class="team-card-title" style="line-height: 1.1; margin-top: 0.5rem;">
                 <span style="display: block; font-size: 0.55em; opacity: 0.7; letter-spacing: 2px;">${city}</span>
                 <span style="display: block;">${mascot}</span>
@@ -66,10 +66,6 @@ function initFranchiseSelection() {
                 <p class="subtitle">Select your franchise to start the journey</p>
             </div>
             
-            <button id="debug-barrie" class="btn" style="margin-bottom: 2rem; background-color: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.3); color: #fff;">
-                <i data-lucide="bug" style="width: 18px; height: 18px; margin-right: 8px;"></i> DEBUG: START BARRIE COLTS
-            </button>
-            
             <div class="team-grid">
                 ${teamsHTML}
             </div>
@@ -79,11 +75,6 @@ function initFranchiseSelection() {
     if (window.lucide) {
         window.lucide.createIcons();
     }
-
-    document.getElementById('debug-barrie').addEventListener('click', () => {
-        const team = ohlTeams.find(t => t.id === 'barrie');
-        handleTeamSelection(team);
-    });
     
     // Add event listeners
     const teamCards = document.querySelectorAll('.team-card');
@@ -145,53 +136,47 @@ async function initNewGame(teamIdOverride = null) {
         const response = await fetch('data/rosters.json');
         const allRosters = await response.json();
         
+        // Extrair todos os jogadores da liga para o "Draft Pool"
+        let globalDraftPool = [];
+        Object.values(allRosters).forEach(teamRoster => {
+            if (teamRoster && teamRoster.length > 0) {
+                globalDraftPool = globalDraftPool.concat(teamRoster);
+            }
+        });
+        
+        // Embaralhar o draft pool usando algoritmo Fisher-Yates
+        for (let i = globalDraftPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [globalDraftPool[i], globalDraftPool[j]] = [globalDraftPool[j], globalDraftPool[i]];
+        }
+        
+        // Pegar os 20 primeiros para o Roster do jogador
+        const userDraftedPlayers = globalDraftPool.slice(0, 20);
+        
+        userDraftedPlayers.forEach(p => {
+            gameState.players.push({
+                ...p,
+                teamId: targetTeam.id, // Pertence à sua franquia agora
+                location: 'bench' // Todos começam no banco!
+            });
+        });
+        
+        // As 19 equipes controladas pela CPU mantêm os elencos reais
         ohlTeams.forEach(team => {
+            if (team.id === targetTeam.id) return; // Seu time já tem os 20 randômicos
+            
             const teamRoster = allRosters[team.id];
             if (teamRoster && teamRoster.length > 0) {
                 teamRoster.forEach(p => {
                     gameState.players.push({
-                        id: p.id,
-                        name: p.name,
-                        position: p.position,
-                        overall: p.overall,
-                        number: p.number,
-                        age: p.age,
-                        birthplace: p.birthplace,
-                        photo: p.photo,
+                        ...p,
                         teamId: team.id,
-                        location: team.id === targetTeam.id ? 'bench' : 'cpu_bench'
+                        location: 'cpu_bench'
                     });
-                });
-            } else {
-                // Fallback genérico se o time não estiver no JSON
-                const positions = [
-                    { pos: 'LW', count: 4 }, { pos: 'C', count: 4 }, { pos: 'RW', count: 4 },
-                    { pos: 'LD', count: 3 }, { pos: 'RD', count: 3 },
-                    { pos: 'G', count: 2 }
-                ];
-                const firstNames = ['Jack', 'Liam', 'Noah', 'Oliver', 'William', 'James', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mason', 'Michael', 'Ethan', 'Daniel', 'Jacob', 'Logan', 'Jackson', 'Levi', 'Sebastian', 'Mateo'];
-                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
-                
-                positions.forEach(req => {
-                    for (let i = 0; i < req.count; i++) {
-                        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-                        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-                        gameState.players.push({
-                            id: 'p_' + Math.random().toString(36).substr(2, 9),
-                            name: `${firstName} ${lastName}`,
-                            position: req.pos,
-                            overall: Math.floor(Math.random() * 25) + 60,
-                            number: Math.floor(Math.random() * 99) + 1,
-                            age: Math.floor(Math.random() * 5) + 16,
-                            birthplace: 'Canada',
-                            photo: 'https://images.chl.ca/images/chl/player-missing-photo.png',
-                            teamId: team.id,
-                            location: team.id === targetTeam.id ? 'bench' : 'cpu_bench'
-                        });
-                    }
                 });
             }
         });
+
     } catch (error) {
         console.error('Error loading complete rosters:', error);
         alert('Falha ao carregar elencos da OHL. Verifique data/rosters.json');
@@ -212,7 +197,7 @@ function openConfirmationModal(team) {
     const modalHTML = `
         <div id="confirm-modal" class="modal-overlay">
             <div class="modal-content">
-                <img src="assets/logos/ohl/${logoFile}.svg" alt="${team.name} Logo" class="modal-logo">
+                <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" class="modal-logo">
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem;">Are you sure?</h2>
                 <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Do you want to select the <strong style="color: ${team.colors.primary}; text-shadow: 0 0 10px ${team.colors.primary}40;">${team.name}</strong> as your franchise? You won't be able to change this later.</p>
                 <div class="modal-actions">
@@ -324,7 +309,7 @@ function switchView(viewName) {
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             sidebarBrand.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                    <img src="assets/logos/ohl/${logoFile}.svg" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--text-color);">${teamInfo.name}</div>
                     <div style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--text-muted);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</div>
                 </div>
@@ -397,7 +382,7 @@ function renderDashboard(container) {
     
     container.innerHTML = `
         <div class="dashboard-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, color-mix(in srgb, var(--team-primary) 20%, transparent) 0%, transparent 100%); padding: 1rem 1.5rem; border-radius: 12px; border-left: 4px solid var(--team-primary);">
-            <img src="assets/logos/ohl/${logoFile}.svg" alt="${currentTeam.name} Logo" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 15px color-mix(in srgb, var(--team-primary) 40%, transparent));">
+            <img src="assets/logos/ohl/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 15px color-mix(in srgb, var(--team-primary) 40%, transparent));">
             <div>
                 <h1 class="title-main" style="text-align: left; margin: 0 0 0.3rem 0; font-size: 2rem; text-shadow: 0 0 10px color-mix(in srgb, var(--team-primary) 50%, transparent); line-height: 1;">${currentTeam.name}</h1>
                 <div style="font-size: 1rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.3rem; font-family: 'Roboto', sans-serif;">
@@ -423,7 +408,7 @@ function renderDashboard(container) {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <!-- Away Team -->
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                            <img src="assets/logos/ohl/${awayLogo}.svg" alt="Away Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                            <img src="assets/logos/ohl/${awayLogo}.png" alt="Away Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center;">${awayTeam.name}</span>
                             <span style="color: var(--text-muted); font-size: 0.9rem;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
                         </div>
@@ -432,7 +417,7 @@ function renderDashboard(container) {
                         
                         <!-- Home Team -->
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                            <img src="assets/logos/ohl/${homeLogo}.svg" alt="Home Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                            <img src="assets/logos/ohl/${homeLogo}.png" alt="Home Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center;">${homeTeam.name}</span>
                             <span style="color: var(--text-muted); font-size: 0.9rem;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
                         </div>
@@ -515,7 +500,7 @@ function renderStandings() {
             <tr class="${isActiveTeam ? 'team-row-active' : ''}">
                 <td>${s.rank}</td>
                 <td class="team-cell">
-                    <img src="assets/logos/ohl/${logoFile}.svg" alt="logo">
+                    <img src="assets/logos/ohl/${logoFile}.png" alt="logo">
                     <span>${teamInfo.name}</span>
                 </td>
                 <td>${s.gp}</td>
@@ -595,7 +580,7 @@ function renderLeagueLeaders() {
                 <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo.colors.primary}; cursor: pointer; transition: background-color 0.2s;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-muted); width: 20px;">#${l.rank}</span>
-                        <img src="assets/logos/ohl/${logoFile}.svg" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">
                         <span style="font-weight: 500; color: var(--text-color);">${l.name}</span>
                     </div>
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: var(--text-color);">${l.stat}</span>
@@ -635,30 +620,119 @@ function getPlayerCardHTML(player) {
         'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981',
         'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899'
     };
+    const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+    
+    // Determine overall color based on tier
+    let tierColorHex = '#8b5cf6'; // bronze fallback (orangeish bronze)
+    if (player.tier === 'gold') tierColorHex = '#fbbf24';
+    else if (player.tier === 'silver') tierColorHex = '#94a3b8';
+    else if (player.tier === 'bronze') tierColorHex = '#b45309';
+
     return `
-        <div class="player-card" draggable="true" data-player-id="${player.id}" 
-             style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: grab; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div class="player-card" draggable="true" data-player-id="${player.id}" onclick="openPlayerCardModal('${player.id}')"
+             style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-family: 'Blockletter', sans-serif; color: ${posColors[player.position]}; font-size: 1.1rem; width: 24px;">${player.position}</span>
+                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 18px; object-fit: contain;">` : ''}
                 <span style="font-weight: 500; color: var(--text-color); font-size: 0.95rem;">${player.name}</span>
             </div>
-            <span style="font-family: 'Blockletter', sans-serif; color: var(--text-color); font-size: 1.2rem;">${player.overall}</span>
+            <span style="font-family: 'Blockletter', sans-serif; color: ${tierColorHex}; font-size: 1.2rem;">${player.overall}</span>
         </div>
     `;
+}
+
+window.openPlayerCardModal = function(playerId) {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+    
+    const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+    const posColor = posColors[player.position] || 'var(--team-primary)';
+    
+    let tierColor = '#8b5cf6'; // default bronze fallback
+    let tierShadow = 'rgba(139, 92, 246, 0.5)';
+    if (player.tier === 'gold') { tierColor = '#fbbf24'; tierShadow = 'rgba(251, 191, 36, 0.7)'; }
+    else if (player.tier === 'silver') { tierColor = '#94a3b8'; tierShadow = 'rgba(148, 163, 184, 0.6)'; }
+    else if (player.tier === 'bronze') { tierColor = '#b45309'; tierShadow = 'rgba(180, 83, 9, 0.5)'; }
+
+    const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+
+    const fullPositions = {
+        'LW': 'Left Wing', 'C': 'Center', 'RW': 'Right Wing',
+        'LD': 'Left Defense', 'RD': 'Right Defense', 'G': 'Goalie'
+    };
+    const posFullName = fullPositions[player.position] || player.position;
+
+    const modalHTML = `
+        <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+            <div class="player-premium-card" style="position: relative; width: 340px; border-radius: 16px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 2px solid ${tierColor}; overflow: hidden; padding-bottom: 1.5rem; text-align: center; cursor: default;" onclick="event.stopPropagation()">
+                
+                <!-- TOP HEADER -->
+                <div style="background-color: ${posColor}; height: 80px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
+                
+                <!-- OVERALL BADGE -->
+                <div style="position: absolute; top: 1rem; left: 1rem; z-index: 2; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${player.overall}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; opacity: 0.9;">OVR</span>
+                </div>
+                
+                <!-- LOGO BADGE -->
+                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="position: absolute; top: 1rem; right: 1rem; z-index: 2; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
+
+                <!-- PHOTO -->
+                <div style="position: relative; z-index: 1; margin-top: 2rem;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
+                    <div style="position: absolute; bottom: 0; right: 80px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">
+                        #${player.number}
+                    </div>
+                </div>
+                
+                <!-- INFO -->
+                <div style="position: relative; z-index: 1; margin-top: 1rem; padding: 0 1.5rem;">
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">${player.name}</h2>
+                    <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0 1rem 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
+                    
+                    <div style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.85rem;">
+                        <i data-lucide="bar-chart-2" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Game Stats Will Appear Here During Sim
+                    </div>
+                </div>
+                
+                <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="margin-top: 1.5rem; border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    lucide.createIcons();
 }
 
 function renderRosterSlot(slotId, label) {
     const player = gameState.players.find(p => p.location === slotId);
     return `
-        <div class="roster-slot drop-zone" data-slot-id="${slotId}" style="background-color: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; min-height: 35px; padding: 0.2rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; flex: 1;">
+        <div class="roster-slot drop-zone" data-slot-id="${slotId}" style="background-color: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; min-height: 48px; padding: 0.2rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; flex: 1;">
             ${!player ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; text-align: center; margin: auto;">${label}</div>` : ''}
             ${getPlayerCardHTML(player)}
         </div>
     `;
 }
 
+let benchSortMetric = 'overall';
+let benchSortDesc = true;
+
 function renderRoster(container) {
     const benchPlayers = gameState.players.filter(p => p.location === 'bench');
+    
+    benchPlayers.sort((a, b) => {
+        let valA = a[benchSortMetric] || '';
+        let valB = b[benchSortMetric] || '';
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+        
+        if (valA < valB) return benchSortDesc ? 1 : -1;
+        if (valA > valB) return benchSortDesc ? -1 : 1;
+        return 0;
+    });
     
     let benchHTML = '';
     benchPlayers.forEach(p => {
@@ -740,9 +814,19 @@ function renderRoster(container) {
 
             <!-- BENCH CONTAINER -->
             <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; background-color: var(--card-bg); border-radius: 12px; max-height: calc(100vh - 4rem);">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 0.5rem;">
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">BENCH</h2>
                     <span style="background-color: var(--team-primary); padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 1rem; font-weight: bold; color: #fff;">${benchPlayers.length}</span>
+                </div>
+                
+                <!-- BENCH HEADER ROW -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; color: var(--text-muted); font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                        <span class="bench-sort" data-sort="position" style="width: 24px; cursor: pointer; user-select: none;">P</span>
+                        <span class="bench-sort" data-sort="originalTeamId" style="width: 18px; cursor: pointer; user-select: none;">T</span>
+                        <span class="bench-sort" data-sort="name" style="cursor: pointer; user-select: none; margin-left: 0.5rem;">NAME</span>
+                    </div>
+                    <span class="bench-sort" data-sort="overall" style="cursor: pointer; user-select: none; padding-right: 0.5rem;">OVR</span>
                 </div>
                 
                 <div class="drop-zone" data-slot-id="bench" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background-color: rgba(0,0,0,0.2); border-radius: 8px; min-height: 200px;">
@@ -758,6 +842,21 @@ function renderRoster(container) {
     }
 
     bindDragAndDropEvents();
+    
+    // Bind Bench Sort Events
+    container.querySelectorAll('.bench-sort').forEach(th => {
+        th.addEventListener('click', (e) => {
+            const metric = e.target.getAttribute('data-sort');
+            if (benchSortMetric === metric) {
+                benchSortDesc = !benchSortDesc;
+            } else {
+                benchSortMetric = metric;
+                benchSortDesc = true;
+            }
+            // re-render the bench (which re-renders the roster)
+            renderRoster(container);
+        });
+    });
     
     // Bind Save Action
     const saveBtn = document.getElementById('btn-save-roster');
