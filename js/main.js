@@ -41,37 +41,49 @@ function initFranchiseSelection() {
     // Select 6 random teams
     const selectedTeams = getRandomTeams(ohlTeams, 6);
     
+    const teamsHTML = selectedTeams.map(team => {
+        const parts = team.name.split(' ');
+        const mascot = parts.pop();
+        const city = parts.join(' ');
+        const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+        
+        return `
+        <div class="team-card" data-team-id="${team.id}" style="align-items: center; display: flex; flex-direction: column; --team-primary: ${team.colors.primary}; --team-secondary: ${team.colors.secondary};">
+            <img src="assets/logos/ohl/${logoFile}.svg" alt="${team.name} Logo" class="team-card-logo">
+            <h3 class="team-card-title" style="line-height: 1.1; margin-top: 0.5rem;">
+                <span style="display: block; font-size: 0.55em; opacity: 0.7; letter-spacing: 2px;">${city}</span>
+                <span style="display: block;">${mascot}</span>
+            </h3>
+            <p class="team-card-conf" style="margin-top: 0.5rem;">${team.conference} Conference</p>
+        </div>
+        `;
+    }).join('');
+
     app.innerHTML = `
-        <div class="container">
-            <h1 class="title-main">OHL</h1>
-            <h2 class="subtitle">Select your franchise to start your career</h2>
-            
-            <div class="team-grid">
-                ${selectedTeams.map(team => {
-                    const parts = team.name.split(' ');
-                    const mascot = parts.pop();
-                    const city = parts.join(' ');
-                    const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-                    
-                    return `
-                    <div class="team-card" data-team-id="${team.id}" style="align-items: center; display: flex; flex-direction: column; --team-primary: ${team.colors.primary}; --team-secondary: ${team.colors.secondary};">
-                        <img src="assets/logos/ohl/${logoFile}.svg" alt="${team.name} Logo" class="team-card-logo">
-                        <h3 class="team-card-title" style="line-height: 1.1; margin-top: 0.5rem;">
-                            <span style="display: block; font-size: 0.55em; opacity: 0.7; letter-spacing: 2px;">${city}</span>
-                            <span style="display: block;">${mascot}</span>
-                        </h3>
-                        <p class="team-card-conf" style="margin-top: 0.5rem;">${team.conference} Conference</p>
-                    </div>
-                    `;
-                }).join('')}
+        <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;">
+            <div style="text-align: center;">
+                <h1 class="title-main">HOCKEY GM</h1>
+                <p class="subtitle">Select your franchise to start the journey</p>
             </div>
             
-            <div style="text-align: center; display: flex; gap: 1rem; justify-content: center; margin-top: 3rem; margin-bottom: 2rem;">
-                <button class="btn btn-secondary" id="btn-back-league">Back to Leagues</button>
-                <button class="btn" id="btn-re-roll">Reroll Teams</button>
+            <button id="debug-barrie" class="btn" style="margin-bottom: 2rem; background-color: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.3); color: #fff;">
+                <i data-lucide="bug" style="width: 18px; height: 18px; margin-right: 8px;"></i> DEBUG: START BARRIE COLTS
+            </button>
+            
+            <div class="team-grid">
+                ${teamsHTML}
             </div>
         </div>
     `;
+
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    document.getElementById('debug-barrie').addEventListener('click', () => {
+        const team = ohlTeams.find(t => t.id === 'barrie');
+        handleTeamSelection(team);
+    });
     
     // Add event listeners
     const teamCards = document.querySelectorAll('.team-card');
@@ -82,29 +94,22 @@ function initFranchiseSelection() {
             openConfirmationModal(team);
         });
     });
-    
-    document.getElementById('btn-back-league').addEventListener('click', initLeagueSelection);
-    document.getElementById('btn-re-roll').addEventListener('click', initFranchiseSelection);
 }
 
 let currentTeam = null;
 let gameState = null;
 
-function initNewGame() {
+async function initNewGame(teamIdOverride = null) {
+    const targetTeam = teamIdOverride ? ohlTeams.find(t => t.id === teamIdOverride) : currentTeam;
     const currentYear = new Date().getFullYear();
     
     // Calcula a 3ª quinta-feira de Setembro do ano atual
-    let date = new Date(currentYear, 8, 1); // Mês 8 é Setembro (0-indexado)
-    let thursdaysCount = 0;
-    while (thursdaysCount < 3) {
-        if (date.getDay() === 4) { // 4 = Quinta-feira
-            thursdaysCount++;
-            if (thursdaysCount === 3) break;
-        }
+    let date = new Date(currentYear, 8, 1);
+    while (date.getDay() !== 4 || Math.ceil(date.getDate() / 7) !== 3) {
         date.setDate(date.getDate() + 1);
     }
     
-    const otherTeams = ohlTeams.filter(t => t.id !== currentTeam.id);
+    const otherTeams = ohlTeams.filter(t => t.id !== targetTeam.id);
     const randomOpponent = otherTeams[Math.floor(Math.random() * otherTeams.length)];
     const isHome = Math.random() > 0.5;
 
@@ -112,6 +117,9 @@ function initNewGame() {
         seasonYear: currentYear,
         currentDate: date,
         matchIndex: 1,
+        players: [],
+        coins: 1000,
+        collection: [],
         totalMatches: 68,
         record: {
             wins: 0,
@@ -127,37 +135,76 @@ function initNewGame() {
             pts: 0
         })),
         nextMatch: {
-            homeId: isHome ? currentTeam.id : randomOpponent.id,
-            awayId: isHome ? randomOpponent.id : currentTeam.id
+            homeId: isHome ? targetTeam.id : randomOpponent.id,
+            awayId: isHome ? randomOpponent.id : targetTeam.id
         }
     };
     
-    // Generate dummy league leaders for UI testing
-    const firstNames = ['J.', 'M.', 'A.', 'T.', 'C.', 'S.', 'D.', 'L.', 'P.', 'R.'];
-    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor'];
-    
-    function generateDummyLeaderList(type, maxStat) {
-        const list = [];
-        for (let i = 0; i < 3; i++) {
-            const team = ohlTeams[Math.floor(Math.random() * ohlTeams.length)];
-            const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-            let stat;
-            if (type === 'svp') {
-                stat = (Math.random() * (0.930 - 0.890) + 0.890).toFixed(3);
+    // RF03: Generate initial roster
+    try {
+        const response = await fetch('data/rosters.json');
+        const allRosters = await response.json();
+        
+        ohlTeams.forEach(team => {
+            const teamRoster = allRosters[team.id];
+            if (teamRoster && teamRoster.length > 0) {
+                teamRoster.forEach(p => {
+                    gameState.players.push({
+                        id: p.id,
+                        name: p.name,
+                        position: p.position,
+                        overall: p.overall,
+                        number: p.number,
+                        age: p.age,
+                        birthplace: p.birthplace,
+                        photo: p.photo,
+                        teamId: team.id,
+                        location: team.id === targetTeam.id ? 'bench' : 'cpu_bench'
+                    });
+                });
             } else {
-                stat = maxStat - i * Math.floor(Math.random() * 3 + 1);
+                // Fallback genérico se o time não estiver no JSON
+                const positions = [
+                    { pos: 'LW', count: 4 }, { pos: 'C', count: 4 }, { pos: 'RW', count: 4 },
+                    { pos: 'LD', count: 3 }, { pos: 'RD', count: 3 },
+                    { pos: 'G', count: 2 }
+                ];
+                const firstNames = ['Jack', 'Liam', 'Noah', 'Oliver', 'William', 'James', 'Benjamin', 'Lucas', 'Henry', 'Alexander', 'Mason', 'Michael', 'Ethan', 'Daniel', 'Jacob', 'Logan', 'Jackson', 'Levi', 'Sebastian', 'Mateo'];
+                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+                
+                positions.forEach(req => {
+                    for (let i = 0; i < req.count; i++) {
+                        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                        gameState.players.push({
+                            id: 'p_' + Math.random().toString(36).substr(2, 9),
+                            name: `${firstName} ${lastName}`,
+                            position: req.pos,
+                            overall: Math.floor(Math.random() * 25) + 60,
+                            number: Math.floor(Math.random() * 99) + 1,
+                            age: Math.floor(Math.random() * 5) + 16,
+                            birthplace: 'Canada',
+                            photo: 'https://images.chl.ca/images/chl/player-missing-photo.png',
+                            teamId: team.id,
+                            location: team.id === targetTeam.id ? 'bench' : 'cpu_bench'
+                        });
+                    }
+                });
             }
-            list.push({ rank: i + 1, name, teamId: team.id, stat });
-        }
-        return list;
+        });
+    } catch (error) {
+        console.error('Error loading complete rosters:', error);
+        alert('Falha ao carregar elencos da OHL. Verifique data/rosters.json');
     }
 
     gameState.leagueLeaders = {
-        pts: generateDummyLeaderList('pts', 105),
-        g: generateDummyLeaderList('g', 45),
-        a: generateDummyLeaderList('a', 60),
-        svp: generateDummyLeaderList('svp', null)
+        pts: [],
+        g: [],
+        a: [],
+        svp: []
     };
+    
+    // (O array de gameState.players já foi populado com sucesso via JSON acima)
 }
 
 function openConfirmationModal(team) {
@@ -187,9 +234,9 @@ function openConfirmationModal(team) {
     });
 }
 
-function handleTeamSelection(team) {
+async function handleTeamSelection(team) {
     currentTeam = team;
-    initNewGame();
+    await initNewGame();
     initHomeScreen();
 }
 
@@ -201,8 +248,11 @@ function initHomeScreen() {
     document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 60%, #0b1121) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #0b1121) 100%)`;
     document.body.style.backgroundAttachment = 'fixed';
     
-    // Define a cor primária globalmente para os botões e outros elementos
-    document.body.style.setProperty('--team-primary', currentTeam.colors.primary);
+    // Configuração inicial de franquia e cores
+    gameState.team = currentTeam;
+    gameState.coins = 1000; // Saldo inicial
+    gameState.collection = []; // Coleção vazia
+    document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
     
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
@@ -263,9 +313,31 @@ function initHomeScreen() {
 }
 
 function switchView(viewName) {
-    // Atualiza a classe ativa
     document.querySelectorAll('.sidebar-nav .nav-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(`nav-${viewName}`).classList.add('active');
+    
+    // Update Sidebar Brand based on view
+    const sidebarBrand = document.querySelector('.sidebar-brand');
+    if (sidebarBrand && gameState) {
+        if (viewName === 'roster') {
+            const teamInfo = currentTeam;
+            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            sidebarBrand.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                    <img src="assets/logos/ohl/${logoFile}.svg" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--text-color);">${teamInfo.name}</div>
+                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--text-muted);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</div>
+                </div>
+            `;
+        } else {
+            sidebarBrand.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="shield" style="width: 50px; height: 50px; color: var(--text-color); filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
+                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; letter-spacing: 2px; line-height: 1;">HOCKEY<br>GM</div>
+                </div>
+            `;
+        }
+    }
     
     // Create icons immediately after injecting HTML
     if (window.lucide) {
@@ -277,7 +349,7 @@ function switchView(viewName) {
     if (viewName === 'dashboard') {
         renderDashboard(mainContent);
     } else if (viewName === 'roster') {
-        mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Roster</h1><p>Manage your 4 lines here.</p>`;
+        renderRoster(mainContent);
     } else if (viewName === 'calendar') {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Calendar</h1><p>Season schedule coming soon.</p>`;
     } else if (viewName === 'collection') {
@@ -290,7 +362,15 @@ let standingsSortMetric = 'pts';
 let standingsSortDesc = true;
 let currentLeaderTab = 'pts';
 
+function updateCoinsDisplay() {
+    const coinsEl = document.getElementById('coins-amount');
+    if (coinsEl && gameState) {
+        coinsEl.textContent = gameState.coins || 0;
+    }
+}
+
 function renderDashboard(container) {
+    updateCoinsDisplay();
     if (!currentStandingsConf) currentStandingsConf = currentTeam.conference;
 
     const logoFile = currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
@@ -504,21 +584,25 @@ function renderLeagueLeaders() {
     
     let listHTML = `<div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">`;
     
-    leaders.forEach(l => {
-        const teamInfo = ohlTeams.find(t => t.id === l.teamId);
-        const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        
-        listHTML += `
-            <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo.colors.primary}; cursor: pointer; transition: background-color 0.2s;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-muted); width: 20px;">#${l.rank}</span>
-                    <img src="assets/logos/ohl/${logoFile}.svg" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">
-                    <span style="font-weight: 500; color: var(--text-color);">${l.name}</span>
+    if (leaders.length === 0) {
+        listHTML += `<p style="text-align: center; color: var(--text-muted); padding: 1rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see leaders.</p>`;
+    } else {
+        leaders.forEach(l => {
+            const teamInfo = ohlTeams.find(t => t.id === l.teamId);
+            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            
+            listHTML += `
+                <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo.colors.primary}; cursor: pointer; transition: background-color 0.2s;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-muted); width: 20px;">#${l.rank}</span>
+                        <img src="assets/logos/ohl/${logoFile}.svg" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        <span style="font-weight: 500; color: var(--text-color);">${l.name}</span>
+                    </div>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: var(--text-color);">${l.stat}</span>
                 </div>
-                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: var(--text-color);">${l.stat}</span>
-            </div>
-        `;
-    });
+            `;
+        });
+    }
     
     listHTML += `</div>`;
     
@@ -540,6 +624,231 @@ function renderLeagueLeaders() {
         btn.addEventListener('click', (e) => {
             currentLeaderTab = e.target.getAttribute('data-leadertab');
             renderLeagueLeaders();
+        });
+    });
+}
+
+// --- ROSTER ENGINE ---
+function getPlayerCardHTML(player) {
+    if (!player) return '';
+    const posColors = {
+        'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981',
+        'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899'
+    };
+    return `
+        <div class="player-card" draggable="true" data-player-id="${player.id}" 
+             style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: grab; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-family: 'Blockletter', sans-serif; color: ${posColors[player.position]}; font-size: 1.1rem; width: 24px;">${player.position}</span>
+                <span style="font-weight: 500; color: var(--text-color); font-size: 0.95rem;">${player.name}</span>
+            </div>
+            <span style="font-family: 'Blockletter', sans-serif; color: var(--text-color); font-size: 1.2rem;">${player.overall}</span>
+        </div>
+    `;
+}
+
+function renderRosterSlot(slotId, label) {
+    const player = gameState.players.find(p => p.location === slotId);
+    return `
+        <div class="roster-slot drop-zone" data-slot-id="${slotId}" style="background-color: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; min-height: 35px; padding: 0.2rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; flex: 1;">
+            ${!player ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; text-align: center; margin: auto;">${label}</div>` : ''}
+            ${getPlayerCardHTML(player)}
+        </div>
+    `;
+}
+
+function renderRoster(container) {
+    const benchPlayers = gameState.players.filter(p => p.location === 'bench');
+    
+    let benchHTML = '';
+    benchPlayers.forEach(p => {
+        benchHTML += getPlayerCardHTML(p);
+    });
+
+    // Generate Forwards HTML
+    let forwardsHTML = '';
+    for(let i=1; i<=4; i++) {
+        forwardsHTML += `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
+                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">L${i}</div>
+                ${renderRosterSlot(`f_${i}_LW`, 'LW')}
+                ${renderRosterSlot(`f_${i}_C`, 'C')}
+                ${renderRosterSlot(`f_${i}_RW`, 'RW')}
+            </div>
+        `;
+    }
+
+    // Generate Defense HTML
+    let defenseHTML = '';
+    for(let i=1; i<=3; i++) {
+        defenseHTML += `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
+                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">P${i}</div>
+                ${renderRosterSlot(`d_${i}_LD`, 'LD')}
+                ${renderRosterSlot(`d_${i}_RD`, 'RD')}
+            </div>
+        `;
+    }
+
+    // Goalies HTML
+    let goaliesHTML = `
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">G</div>
+            ${renderRosterSlot(`g_1_Starter`, 'Starter')}
+            ${renderRosterSlot(`g_2_Backup`, 'Backup')}
+        </div>
+    `;
+    
+    // Validate if Roster is complete (RF04)
+    const isRosterComplete = gameState.players.filter(p => p.location !== 'bench').length === 20;
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: 100%; overflow: visible; padding-bottom: 2rem;">
+            <!-- LEFT COLUMN: ICE + ACTION ZONES -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
+                <!-- ICE CONTAINER -->
+                <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; text-shadow: 0 0 10px rgba(255,255,255,0.2);">ACTIVE ROSTER</h2>
+                        <button id="btn-save-roster" class="btn btn-sm" ${!isRosterComplete ? 'disabled' : ''} style="background-color: ${isRosterComplete ? 'var(--team-primary)' : 'rgba(255,255,255,0.1)'}; color: ${isRosterComplete ? '#fff' : 'var(--text-muted)'}; border: none; font-size: 1rem; padding: 0.5rem 1.2rem;">
+                            <i data-lucide="${isRosterComplete ? 'check-circle' : 'lock'}" style="width: 18px; height: 18px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i> Save Lineup
+                        </button>
+                    </div>
+                    
+                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Forwards</h3>
+                    ${forwardsHTML}
+                    
+                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Defense</h3>
+                    ${defenseHTML}
+                    
+                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Goalies</h3>
+                    ${goaliesHTML}
+                </div>
+
+                <!-- ACTION ZONES (SELL / COLLECTION) -->
+                <div style="display: flex; gap: 1.5rem; height: 100px; flex-shrink: 0;">
+                    <div class="dashboard-card action-zone drop-zone" data-slot-id="sell" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.1); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; cursor: pointer;">
+                        <i data-lucide="coins" style="color: #ef4444; width: 36px; height: 36px;"></i>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #ef4444; margin-top: 0.5rem;">SELL PLAYER</span>
+                    </div>
+                    <div class="dashboard-card action-zone drop-zone" data-slot-id="collection" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(59, 130, 246, 0.1); border: 2px dashed rgba(59, 130, 246, 0.4); border-radius: 12px; cursor: pointer;">
+                        <i data-lucide="archive" style="color: #3b82f6; width: 36px; height: 36px;"></i>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #3b82f6; margin-top: 0.5rem;">SEND TO COLLECTION</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BENCH CONTAINER -->
+            <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; background-color: var(--card-bg); border-radius: 12px; max-height: calc(100vh - 4rem);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">BENCH</h2>
+                    <span style="background-color: var(--team-primary); padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 1rem; font-weight: bold; color: #fff;">${benchPlayers.length}</span>
+                </div>
+                
+                <div class="drop-zone" data-slot-id="bench" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background-color: rgba(0,0,0,0.2); border-radius: 8px; min-height: 200px;">
+                    ${benchHTML}
+                    ${benchPlayers.length === 0 ? '<p style="color: var(--text-muted); text-align: center; font-size: 1rem; margin-top: 2rem;">Bench is empty. Roster is fully active.</p>' : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+
+    bindDragAndDropEvents();
+    
+    // Bind Save Action
+    const saveBtn = document.getElementById('btn-save-roster');
+    if (saveBtn && isRosterComplete) {
+        saveBtn.addEventListener('click', () => {
+            alert('Roster Validated and Saved Successfully! (RF04)');
+        });
+    }
+}
+
+let draggedPlayerId = null;
+
+function bindDragAndDropEvents() {
+    const cards = document.querySelectorAll('.player-card');
+    const dropZones = document.querySelectorAll('.drop-zone');
+
+    cards.forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+            draggedPlayerId = card.getAttribute('data-player-id');
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => {
+                card.style.opacity = '0.5';
+            }, 0);
+        });
+
+        card.addEventListener('dragend', (e) => {
+            card.style.opacity = '1';
+            dropZones.forEach(z => z.classList.remove('drag-over'));
+            draggedPlayerId = null;
+        });
+    });
+
+    dropZones.forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedPlayerId) {
+                zone.classList.add('drag-over');
+            }
+        });
+
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('drag-over');
+        });
+
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            
+            const targetSlotId = zone.getAttribute('data-slot-id');
+            if (!targetSlotId || !draggedPlayerId) return;
+
+            const draggedPlayer = gameState.players.find(p => p.id === draggedPlayerId);
+            const originalLocation = draggedPlayer.location;
+            
+            if (originalLocation === targetSlotId) return; // Dropped in same place
+            
+            // Handle Drop on Action Zones (Sell / Collection)
+            if (targetSlotId === 'sell') {
+                if (confirm(`Sell ${draggedPlayer.name} for ${Math.floor(200 * (draggedPlayer.overall / 100))} coins?`)) {
+                    gameState.coins = (gameState.coins || 0) + Math.floor(200 * (draggedPlayer.overall / 100));
+                    gameState.players = gameState.players.filter(p => p.id !== draggedPlayerId);
+                    updateCoinsDisplay();
+                } else {
+                    return; // Cancelled
+                }
+            } 
+            else if (targetSlotId === 'collection') {
+                if (confirm(`Send ${draggedPlayer.name} to Collection? He will be removed from your active roster.`)) {
+                    gameState.collection = gameState.collection || [];
+                    gameState.collection.push(draggedPlayer);
+                    gameState.players = gameState.players.filter(p => p.id !== draggedPlayerId);
+                } else {
+                    return; // Cancelled
+                }
+            } 
+            else {
+                // If target is NOT bench, check if it's occupied to perform swap
+                if (targetSlotId !== 'bench') {
+                    const occupant = gameState.players.find(p => p.location === targetSlotId);
+                    if (occupant) {
+                        occupant.location = originalLocation; // Swap occupant to where draggedPlayer came from
+                    }
+                }
+                
+                draggedPlayer.location = targetSlotId;
+            }
+            
+            // Re-render the whole roster UI to reflect state changes cleanly
+            const mainContent = document.getElementById('main-content');
+            renderRoster(mainContent);
         });
     });
 }

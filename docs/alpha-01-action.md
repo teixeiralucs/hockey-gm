@@ -74,3 +74,23 @@ Este documento rastreia as implementações reais feitas, explicando *o que* foi
 - **Navegação em Abas**: Micro-sistema de abas idêntico ao Standings que permite ao usuário filtrar o Top 3 da liga nas 4 categorias.
 - **Design de Lista Premium**: Cada linha lista o `#Rank`, a logo em miniatura do time de origem, o nome do jogador e seu stat enorme na direita. A linha possui highlight ao passar o mouse e uma borda à esquerda puxando a cor primária da franquia de origem do jogador.
 
+
+## [Alpha 0.1.3] - OHL Global Database (RF03)
+
+### 1. Global Scraper (CHL API)
+- **O que é**: Script em Python (`scripts/scrape_all_teams.py`) desenhado para se conectar à API secreta da HockeyTech/CHL e extrair os plantéis reais de franquias juniores.
+- **Como funciona**: O script foca no `season_id=83` (Temporada 2024-2025). Faz o loop sobre os 20 times da liga, extraindo e processando metadados de jogadores em tempo real (calculando a idade baseada em data de nascimento).
+- **Dados Extraídos**:
+  - Foto (`photo`)
+  - Nome, Posição e Número
+  - Local de Nascimento (`birthplace`)
+  - Idade (`age`)
+- **Storage**: O script gera o arquivo de banco centralizado `data/rosters.json` (aproximadamente 730 jogadores), que atua como o banco de memória local do simulador.
+
+### 2. Refatoração da Engine Principal (Init Game)
+- **Processamento Assíncrono**: As funções `initNewGame` e `handleTeamSelection` foram refatoradas para arquitetura `async/await`. O jogo agora pausa o carregamento da interface até que o banco `rosters.json` seja integralmente lido.
+- **Roster Inteligente**: O gerador de jogadores aleatórios ("J. Smith") foi permanentemente removido. O jogo agora pesquisa o arquivo JSON e constrói a Roster completa do usuário usando as Lendas reais da OHL.
+- **Inteligência da CPU**: Ao criar um save, não apenas o Roster do usuário, mas os elencos das outras 19 franquias (controladas pela máquina) também são montados na memória em estado `cpu_bench`, preparando o campo para partidas de simulação fiéis à realidade.
+
+### 3. Ajustes no League Leaders
+- **Lógica de Fallback Vazio**: Com a remoção dos dummy data gerados aleatoriamente, as tabelas de líderes agora implementam tratamento para Arrays vazios, exibindo a mensagem: "No stats available yet. Play matches to see leaders." nas categorias de PTS, G, A e SV%.

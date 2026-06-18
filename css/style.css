@@ -141,6 +141,11 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 1rem;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .sidebar-nav {
@@ -368,6 +373,16 @@ h1, h2, h3, h4, h5, h6 {
     background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Drag and Drop Engine */
+.drop-zone.drag-over {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--team-primary) !important;
+}
+
+.player-card:active {
+    cursor: grabbing !important;
+}
+
 .dashboard-card::before {
     content: '';
     position: absolute;
@@ -382,13 +397,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .dashboard-card:hover {
-    transform: translateY(-5px);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px color-mix(in srgb, var(--team-primary, var(--primary-color)) 40%, transparent);
     border-color: var(--team-primary, var(--primary-color));
 }
 
 .dashboard-card:hover::before {
     transform: scaleX(1);
+}
+
+.dashboard-card.action-zone::before {
+    display: none !important;
 }
 
 .team-card-title {

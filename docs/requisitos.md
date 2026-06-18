@@ -4,21 +4,23 @@
 
 - **RF01 - Seleção de Franquia:** ✅ O sistema deve permitir que o usuário inicie um save escolhendo um dos 20 times iniciais da OHL.
 - **RF02 - Tela Inicial (Dashboard):** ✅ O sistema deve fornecer um hub central exibindo o time escolhido pelo jogador, com resumo da temporada e navegação para as demais áreas do jogo (Roster, Standings, etc).
-- **RF03 - Estrutura do Roster:** O sistema deve gerenciar um roster ativo contendo exatamente 20 jogadores exigidos (12 Forwards, 6 Defensemen e 2 Goalies), distribuídos em hierarquia de linhas (1ª a 4ª).
-- **RF04 - Validação de Salvamento:** O sistema de Roster deve impedir o salvamento da escalação e o avanço para a simulação caso existam espaços vazios na formação.
-- **RF05 - Tabelas de Classificação (Standings):** O sistema deve exibir e atualizar a tabela de classificação das conferências a cada rodada da temporada regular, bem como exibir as chaves de mata-mata (brackets) durante os Playoffs.
-- **RF06 - Drag and Drop (Benching):** O sistema deve fornecer 4 interações de arraste: alocar titular, manter no banco, vender ou arquivar na coleção.
-- **RF07 - Cálculo de Modificadores (Buffs/Debuffs):** O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).
-- **RF08 - Cálculo Financeiro (Shop/Venda):** O sistema deve realizar cobrança de 200 moedas na compra de pacotes do Tier D e calcular o valor de liquidação (venda) pela fórmula: `Valor Base * (Overall / 100)`.
-- **RF09 - Motor de Simulação Sequencial:** O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
-- **RF10 - Probabilidade de Eventos:** O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
-- **RF11 - Condições de Overtime (OT):** O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.
-- **RF12 - Logística de Partida (Trocas e Estamina):** O motor de simulação deve automatizar a troca de linhas a cada 45-60 segundos e aplicar debuffs drásticos caso a estamina seja esgotada.
-- **RF13 - Gerenciamento de Idades:** O banco de dados deve registrar a idade base de 16 anos no draft e incrementá-la anualmente.
-- **RF14 - Aposentadoria Automática:** O sistema deve varrer o Roster ao final da temporada e transferir jogadores maiores de 20 anos diretamente para o banco de Coleção, disparando alertas na UI do jogador.
-- **RF15 - Estrutura de Temporada e Playoffs:** O sistema deve gerar um calendário de 68 rodadas e avançar os 8 melhores da conferência para chaves de mata-mata em melhor de 7.
-- **RF16 - Hall of Fame e Loop:** O sistema deve gravar o ID dos campeões e líderes estatísticos em um log persistente ao final dos Playoffs e ativar a opção de reinício do calendário.
-- **RF17 - Múltiplos Saves:** O sistema deve permitir que o jogador mantenha até 3 jogos salvos simultaneamente (slots de save), garantindo o armazenamento isolado em pastas separadas contendo as informações próprias de cada progresso.
+- **RF03 - Estrutura do Roster:** ✅ O sistema deve gerenciar um roster ativo contendo exatamente 20 jogadores exigidos (12 Forwards, 6 Defensemen e 2 Goalies), distribuídos em hierarquia de linhas (1ª a 4ª).
+- **RF04 - Validação de Salvamento:** ✅ O sistema de Roster deve impedir o salvamento da escalação e o avanço para a simulação caso existam espaços vazios na formação.
+- **RF05 - Criação de Card dos Jogadores:** O sistema deve gerar cartas visuais para cada jogador contendo sua Foto oficial, Nome, Idade, Posição, Número da camisa e Local de Nascimento, adotando um visual premium e moderno.
+- **RF06 - Cálculo de Overall Base:** O sistema deve calcular o Overall inicial de cada jogador com base em suas estatísticas ou de forma programática antes da aplicação de modificadores dinâmicos.
+- **RF07 - Tabelas de Classificação (Standings):** O sistema deve exibir e atualizar a tabela de classificação das conferências a cada rodada da temporada regular, bem como exibir as chaves de mata-mata (brackets) durante os Playoffs.
+- **RF08 - Drag and Drop (Benching):** ✅ O sistema deve fornecer 4 interações de arraste: alocar titular, manter no banco, vender ou arquivar na coleção.
+- **RF09 - Cálculo de Modificadores (Buffs/Debuffs):** O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).
+- **RF10 - Cálculo Financeiro (Shop/Venda):** O sistema deve realizar cobrança de 200 moedas na compra de pacotes do Tier D e calcular o valor de liquidação (venda) pela fórmula: `Valor Base * (Overall / 100)`.
+- **RF11 - Motor de Simulação Sequencial:** O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
+- **RF12 - Probabilidade de Eventos:** O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
+- **RF13 - Condições de Overtime (OT):** O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.
+- **RF14 - Logística de Partida (Trocas e Estamina):** O motor de simulação deve automatizar a troca de linhas a cada 45-60 segundos e aplicar debuffs drásticos caso a estamina seja esgotada.
+- **RF15 - Gerenciamento de Idades:** O banco de dados deve registrar a idade base de 16 anos no draft e incrementá-la anualmente.
+- **RF16 - Aposentadoria Automática:** O sistema deve varrer o Roster ao final da temporada e transferir jogadores maiores de 20 anos diretamente para o banco de Coleção, disparando alertas na UI do jogador.
+- **RF17 - Estrutura de Temporada e Playoffs:** O sistema deve gerar um calendário de 68 rodadas e avançar os 8 melhores da conferência para chaves de mata-mata em melhor de 7.
+- **RF18 - Hall of Fame e Loop:** O sistema deve gravar o ID dos campeões e líderes estatísticos em um log persistente ao final dos Playoffs e ativar a opção de reinício do calendário.
+- **RF19 - Múltiplos Saves:** O sistema deve permitir que o jogador mantenha até 3 jogos salvos simultaneamente (slots de save), garantindo o armazenamento isolado em pastas separadas contendo as informações próprias de cada progresso.
 
 ## Requisitos Não Funcionais (RNF)
 
