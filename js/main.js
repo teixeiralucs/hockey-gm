@@ -1628,62 +1628,304 @@ function renderMatchPage(container) {
 
 function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
     const timeline = [];
-    const homeOvr = isHome ? myOvr : oppOvr;
-    const awayOvr = !isHome ? myOvr : oppOvr;
+    const homeTeam = isHome ? myTeam : oppTeam;
+    const awayTeam = !isHome ? myTeam : oppTeam;
     
-    // Base probability of a goal per minute is roughly 5% (~3 goals per 60 mins)
-    // We adjust this base probability using the ratio of Team OVRs.
-    const ovrRatio = parseFloat(homeOvr) / (parseFloat(awayOvr) || 1);
-    
-    let homeChance = 0.05 * (ovrRatio > 1 ? ovrRatio : 1);
-    let awayChance = 0.05 * (ovrRatio < 1 ? (1 / ovrRatio) : 1);
-    
-    // Cap chances so it doesn't get ridiculous
-    homeChance = Math.min(homeChance, 0.15);
-    awayChance = Math.min(awayChance, 0.15);
-
-    for (let period = 1; period <= 3; period++) {
-        for (let minute = 19; minute >= 0; minute--) {
-            let r = Math.random();
-            if (r < homeChance) {
-                timeline.push({
-                    period: period,
-                    minute: minute,
-                    second: Math.floor(Math.random() * 60),
-                    type: 'goal',
-                    team: 'home',
-                    teamName: isHome ? myTeam.name : oppTeam.name,
-                    color: isHome ? myTeam.colors.primary : oppTeam.colors.primary,
-                    text: `GOAL! The ${isHome ? myTeam.name : oppTeam.name} find the back of the net!`
-                });
-            } else if (r < homeChance + awayChance) {
-                timeline.push({
-                    period: period,
-                    minute: minute,
-                    second: Math.floor(Math.random() * 60),
-                    type: 'goal',
-                    team: 'away',
-                    teamName: !isHome ? myTeam.name : oppTeam.name,
-                    color: !isHome ? myTeam.colors.primary : oppTeam.colors.primary,
-                    text: `GOAL! The ${!isHome ? myTeam.name : oppTeam.name} score a beautiful goal!`
-                });
-            }
+    // 1. Gather Players
+    function extractLines(isUser, teamId) {
+        let lines = { f: [[], [], [], []], d: [[], [], []], g: [] };
+        if (isUser) {
+            let active = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
+            active.forEach(p => {
+                let parts = p.location.split('_');
+                let type = parts[0]; // f, d, g
+                let lineNum = parseInt(parts[1]) - 1;
+                if (type === 'f' || type === 'd') lines[type][lineNum].push(p);
+                if (type === 'g') lines[type].push(p);
+            });
+            // Sort goalies
+            lines.g.sort((a, b) => a.location.includes('Starter') ? -1 : 1);
+        } else {
+            let cpu = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
+            let f = cpu.filter(p => ['LW', 'C', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
+            let d = cpu.filter(p => ['LD', 'RD'].includes(p.position)).sort((a,b) => b.overall - a.overall);
+            let g = cpu.filter(p => p.position === 'G').sort((a,b) => b.overall - a.overall);
+            
+            for(let i=0; i<4; i++) lines.f[i] = f.slice(i*3, i*3+3);
+            for(let i=0; i<3; i++) lines.d[i] = d.slice(i*2, i*2+2);
+            lines.g = g.slice(0, 2);
         }
-        
-        // Add end of period event
-        timeline.push({
-            period: period,
-            minute: 0,
-            second: 0,
-            type: 'end_period'
-        });
+        return lines;
     }
     
-    // Sort timeline so events happen in chronological order
+    const homeLines = extractLines(isHome, homeTeam.id);
+    const awayLines = extractLines(!isHome, awayTeam.id);
+    
+    // 2. Sim State
+    let state = {
+        period: 1,
+        clock: 1200,
+        possession: 'home',
+        zone: 'neutral',
+        homeLineF: 0,
+        homeLineD: 0,
+        awayLineF: 0,
+        awayLineD: 0,
+        homeFatigue: 1.0,
+        awayFatigue: 1.0,
+        penalties: { home: [], away: [] },
+        score: { home: 0, away: 0 },
+        emptyNet: false
+    };
+    
+    function getOnIcePlayers(team) {
+        let lines = team === 'home' ? homeLines : awayLines;
+        let lineF = team === 'home' ? state.homeLineF : state.awayLineF;
+        let lineD = team === 'home' ? state.homeLineD : state.awayLineD;
+        let f = lines.f[lineF] || [];
+        let d = lines.d[lineD] || [];
+        let g = lines.g[0] || null;
+        return { f, d, g, all: [...f, ...d] };
+    }
+    
+    function getOnIceOvr(team) {
+        let players = getOnIcePlayers(team).all;
+        if(players.length === 0) return 70;
+        let sum = players.reduce((acc, p) => acc + parseFloat(p.overall), 0);
+        
+        let fatigue = team === 'home' ? state.homeFatigue : state.awayFatigue;
+        let myPenalties = state.penalties[team].length;
+        let oppPenalties = state.penalties[team === 'home' ? 'away' : 'home'].length;
+        let diff = oppPenalties - myPenalties; 
+        let ppMod = 1.0 + (diff * 0.15); // +15% per man advantage
+        
+        return (sum / players.length) * fatigue * ppMod;
+    }
+    
+    function addEvent(timeSecs, type, team, text, highlight = false) {
+        let period = state.period;
+        let min = Math.floor(timeSecs / 60);
+        let sec = timeSecs % 60;
+        
+        let isImportant = ['goal', 'penalty', 'fight', 'faceoff', 'end_period'].includes(type);
+        if (isImportant || Math.random() < 0.12) {
+            let t = team === 'home' ? homeTeam : team === 'away' ? awayTeam : null;
+            timeline.push({
+                period: period,
+                minute: min,
+                second: sec,
+                type: type,
+                team: team,
+                teamName: t ? t.name : '',
+                color: t ? t.colors.primary : '#a1a1aa', // Muted default
+                text: text,
+                highlight: isImportant || highlight
+            });
+        }
+    }
+    
+    function getPlayer(team, posPriority) {
+        let players = getOnIcePlayers(team).all;
+        if(players.length === 0) return { name: 'Player', id: 'unknown', overall: 70 };
+        
+        if (posPriority) {
+            let posPlayers = players.filter(p => posPriority.includes(p.position));
+            if (posPlayers.length > 0) players = posPlayers;
+        }
+        
+        let total = players.reduce((sum, p) => sum + parseFloat(p.overall), 0);
+        let r = Math.random() * total;
+        for (let p of players) {
+            r -= parseFloat(p.overall);
+            if (r <= 0) return p;
+        }
+        return players[0];
+    }
+    
+    // TICK LOOP
+    let maxPeriods = 3;
+    for (state.period = 1; state.period <= maxPeriods; state.period++) {
+        state.clock = state.period > 3 ? 300 : 1200; // 5 min OT, 20 min regular
+        state.zone = 'neutral';
+        state.emptyNet = false;
+        
+        let homeC = getPlayer('home', ['C']);
+        let awayC = getPlayer('away', ['C']);
+        let hFace = parseFloat(homeC.overall);
+        let aFace = parseFloat(awayC.overall);
+        state.possession = Math.random() * (hFace + aFace) < hFace ? 'home' : 'away';
+        let periodName = state.period > 3 ? 'OVERTIME' : `Period ${state.period}`;
+        addEvent(state.clock, 'faceoff', null, `Puck Drop! ${periodName} Faceoff won by ${state.possession === 'home' ? homeTeam.name : awayTeam.name}.`);
+        
+        let otWinner = false;
+        
+        while (state.clock > 0) {
+            let tickTime = Math.floor(Math.random() * 11) + 10; // 10-20 seconds per tick
+            state.clock -= tickTime;
+            if (state.clock < 0) state.clock = 0;
+            
+            // Penalties countdown
+            ['home', 'away'].forEach(t => {
+                state.penalties[t] = state.penalties[t].filter(p => {
+                    p.time -= tickTime;
+                    if (p.time <= 0) {
+                        addEvent(state.clock, 'penalty_over', t, `${p.player.name}'s penalty is over.`);
+                        return false;
+                    }
+                    return true;
+                });
+            });
+            
+            // Fatigue & Line Changes
+            state.homeFatigue -= 0.05;
+            state.awayFatigue -= 0.05;
+            if (state.homeFatigue < 0.75) {
+                state.homeLineF = (state.homeLineF + 1) % 4;
+                state.homeLineD = (state.homeLineD + 1) % 3;
+                state.homeFatigue = 1.0;
+                addEvent(state.clock, 'line_change', 'home', `${homeTeam.name} changes lines.`);
+            }
+            if (state.awayFatigue < 0.75) {
+                state.awayLineF = (state.awayLineF + 1) % 4;
+                state.awayLineD = (state.awayLineD + 1) % 3;
+                state.awayFatigue = 1.0;
+                addEvent(state.clock, 'line_change', 'away', `${awayTeam.name} changes lines.`);
+            }
+            
+            // Simulation Logic
+            let atk = state.possession;
+            let def = atk === 'home' ? 'away' : 'home';
+            let atkOvr = getOnIceOvr(atk);
+            let defOvr = getOnIceOvr(def);
+            
+            let atkTeam = atk === 'home' ? homeTeam : awayTeam;
+            let defTeam = def === 'home' ? homeTeam : awayTeam;
+            
+            if (state.zone === 'neutral') {
+                let successRate = (atkOvr / (atkOvr + defOvr)) * 0.7; 
+                if (Math.random() < successRate) {
+                    state.zone = 'offensive';
+                    addEvent(state.clock, 'zone_entry', atk, `${atkTeam.name} carries the puck into the offensive zone.`);
+                } else {
+                    if (Math.random() < 0.5) {
+                        state.possession = def;
+                        addEvent(state.clock, 'takeaway', def, `${defTeam.name} intercepts the pass in the neutral zone.`);
+                    } else {
+                        addEvent(state.clock, 'dump', atk, `${atkTeam.name} dumps the puck deep.`);
+                        state.zone = 'offensive';
+                        state.possession = Math.random() < 0.5 ? atk : def;
+                    }
+                }
+            } else if (state.zone === 'offensive') {
+                let r = Math.random();
+                if (r < 0.35) { // Shoot
+                    let shooter = getPlayer(atk, ['LW', 'C', 'RW', 'LD', 'RD']);
+                    let goalie = getOnIcePlayers(def).g || { name: 'Empty Net', overall: 10 };
+                    
+                    let shotQuality = (atkOvr / 100) * Math.random();
+                    let saveQuality = (parseFloat(goalie.overall) / 100) * Math.random();
+                    
+                    // Empty Net Logic
+                    if (state.period === 3 && state.clock <= 120 && Math.abs(state.score.home - state.score.away) > 0 && Math.abs(state.score.home - state.score.away) <= 2) {
+                        let losingTeam = state.score.home < state.score.away ? 'home' : 'away';
+                        if (def === losingTeam && !state.emptyNet) {
+                            state.emptyNet = true;
+                            addEvent(state.clock, 'empty_net', def, `${defTeam.name} pulls their goalie for an extra attacker!`);
+                        }
+                    }
+                    if (def === (state.score.home < state.score.away ? 'home' : 'away') && state.emptyNet) {
+                        saveQuality = 0; // No goalie
+                    }
+                    
+                    if (shotQuality > saveQuality + 0.1) {
+                        state.score[atk]++;
+                        addEvent(state.clock, 'goal', atk, `GOAL! ${shooter.name} snipes it past the goalie!`, true);
+                        
+                        if (!gameState.matchStats) gameState.matchStats = {};
+                        if (!gameState.matchStats[shooter.id]) gameState.matchStats[shooter.id] = { goals: 0, assists: 0 };
+                        gameState.matchStats[shooter.id].goals++;
+                        
+                        let assister1 = getPlayer(atk, null);
+                        if (assister1.id !== shooter.id && Math.random() > 0.4) {
+                            if (!gameState.matchStats[assister1.id]) gameState.matchStats[assister1.id] = { goals: 0, assists: 0 };
+                            gameState.matchStats[assister1.id].assists++;
+                            addEvent(state.clock, 'assist', atk, `Assist credited to ${assister1.name}.`);
+                        }
+                        
+                        state.zone = 'neutral';
+                        state.possession = Math.random() > 0.5 ? 'home' : 'away';
+                        addEvent(state.clock, 'faceoff', null, `Faceoff at center ice.`);
+                        if (state.period > 3) {
+                            otWinner = true;
+                            break; // Sudden death
+                        }
+                    } else if (Math.random() < 0.4) {
+                        addEvent(state.clock, 'save', def, `Kick save by ${goalie.name}!`);
+                        if (Math.random() < 0.5) {
+                            state.zone = 'neutral';
+                            state.possession = def;
+                        }
+                    } else {
+                        let blocker = getPlayer(def, ['LD', 'RD']);
+                        addEvent(state.clock, 'block', def, `Huge blocked shot by ${blocker.name}!`);
+                        state.possession = def;
+                    }
+                } else if (r < 0.6) {
+                    addEvent(state.clock, 'cycle', atk, `${atkTeam.name} cycling the puck.`);
+                } else {
+                    state.possession = def;
+                    state.zone = 'defensive'; 
+                    addEvent(state.clock, 'giveaway', def, `${atkTeam.name} turns the puck over in the zone.`);
+                }
+            } else if (state.zone === 'defensive') {
+                if (Math.random() > 0.3) {
+                    state.zone = 'neutral';
+                    addEvent(state.clock, 'breakout', atk, `${atkTeam.name} clears the puck out of the zone.`);
+                } else {
+                    state.possession = def;
+                    state.zone = 'offensive';
+                    addEvent(state.clock, 'dangerous_turnover', def, `Dangerous turnover by ${atkTeam.name} in their own end!`);
+                }
+            }
+            
+            // Physical & Rules
+            if (Math.random() < 0.08) {
+                if (Math.random() < 0.25) { // Penalty
+                    let offender = getPlayer(atk, null);
+                    let duration = Math.random() < 0.1 ? 300 : 120; // Major vs Minor
+                    state.penalties[atk].push({ player: offender, time: duration });
+                    addEvent(state.clock, 'penalty', atk, `PENALTY: ${offender.name} (${atkTeam.name}) gets ${duration/60} minutes.`, true);
+                    state.possession = def;
+                    state.zone = 'offensive';
+                    addEvent(state.clock, 'faceoff', null, `Faceoff in the ${atkTeam.name} zone.`);
+                } else { // Hit
+                    let hitter = getPlayer(def, ['LD', 'RD', 'LW', 'RW']);
+                    let hittee = getPlayer(atk, ['LW', 'C', 'RW']);
+                    addEvent(state.clock, 'hit', def, `Crushing hit by ${hitter.name} on ${hittee.name}!`);
+                    if (Math.random() > 0.6) state.possession = def;
+                }
+            }
+            
+            if (otWinner) break;
+        }
+        
+        if (otWinner) {
+            addEvent(state.clock, 'end_period', null, `GAME OVER!`);
+            break; // Stop simulating periods
+        } else {
+            let pName = state.period > 3 ? 'Overtime' : `Period ${state.period}`;
+            addEvent(0, 'end_period', null, `End of ${pName}.`);
+            
+            if (state.period === 3 && state.score.home === state.score.away) {
+                maxPeriods = 4; // Force Overtime
+            }
+        }
+    }
+    
     timeline.sort((a, b) => {
         if (a.period !== b.period) return a.period - b.period;
-        if (a.minute !== b.minute) return b.minute - a.minute; // Descending (19 -> 0)
-        return b.second - a.second; // Descending (59 -> 0)
+        if (a.minute !== b.minute) return b.minute - a.minute; 
+        return b.second - a.second;
     });
     
     return timeline;
@@ -1730,11 +1972,20 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         if (window.lucide) window.lucide.createIcons();
     });
     
-    function logEvent(text, color = '#cbd5e1') {
-        const div = document.createElement('div');
-        div.style.color = color;
-        div.innerText = text;
-        logEl.appendChild(div);
+    function logEvent(text, color = '#a1a1aa', highlight = false) {
+        const p = document.createElement('div');
+        p.innerText = text;
+        p.style.color = color;
+        p.style.marginBottom = '5px';
+        p.style.padding = '4px 8px';
+        p.style.borderRadius = '4px';
+        p.style.fontSize = highlight ? '1rem' : '0.9rem';
+        if (highlight) {
+            p.style.fontWeight = 'bold';
+            p.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            p.style.borderLeft = `3px solid ${color}`;
+        }
+        logEl.appendChild(p);
         logEl.scrollTop = logEl.scrollHeight;
     }
     
@@ -1778,21 +2029,26 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         if (isSkipped) break;
         
         if (event.type === 'end_period') {
-            if (currentPeriod < 3) {
+            if (currentPeriod < 4 && !event.text.includes('GAME OVER')) {
                 logEvent(`--- End of ${periodEl.innerText} ---`);
                 await wait(1500);
-                currentPeriod++;
-                currentSecond = 1200;
-                periodEl.innerText = currentPeriod === 2 ? "2ND PERIOD" : "3RD PERIOD";
-                clockEl.innerText = "20:00";
-                logEvent(`--- Start of ${periodEl.innerText} ---`);
-                await wait(1500);
+                
+                // If the next event exists and is period 4, we are going to OT
+                let nextEvent = timeline.find(e => e.period > currentPeriod);
+                if (nextEvent) {
+                    currentPeriod = nextEvent.period;
+                    currentSecond = currentPeriod > 3 ? 300 : 1200;
+                    periodEl.innerText = currentPeriod === 2 ? "2ND PERIOD" : currentPeriod === 3 ? "3RD PERIOD" : "OVERTIME";
+                    clockEl.innerText = currentPeriod > 3 ? "05:00" : "20:00";
+                    logEvent(`--- Start of ${periodEl.innerText} ---`);
+                    await wait(1500);
+                }
             }
-            continue; // Skip the rest of the loop for end_period
+            continue;
         }
         
         // Trigger Goal Event
-        logEvent(`${clockEl.innerText} - ${event.text}`, event.color);
+        logEvent(`${clockEl.innerText} - ${event.text}`, event.color, event.highlight);
         
         if (event.type === 'goal') {
             if (event.team === 'home') {
