@@ -159,6 +159,7 @@ async function initNewGame(teamIdOverride = null) {
                 globalDraftPool = globalDraftPool.concat(teamRoster);
             }
         });
+        window.globalDraftPool = globalDraftPool;
         
         // Embaralhar o draft pool usando algoritmo Fisher-Yates
         for (let i = globalDraftPool.length - 1; i > 0; i--) {
@@ -278,6 +279,9 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-collection">
                         <i data-lucide="library" style="margin-right: 8px; width: 20px; height: 20px;"></i> Collection
                     </button>
+                    <button class="nav-btn" id="nav-shop">
+                        <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
+                    </button>
                 </nav>
                 
                 <div class="sidebar-bottom">
@@ -307,6 +311,7 @@ function initHomeScreen() {
     document.getElementById('nav-standings').addEventListener('click', () => switchView('standings'));
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
+    document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
     
     // Bind Back to Selection
     document.getElementById('btn-back-selection').addEventListener('click', () => {
@@ -357,6 +362,8 @@ function switchView(viewName) {
         renderRoster(mainContent);
     } else if (viewName === 'standings') {
         renderStandingsPage(mainContent);
+    } else if (viewName === 'shop') {
+        renderShopPage(mainContent);
     } else if (viewName === 'calendar') {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Calendar</h1><p>Season schedule coming soon.</p>`;
     } else if (viewName === 'collection') {
@@ -654,7 +661,7 @@ function getPlayerModifiers(player) {
     }
     
     // 2. Real Team Synergy (+20%)
-    if (player.originalTeamId === gameState.teamId) {
+    if (player.originalTeamId === gameState.team.id) {
         buff += 0.20;
     }
     
@@ -1071,6 +1078,13 @@ function bindDragAndDropEvents() {
             if (originalLocation === targetSlotId) return; // Dropped in same place
             
             // Handle Drop on Action Zones (Sell / Collection)
+            if (targetSlotId === 'sell' || targetSlotId === 'collection') {
+                if (gameState.players.length <= 20 && (gameState.coins || 0) < 200) {
+                    alert("You cannot remove this player! You must keep at least 20 active players or have at least 200 coins to buy a replacement in the Shop.");
+                    return;
+                }
+            }
+            
             if (targetSlotId === 'sell') {
                 if (confirm(`Sell ${draggedPlayer.name} for ${Math.floor(200 * (draggedPlayer.overall / 100))} coins?`)) {
                     gameState.coins = (gameState.coins || 0) + Math.floor(200 * (draggedPlayer.overall / 100));
@@ -1107,6 +1121,96 @@ function bindDragAndDropEvents() {
         });
     });
 }
+// --- SHOP ENGINE ---
+function renderShopPage(container) {
+    container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 2rem; height: 100%; padding: 1rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem 2rem;">
+                <div>
+                    <h1 class="title-main" style="text-align:left; margin: 0; font-size: 2.5rem;">HOCKEY SHOP</h1>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-size: 1.1rem;">Use your coins to buy packs and recruit new players to your franchise.</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; background-color: rgba(0,0,0,0.4); padding: 1rem 2rem; border-radius: 12px; border: 2px solid #fbbf24;">
+                    <span style="font-size: 2rem;">🪙</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);">${gameState.coins || 0}</span>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                
+                <!-- STANDARD PACK -->
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 2rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -50px; left: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);"></div>
+                    
+                    <i data-lucide="package" style="width: 80px; height: 80px; color: #94a3b8; margin-bottom: 1rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">STANDARD PACK</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0 0 2rem 0; line-height: 1.5;">Includes 1 random OHL player.<br>Chance of pulling a Bronze, Silver or Gold tier player.</p>
+                    
+                    <button class="btn" onclick="buyStandardPack()" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.8rem; font-size: 1.2rem; padding: 1rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
+                        <span style="font-size: 1.2rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px;">200</span>
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+    `;
+    
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+window.buyStandardPack = function() {
+    if ((gameState.coins || 0) < 200) {
+        alert("Not enough coins! You need 200 coins to buy a Standard Pack.");
+        return;
+    }
+    
+    // Determine available players
+    const activePlayerIds = new Set(gameState.players.map(p => p.id));
+    const collectionPlayerIds = new Set((gameState.collection || []).map(p => p.id));
+    
+    const availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id) && !collectionPlayerIds.has(p.id));
+    
+    if (availablePlayers.length === 0) {
+        alert("The global player pool is completely empty! You have collected every single player in the OHL!");
+        return;
+    }
+    
+    // Deduct coins
+    gameState.coins -= 200;
+    updateCoinsDisplay();
+    
+    // Pick random player
+    const randomIndex = Math.floor(Math.random() * availablePlayers.length);
+    const selectedData = availablePlayers[randomIndex];
+    
+    const newPlayer = {
+        id: selectedData.id,
+        name: selectedData.name,
+        position: selectedData.position,
+        number: selectedData.number,
+        photo: selectedData.photo,
+        birthplace: selectedData.birthplace,
+        age: selectedData.age,
+        overall: selectedData.overall,
+        tier: selectedData.tier,
+        originalTeamId: selectedData.originalTeamId,
+        stats: selectedData.stats,
+        attributes: selectedData.attributes,
+        location: 'bench' // Start on bench
+    };
+    
+    gameState.players.push(newPlayer);
+    
+    // Re-render Shop
+    const mainContent = document.getElementById('main-content');
+    renderShopPage(mainContent);
+    
+    // Show Premium Modal to celebrate
+    openPlayerCardModal(newPlayer.id);
+};
 
 function openBackConfirmationModal() {
     const modalHTML = `
