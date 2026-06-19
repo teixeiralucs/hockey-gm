@@ -12,9 +12,9 @@
 - **RF08 - Drag and Drop (Benching):** ✅ O sistema deve fornecer 4 interações de arraste: alocar titular, manter no banco, vender ou arquivar na coleção.
 - **RF09 - Cálculo de Modificadores (Buffs/Debuffs):** ✅ O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).
 - **RF10 - Cálculo Financeiro (Shop/Venda):** ✅ O sistema deve realizar cobrança de 200 moedas na compra de pacotes do Tier D e calcular o valor de liquidação (venda) pela fórmula: `Valor Base * (Overall / 100)`.
-- **RF11 - Motor de Simulação Sequencial:** O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
-- **RF12 - Probabilidade de Eventos:** O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
-- **RF13 - Condições de Overtime (OT):** O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.
+- **RF11 - Motor de Simulação Sequencial:** ✅ O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
+- **RF12 - Probabilidade de Eventos:** ✅ O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
+- **RF13 - Condições de Overtime (OT):** ✅ O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.
 - **RF14 - Logística de Partida (Trocas e Estamina):** O motor de simulação deve automatizar a troca de linhas a cada 45-60 segundos e aplicar debuffs drásticos caso a estamina seja esgotada.
 - **RF15 - Gerenciamento de Idades:** O banco de dados deve registrar a idade base de 16 anos no draft e incrementá-la anualmente.
 - **RF16 - Aposentadoria Automática:** O sistema deve varrer o Roster ao final da temporada e transferir jogadores maiores de 20 anos diretamente para o banco de Coleção, disparando alertas na UI do jogador.

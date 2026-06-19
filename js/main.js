@@ -693,17 +693,30 @@ function renderLeagueLeaders() {
 
 // --- ROSTER ENGINE ---
 function getPlayerModifiers(player) {
-    if (!player || !player.location || player.location === 'bench' || player.location === 'sell' || player.location === 'collection') {
+    if (!player) return 0;
+    
+    let loc = window.rosterTab === '3v3' ? player.ot_location : player.location;
+    
+    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
         return 0; // No buffs/debuffs outside active roster
     }
     
     let buff = 0;
     
     // 1. Position Check (+15% or -25%)
-    let expectedPos = player.location.split('_')[2];
+    let expectedPos = loc.split('_')[2];
     if (expectedPos === 'Starter' || expectedPos === 'Backup') expectedPos = 'G';
     
-    if (player.position === expectedPos) {
+    let isCorrectPos = false;
+    if (expectedPos === 'F1' || expectedPos === 'F2') {
+        if (['LW', 'C', 'RW'].includes(player.position)) isCorrectPos = true;
+    } else if (expectedPos === 'D') {
+        if (['LD', 'RD'].includes(player.position)) isCorrectPos = true;
+    } else {
+        if (player.position === expectedPos) isCorrectPos = true;
+    }
+    
+    if (isCorrectPos) {
         buff += 0.15;
     } else {
         buff -= 0.25;
@@ -716,12 +729,11 @@ function getPlayerModifiers(player) {
     
     // 3. Line Chemistry (+15%)
     // Check if any other player on the same line has the same originalTeamId
-    const linePrefix = player.location.split('_').slice(0, 2).join('_');
-    const teammatesOnLine = gameState.players.filter(p => 
-        p.id !== player.id && 
-        p.location && 
-        p.location.startsWith(linePrefix)
-    );
+    const linePrefix = loc.split('_').slice(0, 2).join('_');
+    const teammatesOnLine = gameState.players.filter(p => {
+        let tLoc = window.rosterTab === '3v3' ? p.ot_location : p.location;
+        return p.id !== player.id && tLoc && tLoc.startsWith(linePrefix);
+    });
     
     const hasChemistry = teammatesOnLine.some(t => t.originalTeamId === player.originalTeamId);
     if (hasChemistry) {
@@ -995,11 +1007,12 @@ window.openPackRevealModal = function(playerIdsArray) {
 }
 
 function renderRosterSlot(slotId, label) {
-    const player = gameState.players.find(p => p.location === slotId);
+    const isOT = slotId.startsWith('ot_');
+    const player = gameState.players.find(p => isOT ? p.ot_location === slotId : p.location === slotId);
     return `
         <div class="roster-slot drop-zone" data-slot-id="${slotId}" style="background-color: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; min-height: 48px; padding: 0.2rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; flex: 1;">
             ${!player ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; text-align: center; margin: auto;">${label}</div>` : ''}
-            ${getPlayerCardHTML(player)}
+            ${player ? getPlayerCardHTML(player) : ''}
         </div>
     `;
 }
@@ -1007,8 +1020,23 @@ function renderRosterSlot(slotId, label) {
 let benchSortMetric = 'overall';
 let benchSortDesc = true;
 
+window.rosterTab = window.rosterTab || '5v5';
+window.setRosterTab = function(tab) {
+    window.rosterTab = tab;
+    renderRoster(document.getElementById('main-content'));
+};
+
 function renderRoster(container) {
-    const benchPlayers = gameState.players.filter(p => p.location === 'bench');
+    // Determine which players show up on the "bench".
+    // For 5v5, bench is anyone with location === 'bench'
+    // For 3v3, bench is anyone with location !== 'bench' (i.e. active players) who do NOT have an ot_location, plus actual bench players
+    const benchPlayers = gameState.players.filter(p => {
+        // Exclude all CPU players from the user's bench
+        if (p.location && p.location.startsWith('cpu_')) return false;
+        
+        if (window.rosterTab === '5v5') return p.location === 'bench';
+        return !p.ot_location; // In 3v3 tab, ANYONE without an ot_location is on the bench to be dragged!
+    });
     
     benchPlayers.sort((a, b) => {
         let valA = a[benchSortMetric] || '';
@@ -1060,8 +1088,26 @@ function renderRoster(container) {
         </div>
     `;
     
+    // Generate OT HTML
+    let otHTML = '';
+    for(let i=1; i<=3; i++) {
+        otHTML += `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
+                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">OT${i}</div>
+                ${renderRosterSlot(`ot_${i}_F1`, 'F')}
+                ${renderRosterSlot(`ot_${i}_F2`, 'F')}
+                ${renderRosterSlot(`ot_${i}_D`, 'D')}
+            </div>
+        `;
+    }
+    
     // Validate if Roster is complete (RF04)
-    const isRosterComplete = gameState.players.filter(p => p.location !== 'bench').length === 20;
+    const activeRosterCount = gameState.players.filter(p => p.location && p.location !== 'bench' && !p.location.startsWith('cpu_')).length;
+    const otRosterCount = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_')).length;
+    const isRosterComplete = activeRosterCount === 20 && otRosterCount === 9;
+
+    const tab5v5Style = window.rosterTab === '5v5' ? `background: var(--team-primary); color: #fff;` : `background: rgba(255,255,255,0.05); color: var(--text-muted);`;
+    const tab3v3Style = window.rosterTab === '3v3' ? `background: var(--team-primary); color: #fff;` : `background: rgba(255,255,255,0.05); color: var(--text-muted);`;
 
     container.innerHTML = `
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: 100%; overflow: visible; padding-bottom: 2rem;">
@@ -1071,18 +1117,30 @@ function renderRoster(container) {
                 <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
                         <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; text-shadow: 0 0 10px rgba(255,255,255,0.2);">ACTIVE ROSTER</h2>
+                        <div style="display: flex; gap: 0.5rem; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                            <button onclick="setRosterTab('5v5')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab5v5Style}">5v5 LINES</button>
+                            <button onclick="setRosterTab('3v3')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab3v3Style}">3v3 OVERTIME</button>
+                        </div>
                     </div>
                     
+                    ${window.rosterTab === '5v5' ? `
                     <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Forwards</h3>
                     ${forwardsHTML}
                     
                     <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Defense</h3>
                     ${defenseHTML}
+                    ` : `
+                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Overtime Lines (3v3)</h3>
+                    ${otHTML}
+                    `}
                     
+                    ${window.rosterTab === '5v5' ? `
                     <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Goalies</h3>
                     ${goaliesHTML}
+                    ` : ''}
                 </div>
-
+                
+                ${window.rosterTab === '5v5' ? `
                 <!-- ACTION ZONES (SELL / COLLECTION) -->
                 <div style="display: flex; gap: 1.5rem; height: 100px; flex-shrink: 0;">
                     <div class="dashboard-card action-zone drop-zone" data-slot-id="sell" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.1); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; cursor: pointer;">
@@ -1093,7 +1151,7 @@ function renderRoster(container) {
                         <i data-lucide="archive" style="color: #3b82f6; width: 36px; height: 36px;"></i>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #3b82f6; margin-top: 0.5rem;">SEND TO COLLECTION</span>
                     </div>
-                </div>
+                </div>` : ''}
             </div>
 
             <!-- BENCH CONTAINER -->
@@ -1208,6 +1266,24 @@ function bindDragAndDropEvents() {
                 openCollectionConfirmationModal(draggedPlayer);
                 return; // Async flow takes over, prevent synchronous renderRoster
             } 
+            else if (targetSlotId.startsWith('ot_')) {
+                // Dragging to an OT slot
+                const occupant = gameState.players.find(p => p.ot_location === targetSlotId);
+                if (occupant) {
+                    occupant.ot_location = draggedPlayer.ot_location || null;
+                }
+                draggedPlayer.ot_location = targetSlotId;
+            }
+            else if (targetSlotId === 'bench') {
+                if (window.rosterTab === '3v3') {
+                    // Removing a player from OT
+                    draggedPlayer.ot_location = null;
+                } else {
+                    // Removing a player from 5v5 line (and implicitly OT)
+                    draggedPlayer.location = 'bench';
+                    draggedPlayer.ot_location = null;
+                }
+            }
             else {
                 // If target is NOT bench, check if it's occupied to perform swap
                 if (targetSlotId !== 'bench') {
@@ -1447,7 +1523,9 @@ window.getTeamOverall = function(teamId, isUser) {
 
 window.startMatchSimulation = function() {
     let activePlayers = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
-    if (activePlayers.length < 20) {
+    let otPlayers = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_'));
+    
+    if (activePlayers.length < 20 || otPlayers.length < 9) {
         openIncompleteMatchModal();
         return;
     }
@@ -1558,6 +1636,17 @@ function renderMatchPage(container) {
                     
                     <!-- SCOREBOARD CENTER -->
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 0 2rem; z-index: 1;">
+                        
+                        <!-- NEW INDICATORS CONTAINER -->
+                        <div style="display: flex; flex-direction: column; gap: 0.6rem; height: 80px; align-items: center; justify-content: flex-end;">
+                            <div id="match-pp-indicator" style="opacity: 0; transition: opacity 0.3s; background-color: #f97316; color: #fff; font-family: 'Blockletter', sans-serif; font-size: 1.8rem; padding: 0.4rem 1.2rem; border-radius: 8px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(249, 115, 22, 0.6);">
+                                <span id="pp-home-num">5</span> <span style="font-size: 1.2rem; opacity: 0.8; margin: 0 0.5rem;">PP</span> <span id="pp-away-num">4</span>
+                            </div>
+                            <div id="match-en-indicator" style="opacity: 0; transition: opacity 0.3s; background-color: #ef4444; color: #fff; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; padding: 0.4rem 1.2rem; border-radius: 8px; letter-spacing: 2px; display: flex; align-items: center; gap: 0.8rem; box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);">
+                                <img id="en-logo" src="" style="width: 24px; height: 24px; object-fit: contain;"> EMPTY NET
+                            </div>
+                        </div>
+                        
                         <div id="match-period" style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; letter-spacing: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">1ST PERIOD</div>
                         
                         <div style="display: flex; align-items: center; gap: 1.5rem;">
@@ -1633,7 +1722,7 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
     
     // 1. Gather Players
     function extractLines(isUser, teamId) {
-        let lines = { f: [[], [], [], []], d: [[], [], []], g: [] };
+        let lines = { f: [[], [], [], []], d: [[], [], []], g: [], ot: [[], [], []] };
         if (isUser) {
             let active = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
             active.forEach(p => {
@@ -1645,6 +1734,14 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
             });
             // Sort goalies
             lines.g.sort((a, b) => a.location.includes('Starter') ? -1 : 1);
+            
+            // OT Lines
+            let otActive = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_'));
+            otActive.forEach(p => {
+                let parts = p.ot_location.split('_');
+                let lineNum = parseInt(parts[1]) - 1;
+                lines.ot[lineNum].push(p);
+            });
         } else {
             let cpu = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
             let f = cpu.filter(p => ['LW', 'C', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
@@ -1654,6 +1751,14 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
             for(let i=0; i<4; i++) lines.f[i] = f.slice(i*3, i*3+3);
             for(let i=0; i<3; i++) lines.d[i] = d.slice(i*2, i*2+2);
             lines.g = g.slice(0, 2);
+            
+            // CPU OT Lines
+            for(let i=0; i<3; i++) {
+                lines.ot[i] = [];
+                if (f[i*2]) lines.ot[i].push(f[i*2]);
+                if (f[i*2+1]) lines.ot[i].push(f[i*2+1]);
+                if (d[i]) lines.ot[i].push(d[i]);
+            }
         }
         return lines;
     }
@@ -1682,10 +1787,20 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
         let lines = team === 'home' ? homeLines : awayLines;
         let lineF = team === 'home' ? state.homeLineF : state.awayLineF;
         let lineD = team === 'home' ? state.homeLineD : state.awayLineD;
-        let f = lines.f[lineF] || [];
-        let d = lines.d[lineD] || [];
         let g = lines.g[0] || null;
-        return { f, d, g, all: [...f, ...d] };
+        
+        if (state.period > 3) {
+            // Use OT lines
+            let otLineNum = lineF % 3; // Keep rotation synced
+            let otPlayers = lines.ot[otLineNum] || [];
+            let f = otPlayers.filter(p => ['LW', 'C', 'RW'].includes(p.position));
+            let d = otPlayers.filter(p => ['LD', 'RD'].includes(p.position));
+            return { f, d, g, all: otPlayers };
+        } else {
+            let f = lines.f[lineF] || [];
+            let d = lines.d[lineD] || [];
+            return { f, d, g, all: [...f, ...d] };
+        }
     }
     
     function getOnIceOvr(team) {
@@ -1719,7 +1834,10 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
                 teamName: t ? t.name : '',
                 color: t ? t.colors.primary : '#a1a1aa', // Muted default
                 text: text,
-                highlight: isImportant || highlight
+                highlight: isImportant || highlight,
+                homePenalties: state.penalties.home.length,
+                awayPenalties: state.penalties.away.length,
+                emptyNetTeam: state.emptyNet ? (state.score.home < state.score.away ? 'home' : 'away') : null
             });
         }
     }
@@ -1919,9 +2037,83 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
             if (state.period === 3 && state.score.home === state.score.away) {
                 maxPeriods = 4; // Force Overtime
             }
+            if (state.period === 4 && state.score.home === state.score.away) {
+                simulateShootout();
+                break;
+            }
         }
     }
     
+    function simulateShootout() {
+        addEvent(0, 'shootout', null, `--- SHOOTOUT ---`);
+        let hGoalie = homeLines.g[0] || { name: 'Goalie', overall: 70 };
+        let aGoalie = awayLines.g[0] || { name: 'Goalie', overall: 70 };
+        let hForwards = homeLines.f.flat().filter(p => p).sort((a,b) => b.overall - a.overall);
+        let aForwards = awayLines.f.flat().filter(p => p).sort((a,b) => b.overall - a.overall);
+        
+        let soHomeScore = 0;
+        let soAwayScore = 0;
+        let round = 0;
+        let winner = null;
+        
+        while (!winner) {
+            let hShooter = hForwards[round % hForwards.length];
+            let aShooter = aForwards[round % aForwards.length];
+            
+            // Home shoots
+            let hShotOvr = parseFloat(hShooter.overall) + Math.random() * 20;
+            let aSaveOvr = parseFloat(aGoalie.overall) + Math.random() * 20;
+            if (hShotOvr > aSaveOvr) {
+                soHomeScore++;
+                addEvent(0, 'shootout_goal', 'home', `Round ${round+1}: ${hShooter.name} scores on ${aGoalie.name}!`, true);
+            } else {
+                addEvent(0, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
+            }
+            
+            // Check early win after home shoots
+            if (round < 3) {
+                let remainingAway = 3 - round;
+                if (soHomeScore > soAwayScore + remainingAway) {
+                    winner = 'home';
+                    break;
+                }
+            }
+            
+            // Away shoots
+            let aShotOvr = parseFloat(aShooter.overall) + Math.random() * 20;
+            let hSaveOvr = parseFloat(hGoalie.overall) + Math.random() * 20;
+            if (aShotOvr > hSaveOvr) {
+                soAwayScore++;
+                addEvent(0, 'shootout_goal', 'away', `Round ${round+1}: ${aShooter.name} scores on ${hGoalie.name}!`, true);
+            } else {
+                addEvent(0, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
+            }
+            
+            // Check winner
+            if (round < 2) {
+                let remainingHome = 2 - round;
+                let remainingAway = 2 - round;
+                if (soHomeScore > soAwayScore + remainingAway) {
+                    winner = 'home';
+                } else if (soAwayScore > soHomeScore + remainingHome) {
+                    winner = 'away';
+                }
+            } else {
+                // Sudden death shootout check
+                if (soHomeScore > soAwayScore) {
+                    winner = 'home';
+                } else if (soAwayScore > soHomeScore) {
+                    winner = 'away';
+                }
+            }
+            round++;
+        }
+        
+        state.score[winner]++;
+        addEvent(0, 'shootout_winner', winner, `${winner === 'home' ? homeTeam.name : awayTeam.name} is awarded the shootout win!`, true);
+        addEvent(0, 'end_period', null, `GAME OVER! ${winner === 'home' ? homeTeam.name : awayTeam.name} wins in Shootout!`);
+    }
+
     timeline.sort((a, b) => {
         if (a.period !== b.period) return a.period - b.period;
         if (a.minute !== b.minute) return b.minute - a.minute; 
@@ -1941,6 +2133,12 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     const goalTeamName = document.getElementById('goal-team-name');
     const btnControl = document.getElementById('btn-match-control');
     const btnSkip = document.getElementById('btn-debug-skip');
+    
+    const ppIndicator = document.getElementById('match-pp-indicator');
+    const ppHomeNum = document.getElementById('pp-home-num');
+    const ppAwayNum = document.getElementById('pp-away-num');
+    const enIndicator = document.getElementById('match-en-indicator');
+    const enLogo = document.getElementById('en-logo');
     
     let isSkipped = false;
     let isPaused = false;
@@ -2023,6 +2221,31 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         let s = currentSecond % 60;
         clockEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         
+        // Handle PP Indicator
+        let homeSkaters = 5 - (event.homePenalties || 0);
+        let awaySkaters = 5 - (event.awayPenalties || 0);
+        if (homeSkaters < 5 || awaySkaters < 5) {
+            ppHomeNum.innerText = Math.max(3, homeSkaters);
+            ppAwayNum.innerText = Math.max(3, awaySkaters);
+            ppIndicator.style.opacity = '1';
+        } else {
+            ppIndicator.style.opacity = '0';
+        }
+        
+        // Handle EN Indicator
+        if (event.emptyNetTeam) {
+            let isHomeNet = event.emptyNetTeam === 'home';
+            let teamData = isHomeNet ? (isHome ? myTeam : oppTeam) : (!isHome ? myTeam : oppTeam);
+            let logoFile = teamData.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+            
+            enLogo.src = `assets/logos/ohl/${logoFile}.png`;
+            enIndicator.style.backgroundColor = teamData.colors.primary;
+            enIndicator.style.boxShadow = `0 0 10px ${teamData.colors.primary}`;
+            enIndicator.style.opacity = '1';
+        } else {
+            enIndicator.style.opacity = '0';
+        }
+        
         // Brief pause to create suspense before showing the event
         await wait(1000);
         
@@ -2050,7 +2273,7 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         // Trigger Goal Event
         logEvent(`${clockEl.innerText} - ${event.text}`, event.color, event.highlight);
         
-        if (event.type === 'goal') {
+        if (event.type === 'goal' || event.type === 'shootout_winner') {
             if (event.team === 'home') {
                 currentMatch.homeScore++;
                 homeScoreEl.innerText = currentMatch.homeScore;
@@ -2059,18 +2282,28 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
                 awayScoreEl.innerText = currentMatch.awayScore;
             }
             
-            // Show Animation
-            goalTeamName.innerText = event.teamName;
-            goalTeamName.style.color = event.color;
-            goalAnim.style.opacity = '1';
-            goalAnim.style.transform = 'translate(-50%, -50%) scale(1)';
-            
-            await wait(2500); // Pause for celebration
-            
-            // Hide Animation
-            goalAnim.style.opacity = '0';
-            goalAnim.style.transform = 'translate(-50%, -50%) scale(0.5)';
-            await wait(500);
+            // Show Goal Animation only for regular goals
+            if (event.type === 'goal') {
+                goalTeamName.innerText = event.teamName.toUpperCase();
+                goalTeamName.style.color = event.color;
+                goalAnim.style.borderColor = event.color;
+                goalAnim.style.boxShadow = `0 0 50px ${event.color}`;
+                goalAnim.querySelector('h1').style.color = event.color;
+                goalAnim.querySelector('h1').style.textShadow = `0 0 30px ${event.color}`;
+                
+                // Show Animation
+                goalAnim.style.opacity = '1';
+                goalAnim.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                await wait(2500); // Pause for celebration
+                
+                // Hide Animation
+                goalAnim.style.opacity = '0';
+                goalAnim.style.transform = 'translate(-50%, -50%) scale(0.5)';
+                await wait(500);
+            } else {
+                await wait(2000); // Just wait a bit for shootout winner
+            }
         }
     }
     
@@ -2079,7 +2312,7 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         // Process remaining goals mathematically without UI delays
         for (let event of timeline) {
             let isFuture = event.period > currentPeriod || (event.period === currentPeriod && (event.minute * 60 + event.second) <= currentSecond);
-            if (isFuture && event.type === 'goal') {
+            if (isFuture && (event.type === 'goal' || event.type === 'shootout_winner')) {
                 if (event.team === 'home') currentMatch.homeScore++;
                 else currentMatch.awayScore++;
             }
@@ -2840,7 +3073,7 @@ function openIncompleteMatchModal() {
                     <i data-lucide="shield-alert" style="color: #ef4444; width: 32px; height: 32px;"></i>
                 </div>
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Incomplete Roster</h2>
-                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot start a match! Your roster is missing players. Ensure all <strong style="color: #fff;">20 positions</strong> are filled on the ice before the puck drops.</p>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot start a match! Your roster is missing players. Ensure all <strong style="color: #fff;">20 regular positions</strong> and <strong style="color: #fff;">9 Overtime positions</strong> are filled before the puck drops.</p>
                 <div class="modal-actions" style="justify-content: center;">
                     <button class="btn btn-primary" id="btn-ok-incomplete" style="background-color: #ef4444; border-color: #ef4444; color: #fff; width: 100%;">Fix Roster</button>
                 </div>
