@@ -15,12 +15,11 @@
 - **RF11 - Motor de Simulação Sequencial:** ✅ O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
 - **RF12 - Probabilidade de Eventos:** ✅ O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
 - **RF13 - Condições de Overtime (OT):** ✅ O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.
-- **RF14 - Logística de Partida (Trocas e Estamina):** O motor de simulação deve automatizar a troca de linhas a cada 45-60 segundos e aplicar debuffs drásticos caso a estamina seja esgotada.
-- **RF15 - Gerenciamento de Idades:** O banco de dados deve registrar a idade base de 16 anos no draft e incrementá-la anualmente.
-- **RF16 - Aposentadoria Automática:** O sistema deve varrer o Roster ao final da temporada e transferir jogadores maiores de 20 anos diretamente para o banco de Coleção, disparando alertas na UI do jogador.
-- **RF17 - Estrutura de Temporada e Playoffs:** O sistema deve gerar um calendário de 68 rodadas e avançar os 8 melhores da conferência para chaves de mata-mata em melhor de 7.
-- **RF18 - Hall of Fame e Loop:** O sistema deve gravar o ID dos campeões e líderes estatísticos em um log persistente ao final dos Playoffs e ativar a opção de reinício do calendário.
-- **RF19 - Múltiplos Saves:** O sistema deve permitir que o jogador mantenha até 3 jogos salvos simultaneamente (slots de save), garantindo o armazenamento isolado em pastas separadas contendo as informações próprias de cada progresso.
+- **RF14 - Gerenciamento de Idades:** O banco de dados deve registrar a idade base dos jogadores no draft e incrementá-la anualmente (Season End).
+- **RF15 - Aposentadoria Automática:** O sistema deve varrer o Roster ao final da temporada e transferir jogadores maiores ou iguais a 22 anos diretamente para o banco de Coleção, disparando notificações na UI.
+- **RF16 - Estrutura de Temporada e Playoffs:** O sistema deve gerar um calendário de 68 rodadas e avançar os 8 melhores da conferência para chaves de mata-mata em melhor de 7.
+- **RF17 - Hall of Fame e Loop:** O sistema deve gravar o ID dos campeões e líderes estatísticos em um log persistente ao final dos Playoffs e ativar a opção de reinício do calendário.
+- **RF18 - Múltiplos Saves:** O sistema deve permitir que o jogador mantenha até 3 jogos salvos simultaneamente (slots de save), garantindo o armazenamento isolado em pastas separadas contendo as informações próprias de cada progresso.
 
 ## Requisitos Não Funcionais (RNF)
 
