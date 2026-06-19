@@ -10,6 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
 function initLeagueSelection() {
     const app = document.getElementById('app');
     
+    const hasSave = localStorage.getItem('hockeyGmSave') !== null;
+    let loadHtml = '';
+    if (hasSave) {
+        loadHtml = `
+            <div class="team-card team-card-square" id="league-load" style="--team-primary: #10b981; --team-secondary: #059669; margin-left: 2rem;">
+                <i data-lucide="save" style="width: 80px; height: 80px; color: #fff; margin-bottom: 1rem;"></i>
+                <h3 class="team-card-title">LOAD STATE</h3>
+                <p class="team-card-conf">Resume your franchise</p>
+            </div>
+        `;
+    }
+    
     app.innerHTML = `
         <div class="container">
             <h1 class="title-main">Hockey GM</h1>
@@ -21,6 +33,7 @@ function initLeagueSelection() {
                     <h3 class="team-card-title">OHL</h3>
                     <p class="team-card-conf">Ontario Hockey League</p>
                 </div>
+                ${loadHtml}
             </div>
         </div>
     `;
@@ -28,6 +41,14 @@ function initLeagueSelection() {
     document.getElementById('league-ohl').addEventListener('click', () => {
         initFranchiseSelection();
     });
+    
+    if (hasSave) {
+        document.getElementById('league-load').addEventListener('click', () => {
+            loadGame();
+        });
+    }
+    
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function getRandomTeams(teams, count) {
@@ -292,8 +313,8 @@ function initHomeScreen() {
                         <span class="coins-icon">🪙</span>
                         <span class="coins-amount">0</span>
                     </div>
-                    <!-- Placeholder buttons for future logic -->
-                    <button class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
+                    <!-- Save button -->
+                    <button id="btn-save-game" class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
                         <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save Game
                     </button>
                     <button class="btn btn-danger btn-sm" id="btn-back-selection" style="width: 100%; font-size: 0.9rem; background-color: #ef4444; color: #fff; border: none; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
@@ -316,6 +337,12 @@ function initHomeScreen() {
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
     
+    // Bind Save Game
+    const btnSaveGame = document.getElementById('btn-save-game');
+    if (btnSaveGame) {
+        btnSaveGame.addEventListener('click', () => saveGame());
+    }
+
     // Bind Back to Selection
     document.getElementById('btn-back-selection').addEventListener('click', () => {
         openBackConfirmationModal();
@@ -327,12 +354,23 @@ function initHomeScreen() {
 
 function switchView(viewName) {
     document.querySelectorAll('.sidebar-nav .nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`nav-${viewName}`).classList.add('active');
+    const navBtn = document.getElementById(`nav-${viewName}`);
+    if (navBtn) navBtn.classList.add('active');
+    
+    // Hide sidebar during match simulation
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        if (viewName === 'match') {
+            sidebar.style.display = 'none';
+        } else {
+            sidebar.style.display = 'flex';
+        }
+    }
     
     // Update Sidebar Brand based on view
     const sidebarBrand = document.querySelector('.sidebar-brand');
     if (sidebarBrand && gameState) {
-        if (viewName !== 'dashboard') {
+        if (viewName !== 'dashboard' && viewName !== 'match') {
             const teamInfo = currentTeam;
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             sidebarBrand.innerHTML = `
@@ -371,6 +409,8 @@ function switchView(viewName) {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Calendar</h1><p>Season schedule coming soon.</p>`;
     } else if (viewName === 'collection') {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Collection</h1><p>Your archived player cards.</p>`;
+    } else if (viewName === 'match') {
+        renderMatchPage(mainContent);
     }
 }
 
@@ -412,6 +452,9 @@ function renderDashboard(container) {
     const awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id);
     const homeStandings = gameState.standings.find(s => s.teamId === homeTeam.id);
     
+    const awayOvr = getTeamOverall(awayTeam.id, awayTeam.id === currentTeam.id);
+    const homeOvr = getTeamOverall(homeTeam.id, homeTeam.id === currentTeam.id);
+    
     container.innerHTML = `
         <div class="dashboard-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, color-mix(in srgb, var(--team-primary) 20%, transparent) 0%, transparent 100%); padding: 1rem 1.5rem; border-radius: 12px; border-left: 4px solid var(--team-primary);">
             <img src="assets/logos/ohl/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 15px color-mix(in srgb, var(--team-primary) 40%, transparent));">
@@ -441,7 +484,8 @@ function renderDashboard(container) {
                         <!-- Away Team -->
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
                             <img src="assets/logos/ohl/${awayLogo}.png" alt="Away Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center;">${awayTeam.name}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center; margin-bottom: -0.3rem;">${awayTeam.name}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${awayOvr}</span>
                             <span style="color: var(--text-muted); font-size: 0.9rem;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
                         </div>
                         
@@ -450,13 +494,14 @@ function renderDashboard(container) {
                         <!-- Home Team -->
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
                             <img src="assets/logos/ohl/${homeLogo}.png" alt="Home Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center;">${homeTeam.name}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center; margin-bottom: -0.3rem;">${homeTeam.name}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${homeOvr}</span>
                             <span style="color: var(--text-muted); font-size: 0.9rem;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
                         </div>
                     </div>
                     
-                    <button class="btn" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease;">
-                        PLAY MATCH
+                    <button class="btn" onclick="startMatchSimulation()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <i data-lucide="play" style="width: 24px; height: 24px;"></i> PLAY MATCH
                     </button>
                 </div>
                 
@@ -469,6 +514,7 @@ function renderDashboard(container) {
     
     renderStandings();
     renderLeagueLeaders();
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function sortStandingsArray(arr, metric, desc) {
@@ -1025,9 +1071,6 @@ function renderRoster(container) {
                 <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
                         <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; text-shadow: 0 0 10px rgba(255,255,255,0.2);">ACTIVE ROSTER</h2>
-                        <button id="btn-save-roster" class="btn btn-sm" ${!isRosterComplete ? 'disabled' : ''} style="background-color: ${isRosterComplete ? 'var(--team-primary)' : 'rgba(255,255,255,0.1)'}; color: ${isRosterComplete ? '#fff' : 'var(--text-muted)'}; border: none; font-size: 1rem; padding: 0.5rem 1.2rem;">
-                            <i data-lucide="${isRosterComplete ? 'check-circle' : 'lock'}" style="width: 18px; height: 18px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i> Save Lineup
-                        </button>
                     </div>
                     
                     <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Forwards</h3>
@@ -1099,13 +1142,6 @@ function renderRoster(container) {
         });
     });
     
-    // Bind Save Action
-    const saveBtn = document.getElementById('btn-save-roster');
-    if (saveBtn && isRosterComplete) {
-        saveBtn.addEventListener('click', () => {
-            alert('Roster Validated and Saved Successfully! (RF04)');
-        });
-    }
 }
 
 let draggedPlayerId = null;
@@ -1364,6 +1400,351 @@ window.buyPack = function(packType) {
     }
 };
 
+// --- MATCH SIMULATION ---
+
+window.getTeamOverall = function(teamId, isUser) {
+    if (isUser) {
+        let activePlayers = gameState.players.filter(p => p.teamId === teamId && p.location && p.location !== 'bench' && p.location !== 'sell' && p.location !== 'collection');
+        
+        let sum = 0;
+        activePlayers.forEach(p => {
+            let mod = getPlayerModifiers(p);
+            let finalOvr = Math.round(p.overall * (1 + mod/100));
+            sum += finalOvr;
+        });
+        return (sum / 20).toFixed(1);
+    } else {
+        let cpuPlayers = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
+        
+        // Take top 20 players to evaluate fairly
+        cpuPlayers.sort((a,b) => b.overall - a.overall);
+        let top20 = cpuPlayers.slice(0, 20);
+        
+        let sum = 0;
+        top20.forEach(p => {
+            sum += p.overall;
+        });
+        return (sum / 20).toFixed(1);
+    }
+}
+
+window.startMatchSimulation = function() {
+    switchView('match');
+}
+
+function renderMatchPage(container) {
+    if (gameState.matchIndex > gameState.totalMatches) {
+        container.innerHTML = `<h1 class="title-main" style="text-align:center; padding: 5rem 0;">Season Completed!</h1>`;
+        return;
+    }
+    
+    if (!gameState.nextMatch) {
+        container.innerHTML = `<h1 class="title-main" style="text-align:center; padding: 5rem 0;">No scheduled matches found!</h1>`;
+        return;
+    }
+    
+    const isHome = gameState.nextMatch.homeId === gameState.team.id;
+    const opponentId = isHome ? gameState.nextMatch.awayId : gameState.nextMatch.homeId;
+    
+    const myTeamInfo = currentTeam;
+    const oppTeamInfo = ohlTeams.find(t => t.id === opponentId);
+    
+    // Mocking currentMatch for the simulation loop logic
+    const currentMatch = {
+        homeTeam: gameState.nextMatch.homeId,
+        awayTeam: gameState.nextMatch.awayId,
+        homeScore: 0,
+        awayScore: 0,
+        status: 'scheduled'
+    };
+    
+    const myLogo = myTeamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+    const oppLogo = oppTeamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+    
+    const myOvr = getTeamOverall(myTeamInfo.id, true);
+    const oppOvr = getTeamOverall(oppTeamInfo.id, false);
+
+    const homeColor = isHome ? myTeamInfo.colors.primary : oppTeamInfo.colors.primary;
+    const awayColor = !isHome ? myTeamInfo.colors.primary : oppTeamInfo.colors.primary;
+
+    // Build the scoreboard HTML
+    container.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; width: 100%; box-sizing: border-box; padding: 2rem 0; position: relative;">
+            
+            <h1 class="title-main" style="text-align: center; font-size: 2.5rem; letter-spacing: 2px; flex-shrink: 0; margin-bottom: 1rem;">MATCH SIMULATION</h1>
+            
+            <div style="display: flex; flex-direction: column; width: 100%; max-width: 1000px; flex: 1; min-height: 0; gap: 2rem;">
+                
+                <!-- MAIN SCOREBOARD CONTAINER (70%) -->
+                <div style="position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; width: 100%; flex: 7; min-height: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 2rem 4rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);">
+                    
+                    <!-- DYNAMIC GRADIENT BACKGROUND -->
+                    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, color-mix(in srgb, ${homeColor} 40%, #0f172a 60%) 0%, color-mix(in srgb, ${awayColor} 40%, #0f172a 60%) 100%); z-index: -2;"></div>
+                    <div style="position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%); z-index: -1;"></div>
+                    
+                    <!-- DIAGONAL SLASH SEPARATOR -->
+                    <div style="position: absolute; top: -50%; bottom: -50%; left: 50%; width: 2px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3), transparent); transform: rotate(15deg); z-index: -1;"></div>
+                    
+                    <!-- HOME TEAM -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; flex: 1; z-index: 1;">
+                        <img src="assets/logos/ohl/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor});">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${isHome ? myTeamInfo.name : oppTeamInfo.name}</h2>
+                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                            OVR: <span style="color: ${homeColor}; text-shadow: 0 0 10px ${homeColor};">${isHome ? myOvr : oppOvr}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- SCOREBOARD CENTER -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 0 2rem; z-index: 1;">
+                        <div id="match-period" style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; letter-spacing: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">1ST PERIOD</div>
+                        
+                        <div style="display: flex; align-items: center; gap: 1.5rem;">
+                            <div id="home-score" style="font-family: 'Blockletter', sans-serif; font-size: 6rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
+                            <div style="font-family: 'Roboto', sans-serif; font-size: 2.5rem; color: rgba(255,255,255,0.3); font-weight: 700;">-</div>
+                            <div id="away-score" style="font-family: 'Blockletter', sans-serif; font-size: 6rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
+                        </div>
+                        
+                        <div id="match-clock" style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fff; background-color: rgba(0,0,0,0.6); padding: 0.5rem 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">20:00</div>
+                    </div>
+                    
+                    <!-- AWAY TEAM -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; flex: 1; z-index: 1;">
+                        <img src="assets/logos/ohl/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor});">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${!isHome ? myTeamInfo.name : oppTeamInfo.name}</h2>
+                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                            OVR: <span style="color: ${awayColor}; text-shadow: 0 0 10px ${awayColor};">${!isHome ? myOvr : oppOvr}</span>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <!-- EVENT LOG (30%) -->
+                <div id="event-log" style="width: 100%; flex: 3; min-height: 0; background: transparent; border-top: 2px solid rgba(255,255,255,0.05); border-bottom: 2px solid rgba(255,255,255,0.05); overflow-y: auto; padding: 1.5rem 1rem; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: #fff; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth;">
+                    <div style="text-align: center; color: var(--text-muted); font-family: 'Roboto', sans-serif; font-style: italic; font-size: 1rem;">Puck drop! The match is underway...</div>
+                </div>
+                
+            </div>
+            
+            <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                <button id="btn-finish-match" class="btn" style="display: none; padding: 1rem 3rem; font-size: 1.5rem; letter-spacing: 2px; background: linear-gradient(180deg, #10b981 0%, #059669 100%);">
+                    CONTINUE
+                </button>
+                
+                <button id="btn-debug-skip" class="btn btn-secondary" style="padding: 0.5rem 2rem; font-size: 1rem; letter-spacing: 1px; border-color: rgba(255,255,255,0.2); color: var(--text-muted);">
+                    <i data-lucide="fast-forward" style="width: 16px; height: 16px; margin-right: 8px; vertical-align: middle;"></i> SKIP SIM
+                </button>
+            </div>
+            
+            <!-- GOAL ANIMATION OVERLAY -->
+            <div id="goal-animation" style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; transform: translate(-50%, -50%) scale(0.5); position: absolute; top: 50%; left: 50%; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.95); border: 4px solid #ef4444; border-radius: 20px; padding: 3rem 6rem; box-shadow: 0 0 50px rgba(239, 68, 68, 0.8);">
+                <h1 style="font-family: 'Blockletter', sans-serif; font-size: 8rem; color: #ef4444; margin: 0; text-shadow: 0 0 30px rgba(239,68,68,0.8); letter-spacing: 10px;">GOAL!</h1>
+                <h2 id="goal-team-name" style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fff; margin: 0; margin-top: 1rem;">TEAM NAME</h2>
+            </div>
+            
+        </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    // Set up Match Data
+    currentMatch.homeScore = 0;
+    currentMatch.awayScore = 0;
+    
+    // 1. Generate the timeline of events
+    const timeline = generateMatchTimeline(myOvr, oppOvr, isHome, myTeamInfo, oppTeamInfo);
+    
+    // 2. Play back the events
+    playMatchEvents(timeline, isHome, myTeamInfo, oppTeamInfo, currentMatch);
+}
+
+function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
+    const timeline = [];
+    const homeOvr = isHome ? myOvr : oppOvr;
+    const awayOvr = !isHome ? myOvr : oppOvr;
+    
+    // Base probability of a goal per minute is roughly 5% (~3 goals per 60 mins)
+    // We adjust this base probability using the ratio of Team OVRs.
+    const ovrRatio = parseFloat(homeOvr) / (parseFloat(awayOvr) || 1);
+    
+    let homeChance = 0.05 * (ovrRatio > 1 ? ovrRatio : 1);
+    let awayChance = 0.05 * (ovrRatio < 1 ? (1 / ovrRatio) : 1);
+    
+    // Cap chances so it doesn't get ridiculous
+    homeChance = Math.min(homeChance, 0.15);
+    awayChance = Math.min(awayChance, 0.15);
+
+    for (let period = 1; period <= 3; period++) {
+        for (let minute = 19; minute >= 0; minute--) {
+            let r = Math.random();
+            if (r < homeChance) {
+                timeline.push({
+                    period: period,
+                    minute: minute,
+                    second: Math.floor(Math.random() * 60),
+                    type: 'goal',
+                    team: 'home',
+                    teamName: isHome ? myTeam.name : oppTeam.name,
+                    color: isHome ? myTeam.colors.primary : oppTeam.colors.primary,
+                    text: `GOAL! The ${isHome ? myTeam.name : oppTeam.name} find the back of the net!`
+                });
+            } else if (r < homeChance + awayChance) {
+                timeline.push({
+                    period: period,
+                    minute: minute,
+                    second: Math.floor(Math.random() * 60),
+                    type: 'goal',
+                    team: 'away',
+                    teamName: !isHome ? myTeam.name : oppTeam.name,
+                    color: !isHome ? myTeam.colors.primary : oppTeam.colors.primary,
+                    text: `GOAL! The ${!isHome ? myTeam.name : oppTeam.name} score a beautiful goal!`
+                });
+            }
+        }
+        
+        // Add end of period event
+        timeline.push({
+            period: period,
+            minute: 0,
+            second: 0,
+            type: 'end_period'
+        });
+    }
+    
+    // Sort timeline so events happen in chronological order
+    timeline.sort((a, b) => {
+        if (a.period !== b.period) return a.period - b.period;
+        if (a.minute !== b.minute) return b.minute - a.minute; // Descending (19 -> 0)
+        return b.second - a.second; // Descending (59 -> 0)
+    });
+    
+    return timeline;
+}
+
+async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) {
+    const clockEl = document.getElementById('match-clock');
+    const periodEl = document.getElementById('match-period');
+    const homeScoreEl = document.getElementById('home-score');
+    const awayScoreEl = document.getElementById('away-score');
+    const logEl = document.getElementById('event-log');
+    const goalAnim = document.getElementById('goal-animation');
+    const goalTeamName = document.getElementById('goal-team-name');
+    const btnFinish = document.getElementById('btn-finish-match');
+    const btnSkip = document.getElementById('btn-debug-skip');
+    
+    let isSkipped = false;
+    
+    btnSkip.addEventListener('click', () => {
+        isSkipped = true;
+        btnSkip.style.display = 'none';
+    });
+    
+    function logEvent(text, color = '#cbd5e1') {
+        const div = document.createElement('div');
+        div.style.color = color;
+        div.innerText = text;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    
+    function wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    let currentPeriod = 1;
+    let currentSecond = 1200; // 20:00
+    
+    // Process event by event
+    for (let event of timeline) {
+        if (isSkipped) break; // If skipped, jump out of visual playback
+        
+        let eventTotalSeconds = event.minute * 60 + event.second;
+        
+        // Jump directly to the event time
+        currentPeriod = event.period;
+        currentSecond = eventTotalSeconds;
+        
+        let m = Math.floor(currentSecond / 60);
+        let s = currentSecond % 60;
+        clockEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        
+        // Brief pause to create suspense before showing the event
+        await wait(1000);
+        
+        if (isSkipped) break;
+        
+        if (event.type === 'end_period') {
+            if (currentPeriod < 3) {
+                logEvent(`--- End of ${periodEl.innerText} ---`);
+                await wait(1500);
+                currentPeriod++;
+                currentSecond = 1200;
+                periodEl.innerText = currentPeriod === 2 ? "2ND PERIOD" : "3RD PERIOD";
+                clockEl.innerText = "20:00";
+                logEvent(`--- Start of ${periodEl.innerText} ---`);
+                await wait(1500);
+            }
+            continue; // Skip the rest of the loop for end_period
+        }
+        
+        // Trigger Goal Event
+        logEvent(`${clockEl.innerText} - ${event.text}`, event.color);
+        
+        if (event.type === 'goal') {
+            if (event.team === 'home') {
+                currentMatch.homeScore++;
+                homeScoreEl.innerText = currentMatch.homeScore;
+            } else {
+                currentMatch.awayScore++;
+                awayScoreEl.innerText = currentMatch.awayScore;
+            }
+            
+            // Show Animation
+            goalTeamName.innerText = event.teamName;
+            goalTeamName.style.color = event.color;
+            goalAnim.style.opacity = '1';
+            goalAnim.style.transform = 'translate(-50%, -50%) scale(1)';
+            
+            await wait(2500); // Pause for celebration
+            
+            // Hide Animation
+            goalAnim.style.opacity = '0';
+            goalAnim.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            await wait(500);
+        }
+    }
+    
+    // Fast forward to end of game if skipped or no more events
+    if (isSkipped) {
+        // Process remaining goals mathematically without UI delays
+        for (let event of timeline) {
+            let isFuture = event.period > currentPeriod || (event.period === currentPeriod && (event.minute * 60 + event.second) <= currentSecond);
+            if (isFuture && event.type === 'goal') {
+                if (event.team === 'home') currentMatch.homeScore++;
+                else currentMatch.awayScore++;
+            }
+        }
+    }
+    
+    // Set UI to final state
+    clockEl.innerText = "00:00";
+    periodEl.innerText = "FINAL";
+    periodEl.style.color = "#ef4444";
+    homeScoreEl.innerText = currentMatch.homeScore;
+    awayScoreEl.innerText = currentMatch.awayScore;
+    btnSkip.style.display = "none";
+    btnFinish.style.display = "block";
+    
+    logEvent(`--- MATCH FINISHED ---`);
+    logEvent(`Final Score: ${isHome ? myTeam.name : oppTeam.name} ${currentMatch.homeScore} - ${!isHome ? myTeam.name : oppTeam.name} ${currentMatch.awayScore}`);
+    
+    btnFinish.onclick = () => {
+        currentMatch.status = 'completed';
+        gameState.matchIndex++;
+        // TODO: Update Standings and calendar here in the future
+        switchView('dashboard');
+    };
+}
+
 function openBackConfirmationModal() {
     const modalHTML = `
         <div id="back-confirm-modal" class="modal-overlay">
@@ -1386,14 +1767,149 @@ function openBackConfirmationModal() {
     document.getElementById('btn-confirm-back').addEventListener('click', () => {
         document.getElementById('back-confirm-modal').remove();
         
-        // Remove as propriedades de fundo para voltar ao tema base original do style.css
         document.body.style.removeProperty('--bg-color');
         document.body.style.removeProperty('background-color');
         document.body.style.removeProperty('background');
         document.body.style.removeProperty('background-attachment');
-        gameState = null; // Reset game state
-        switchView('setup');
+        document.documentElement.style.removeProperty('--team-primary');
+        gameState = null;
+        currentTeam = null;
+        
+        initLeagueSelection();
     });
+}
+
+// --- SAVE & LOAD SYSTEM ---
+window.saveGame = function() {
+    if (!gameState || !currentTeam) return;
+    const saveData = {
+        gameState: gameState,
+        currentTeam: currentTeam
+    };
+    localStorage.setItem('hockeyGmSave', JSON.stringify(saveData));
+    
+    // Toast notification
+    const toast = document.createElement('div');
+    toast.style.cssText = "position: fixed; bottom: 2rem; right: 2rem; background: #10b981; color: #fff; padding: 1rem 2rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: opacity 0.5s ease;";
+    toast.innerHTML = '<i data-lucide="save" style="margin-right: 0.5rem; vertical-align: middle;"></i> GAME SAVED';
+    document.body.appendChild(toast);
+    if (window.lucide) window.lucide.createIcons();
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 2000);
+}
+
+window.loadGame = async function() {
+    const saved = localStorage.getItem('hockeyGmSave');
+    if (!saved) return;
+    
+    const loadBtn = document.getElementById('league-load');
+    if(loadBtn) loadBtn.innerHTML = '<h3 class="team-card-title">LOADING...</h3>';
+    
+    try {
+        const response = await fetch('data/rosters.json');
+        const allRosters = await response.json();
+        let globalDraftPool = [];
+        Object.values(allRosters).forEach(teamRoster => {
+            if (teamRoster && teamRoster.length > 0) {
+                globalDraftPool = globalDraftPool.concat(teamRoster);
+            }
+        });
+        window.globalDraftPool = globalDraftPool;
+    } catch(e) {
+        console.error("Failed to load rosters", e);
+        if(loadBtn) loadBtn.innerHTML = '<h3 class="team-card-title" style="color: #ef4444;">ERROR</h3>';
+        return;
+    }
+    
+    const data = JSON.parse(saved);
+    gameState = data.gameState;
+    
+    // Revive Date objects
+    if (gameState.currentDate) {
+        gameState.currentDate = new Date(gameState.currentDate);
+    }
+    
+    currentTeam = data.currentTeam;
+    
+    document.body.style.removeProperty('--bg-color');
+    document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 60%, #0b1121) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #0b1121) 100%)`;
+    document.body.style.backgroundAttachment = 'fixed';
+    document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
+    
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
+            <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #151e32);">
+                <div class="sidebar-brand">
+                    <h2>HOCKEY GM</h2>
+                </div>
+                
+                <nav class="sidebar-nav">
+                    <button class="nav-btn active" id="nav-dashboard">
+                        <i data-lucide="layout-dashboard" style="margin-right: 8px; width: 20px; height: 20px;"></i> Dashboard
+                    </button>
+                    <button class="nav-btn" id="nav-roster">
+                        <i data-lucide="users" style="margin-right: 8px; width: 20px; height: 20px;"></i> Roster
+                    </button>
+                    <button class="nav-btn" id="nav-standings">
+                        <i data-lucide="bar-chart-2" style="margin-right: 8px; width: 20px; height: 20px;"></i> Standings
+                    </button>
+                    <button class="nav-btn" id="nav-calendar">
+                        <i data-lucide="calendar" style="margin-right: 8px; width: 20px; height: 20px;"></i> Calendar
+                    </button>
+                    <button class="nav-btn" id="nav-collection">
+                        <i data-lucide="library" style="margin-right: 8px; width: 20px; height: 20px;"></i> Collection
+                    </button>
+                    <button class="nav-btn" id="nav-shop">
+                        <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
+                    </button>
+                </nav>
+                
+                <div class="sidebar-bottom">
+                    <div class="coins-display">
+                        <span class="coins-icon">🪙</span>
+                        <span class="coins-amount">0</span>
+                    </div>
+                    <!-- Save button -->
+                    <button id="btn-save-game" class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
+                        <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save Game
+                    </button>
+                    <button class="btn btn-danger btn-sm" id="btn-back-selection" style="width: 100%; font-size: 0.9rem; background-color: #ef4444; color: #fff; border: none; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
+                        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i> Leave Game
+                    </button>
+                </div>
+            </aside>
+            
+            <main class="main-content" id="main-content">
+            </main>
+        </div>
+    `;
+    
+    // Bind Sidebar Navigation
+    document.getElementById('nav-dashboard').addEventListener('click', () => switchView('dashboard'));
+    document.getElementById('nav-roster').addEventListener('click', () => switchView('roster'));
+    document.getElementById('nav-standings').addEventListener('click', () => switchView('standings'));
+    document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
+    document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
+    document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
+    
+    // Bind Save Game
+    const btnSaveGame = document.getElementById('btn-save-game');
+    if (btnSaveGame) {
+        btnSaveGame.addEventListener('click', () => saveGame());
+    }
+
+    // Bind Back to Selection
+    document.getElementById('btn-back-selection').addEventListener('click', () => {
+        openBackConfirmationModal();
+    });
+    
+    updateCoinsDisplay();
+    if (window.lucide) window.lucide.createIcons();
+    switchView('dashboard');
 }
 
 function openSellConfirmationModal(player) {

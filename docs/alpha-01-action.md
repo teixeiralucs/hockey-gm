@@ -195,3 +195,11 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
   - **Forwards Pack (400 🪙)**: 2 Atacantes garantidos (LW, C, RW).
   - **Defense Pack (400 🪙)**: 2 Defensores garantidos (LD, RD).
   - **Goalie Pack (400 🪙)**: 2 Goleiros garantidos (G).
+
+### Iteração Alpha 0.1.11 (RF11 - Match Simulation Engine)
+- **Engine de Simulação Baseada em Eventos**: Substituição do modelo estático de 1-minuto por uma timeline gerada matematicamente que usa a diferença de "Team OVR" (Overall Rating) para rolar dados invisíveis. Gols ocorrem em minutos e segundos específicos calculados antes mesmo do "puck drop".
+- **Cinemática de Cronômetro**: O relógio do jogo não passa de forma linear, ele pula freneticamente no tempo diretamente para os timestamps onde um gol ou o final de um período ocorrem, pausando para drama.
+- **Goal Overlay Animation**: Uma tela dramática pisca na tela contendo o grito de "GOAL" gigante em vermelho com a sombra baseada na cor do time que marcou.
+- **Design de Placar Glassmorphism**: O Placar da partida ganhou vida ao combinar linearmente (gradient cross) a cor nativa dos dois times presentes na partida, um corte de lâmina de gelo (slash) diagonal e fundos translúcidos de vidro, melhorando absurdamente a imersão de arena digital.
+- **Ocultação da HUD**: A Sidebar se recolhe automaticamente durante a partida simulada para prevenir interferência ("cheat") do jogador mudando o roster no meio de uma partida.
+- **Event Log (Caixa de Textos)**: A renderização dos eventos (como goals ou Puck Drops) ocorre de forma perene no rodapé da simulação, permitindo uma leitura fria da timeline da partida.
