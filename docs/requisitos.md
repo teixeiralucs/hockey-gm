@@ -8,10 +8,10 @@
 - **RF04 - Validação de Salvamento:** ✅ O sistema de Roster deve impedir o salvamento da escalação e o avanço para a simulação caso existam espaços vazios na formação.
 - **RF05 - Criação de Card dos Jogadores:** ✅ O sistema deve gerar cartas visuais para cada jogador contendo sua Foto oficial, Nome, Idade, Posição, Número da camisa e Local de Nascimento, adotando um visual premium e moderno.
 - **RF06 - Cálculo de Overall Base:** ✅ O sistema deve calcular o Overall inicial de cada jogador com base em suas estatísticas ou de forma programática antes da aplicação de modificadores dinâmicos.
-- **RF07 - Tabelas de Classificação (Standings):** O sistema deve exibir e atualizar a tabela de classificação das conferências a cada rodada da temporada regular, bem como exibir as chaves de mata-mata (brackets) durante os Playoffs.
+- **RF07 - Tabelas de Classificação (Standings):** ✅ O sistema deve exibir e atualizar a tabela de classificação das conferências a cada rodada da temporada regular, bem como exibir as chaves de mata-mata (brackets) durante os Playoffs.
 - **RF08 - Drag and Drop (Benching):** ✅ O sistema deve fornecer 4 interações de arraste: alocar titular, manter no banco, vender ou arquivar na coleção.
-- **RF09 - Cálculo de Modificadores (Buffs/Debuffs):** O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).
-- **RF10 - Cálculo Financeiro (Shop/Venda):** O sistema deve realizar cobrança de 200 moedas na compra de pacotes do Tier D e calcular o valor de liquidação (venda) pela fórmula: `Valor Base * (Overall / 100)`.
+- **RF09 - Cálculo de Modificadores (Buffs/Debuffs):** ✅ O motor lógico deve recalcular os atributos dos jogadores em tempo real com base em alocação de linha (x1.25 certa / x0.75 errada), time real (x1.75) e química de linha (x1.15).
+- **RF10 - Cálculo Financeiro (Shop/Venda):** ✅ O sistema deve realizar cobrança de 200 moedas na compra de pacotes do Tier D e calcular o valor de liquidação (venda) pela fórmula: `Valor Base * (Overall / 100)`.
 - **RF11 - Motor de Simulação Sequencial:** O sistema deve processar rodadas inteiras simulando partidas de todos os times em 3 períodos de 20 minutos.
 - **RF12 - Probabilidade de Eventos:** O sistema deve basear a chance de ocorrência de eventos (Faceoffs, Hits, Shots, Penalties) em uma Força de Franquia calculada por: `(Média de Atributos / 500) * 125`.
 - **RF13 - Condições de Overtime (OT):** O sistema deve aplicar regras distintas de prorrogação baseadas na fase do campeonato: OT de 5 minutos (3v3) seguido de shootout para Temporada Regular, e OT contínuo sem shootout para Playoffs.

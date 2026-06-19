@@ -234,4 +234,4 @@ O jogador poderá salvar até 3 jogos simultâneos, cada jogo terá sua própria
 
 ## 16. Regular Standings e Playoff Standings
 
-Na página incial o jogador poderá ver a tabela de classificação atual da liga, com as posições dos times, vitórias, derrotas, pontos, etc. Essa tabela deverá ser atualizada ao fim de cada rodada e será dividida pelas duas conferências da liga.
+Na página incial o jogador poderá ver a tabela de classificação atual da liga, com as posições dos times, vitórias, derrotas, pontos, etc. Essa tabela deverá ser atualizada ao fim de cada rodada e será dividida pelas duas conferências da liga. Ao final da temporada regular a tabela se modifica para duas extremidades com os embates de cada rodada das playoffs.

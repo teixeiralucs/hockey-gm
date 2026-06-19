@@ -1329,7 +1329,8 @@ window.buyPack = function(packType) {
     }
     
     // Determine available players
-    const activePlayerIds = new Set(gameState.players.map(p => p.id));
+    const userPlayers = gameState.players.filter(p => p.teamId === currentTeam.id);
+    const activePlayerIds = new Set(userPlayers.map(p => p.id));
     const collectionPlayerIds = new Set((gameState.collection || []).map(p => p.id));
     
     let availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id) && !collectionPlayerIds.has(p.id));
@@ -1355,39 +1356,55 @@ window.buyPack = function(packType) {
         const selectedData = availablePlayers[randomIndex];
         availablePlayers.splice(randomIndex, 1); // remove from available
         
-        let newPlayer = {
-            id: selectedData.id,
-            name: selectedData.name,
-            position: selectedData.position,
-            number: selectedData.number,
-            photo: selectedData.photo,
-            birthplace: selectedData.birthplace,
-            age: selectedData.age,
-            overall: selectedData.overall,
-            tier: selectedData.tier,
-            originalTeamId: selectedData.originalTeamId,
-            stats: selectedData.stats,
-            attributes: JSON.parse(JSON.stringify(selectedData.attributes)), // Deep copy attributes
-            location: 'bench' // Start on bench
-        };
+        let existingPlayer = gameState.players.find(p => p.id === selectedData.id);
         
-        // Upgrade to C-Tier Logic
-        if (Math.random() < config.cTierChance) {
-            newPlayer.tier = 'silver'; // Silver visual treatment for C-Tier
-            newPlayer.overall = Math.round(newPlayer.overall * 1.5);
-            newPlayer.name = newPlayer.name + " (C-TIER)";
+        if (existingPlayer) {
+            existingPlayer.teamId = currentTeam.id;
+            existingPlayer.location = 'bench';
             
-            Object.values(newPlayer.attributes).forEach(category => {
-                for (let key in category) {
-                    if (key !== 'total') {
-                        category[key] = parseFloat((category[key] * 1.5).toFixed(1));
+            if (Math.random() < config.cTierChance) {
+                existingPlayer.tier = 'silver';
+                existingPlayer.overall = Math.round(existingPlayer.overall * 1.5);
+                existingPlayer.name = existingPlayer.name + " (C-TIER)";
+                Object.values(existingPlayer.attributes).forEach(category => {
+                    for (let key in category) {
+                        if (key !== 'total') category[key] = parseFloat((category[key] * 1.5).toFixed(1));
                     }
-                }
-            });
+                });
+            }
+            drawnIds.push(existingPlayer.id);
+        } else {
+            let newPlayer = {
+                id: selectedData.id,
+                name: selectedData.name,
+                position: selectedData.position,
+                number: selectedData.number,
+                photo: selectedData.photo,
+                birthplace: selectedData.birthplace,
+                age: selectedData.age,
+                overall: selectedData.overall,
+                tier: selectedData.tier,
+                originalTeamId: selectedData.originalTeamId,
+                teamId: currentTeam.id,
+                stats: selectedData.stats,
+                attributes: JSON.parse(JSON.stringify(selectedData.attributes)),
+                location: 'bench'
+            };
+            
+            if (Math.random() < config.cTierChance) {
+                newPlayer.tier = 'silver';
+                newPlayer.overall = Math.round(newPlayer.overall * 1.5);
+                newPlayer.name = newPlayer.name + " (C-TIER)";
+                Object.values(newPlayer.attributes).forEach(category => {
+                    for (let key in category) {
+                        if (key !== 'total') category[key] = parseFloat((category[key] * 1.5).toFixed(1));
+                    }
+                });
+            }
+            
+            gameState.players.push(newPlayer);
+            drawnIds.push(newPlayer.id);
         }
-        
-        gameState.players.push(newPlayer);
-        drawnIds.push(newPlayer.id);
     }
     
     // Re-render Shop
@@ -1404,7 +1421,7 @@ window.buyPack = function(packType) {
 
 window.getTeamOverall = function(teamId, isUser) {
     if (isUser) {
-        let activePlayers = gameState.players.filter(p => p.teamId === teamId && p.location && p.location !== 'bench' && p.location !== 'sell' && p.location !== 'collection');
+        let activePlayers = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
         
         let sum = 0;
         activePlayers.forEach(p => {
@@ -1429,6 +1446,11 @@ window.getTeamOverall = function(teamId, isUser) {
 }
 
 window.startMatchSimulation = function() {
+    let activePlayers = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
+    if (activePlayers.length < 20) {
+        openIncompleteMatchModal();
+        return;
+    }
     switchView('match');
 }
 
@@ -1467,29 +1489,69 @@ function renderMatchPage(container) {
     const homeColor = isHome ? myTeamInfo.colors.primary : oppTeamInfo.colors.primary;
     const awayColor = !isHome ? myTeamInfo.colors.primary : oppTeamInfo.colors.primary;
 
+    const homeTeamNameStr = isHome ? myTeamInfo.name : oppTeamInfo.name;
+    const homeNameArr = homeTeamNameStr.split(' ');
+    const homeMascot = homeNameArr.pop();
+    const homeCity = homeNameArr.join(' ');
+
+    const awayTeamNameStr = !isHome ? myTeamInfo.name : oppTeamInfo.name;
+    const awayNameArr = awayTeamNameStr.split(' ');
+    const awayMascot = awayNameArr.pop();
+    const awayCity = awayNameArr.join(' ');
+
     // Build the scoreboard HTML
     container.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; width: 100%; box-sizing: border-box; padding: 2rem 0; position: relative;">
             
             <h1 class="title-main" style="text-align: center; font-size: 2.5rem; letter-spacing: 2px; flex-shrink: 0; margin-bottom: 1rem;">MATCH SIMULATION</h1>
             
-            <div style="display: flex; flex-direction: column; width: 100%; max-width: 1000px; flex: 1; min-height: 0; gap: 2rem;">
+            <div style="display: flex; flex-direction: row; width: 100%; max-width: 1400px; flex: 1; min-height: 0; gap: 2rem;">
                 
                 <!-- MAIN SCOREBOARD CONTAINER (70%) -->
                 <div style="position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; width: 100%; flex: 7; min-height: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 2rem 4rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);">
                     
-                    <!-- DYNAMIC GRADIENT BACKGROUND -->
-                    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, color-mix(in srgb, ${homeColor} 40%, #0f172a 60%) 0%, color-mix(in srgb, ${awayColor} 40%, #0f172a 60%) 100%); z-index: -2;"></div>
-                    <div style="position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%); z-index: -1;"></div>
+                    <!-- ICE RINK BACKGROUND -->
+                    <div style="position: absolute; inset: 0; background-color: #0f172a; z-index: -3; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                        <!-- Center Red Line -->
+                        <div style="position: absolute; width: 4px; height: 100%; background-color: rgba(239, 68, 68, 0.3);"></div>
+                        <!-- Center Circle -->
+                        <div style="position: absolute; width: 150px; height: 150px; border: 4px solid rgba(59, 130, 246, 0.3); border-radius: 50%;"></div>
+                        
+                        <!-- Blue Lines -->
+                        <div style="position: absolute; width: 4px; height: 100%; left: 35%; background-color: rgba(59, 130, 246, 0.3);"></div>
+                        <div style="position: absolute; width: 4px; height: 100%; right: 35%; background-color: rgba(59, 130, 246, 0.3);"></div>
+                        
+                        <!-- Goal Lines (Red) -->
+                        <div style="position: absolute; width: 2px; height: 100%; left: 8%; background-color: rgba(239, 68, 68, 0.3);"></div>
+                        <div style="position: absolute; width: 2px; height: 100%; right: 8%; background-color: rgba(239, 68, 68, 0.3);"></div>
+                        
+                        <!-- Goal Creases -->
+                        <div style="position: absolute; width: 40px; height: 80px; left: 8%; border-radius: 0 40px 40px 0; background-color: rgba(56, 189, 248, 0.15); border: 2px solid rgba(239, 68, 68, 0.3); border-left: none;"></div>
+                        <div style="position: absolute; width: 40px; height: 80px; right: 8%; border-radius: 40px 0 0 40px; background-color: rgba(56, 189, 248, 0.15); border: 2px solid rgba(239, 68, 68, 0.3); border-right: none;"></div>
+                        
+                        <!-- Left Zone Faceoff Circles -->
+                        <div style="position: absolute; width: 100px; height: 100px; left: 16%; top: 15%; border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 50%;"></div>
+                        <div style="position: absolute; width: 100px; height: 100px; left: 16%; bottom: 15%; border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 50%;"></div>
+                        
+                        <!-- Right Zone Faceoff Circles -->
+                        <div style="position: absolute; width: 100px; height: 100px; right: 16%; top: 15%; border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 50%;"></div>
+                        <div style="position: absolute; width: 100px; height: 100px; right: 16%; bottom: 15%; border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 50%;"></div>
+                    </div>
                     
-                    <!-- DIAGONAL SLASH SEPARATOR -->
-                    <div style="position: absolute; top: -50%; bottom: -50%; left: 50%; width: 2px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3), transparent); transform: rotate(15deg); z-index: -1;"></div>
+                    <!-- TEAM COLOR GLOW OVERLAYS -->
+                    <div style="position: absolute; inset: 0; background: radial-gradient(circle at 15% center, ${homeColor}55 0%, transparent 60%), radial-gradient(circle at 85% center, ${awayColor}55 0%, transparent 60%); z-index: -2;"></div>
+                    
+                    <!-- VIGNETTE TO IMPROVE TEXT READABILITY -->
+                    <div style="position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.6) 100%); z-index: -1;"></div>
                     
                     <!-- HOME TEAM -->
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/ohl/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor});">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${isHome ? myTeamInfo.name : oppTeamInfo.name}</h2>
-                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
+                        <img src="assets/logos/ohl/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
+                        <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
+                            <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${homeCity}</span>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${homeMascot}</h2>
+                        </div>
+                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); margin-top: 0.5rem;">
                             OVR: <span style="color: ${homeColor}; text-shadow: 0 0 10px ${homeColor};">${isHome ? myOvr : oppOvr}</span>
                         </div>
                     </div>
@@ -1508,31 +1570,38 @@ function renderMatchPage(container) {
                     </div>
                     
                     <!-- AWAY TEAM -->
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/ohl/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor});">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${!isHome ? myTeamInfo.name : oppTeamInfo.name}</h2>
-                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
+                        <img src="assets/logos/ohl/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
+                        <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
+                            <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${awayCity}</span>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${awayMascot}</h2>
+                        </div>
+                        <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); margin-top: 0.5rem;">
                             OVR: <span style="color: ${awayColor}; text-shadow: 0 0 10px ${awayColor};">${!isHome ? myOvr : oppOvr}</span>
                         </div>
                     </div>
                     
                 </div>
                 
-                <!-- EVENT LOG (30%) -->
-                <div id="event-log" style="width: 100%; flex: 3; min-height: 0; background: transparent; border-top: 2px solid rgba(255,255,255,0.05); border-bottom: 2px solid rgba(255,255,255,0.05); overflow-y: auto; padding: 1.5rem 1rem; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: #fff; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth;">
-                    <div style="text-align: center; color: var(--text-muted); font-family: 'Roboto', sans-serif; font-style: italic; font-size: 1rem;">Puck drop! The match is underway...</div>
+                <!-- RIGHT COLUMN (30%) -->
+                <div style="flex: 3; min-width: 0; display: flex; flex-direction: column; gap: 1rem;">
+                    
+                    <!-- EVENT LOG -->
+                    <div id="event-log" style="width: 100%; flex: 1; min-height: 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; overflow-y: auto; padding: 1.5rem; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: #fff; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth;">
+                        <div style="text-align: center; color: var(--text-muted); font-family: 'Roboto', sans-serif; font-style: italic; font-size: 1rem;">20:00 - Puck drop! The match is underway...</div>
+                    </div>
+                    
+                    <!-- CONTROLS -->
+                    <div style="flex-shrink: 0; display: flex; flex-direction: row; gap: 1rem; width: 100%;">
+                        <button id="btn-match-control" class="btn" style="flex: 2; padding: 1rem; font-size: 1.5rem; letter-spacing: 2px; background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); display: flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 16px;">
+                            <i data-lucide="pause"></i> PAUSE
+                        </button>
+                        
+                        <button id="btn-debug-skip" class="btn btn-secondary" style="flex: 1; padding: 1rem; font-size: 1.2rem; letter-spacing: 1px; border-color: rgba(255,255,255,0.2); color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 16px;">
+                            <i data-lucide="fast-forward"></i> SKIP
+                        </button>
+                    </div>
                 </div>
-                
-            </div>
-            
-            <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-                <button id="btn-finish-match" class="btn" style="display: none; padding: 1rem 3rem; font-size: 1.5rem; letter-spacing: 2px; background: linear-gradient(180deg, #10b981 0%, #059669 100%);">
-                    CONTINUE
-                </button>
-                
-                <button id="btn-debug-skip" class="btn btn-secondary" style="padding: 0.5rem 2rem; font-size: 1rem; letter-spacing: 1px; border-color: rgba(255,255,255,0.2); color: var(--text-muted);">
-                    <i data-lucide="fast-forward" style="width: 16px; height: 16px; margin-right: 8px; vertical-align: middle;"></i> SKIP SIM
-                </button>
             </div>
             
             <!-- GOAL ANIMATION OVERLAY -->
@@ -1628,14 +1697,37 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     const logEl = document.getElementById('event-log');
     const goalAnim = document.getElementById('goal-animation');
     const goalTeamName = document.getElementById('goal-team-name');
-    const btnFinish = document.getElementById('btn-finish-match');
+    const btnControl = document.getElementById('btn-match-control');
     const btnSkip = document.getElementById('btn-debug-skip');
     
     let isSkipped = false;
+    let isPaused = false;
+    let isFinished = false;
     
     btnSkip.addEventListener('click', () => {
         isSkipped = true;
+        isPaused = false; // Force unpause if they click skip
         btnSkip.style.display = 'none';
+    });
+    
+    btnControl.addEventListener('click', () => {
+        if (isFinished) {
+            currentMatch.status = 'completed';
+            gameState.matchIndex++;
+            // TODO: Update Standings and calendar here in the future
+            switchView('dashboard');
+            return;
+        }
+        
+        isPaused = !isPaused;
+        if (isPaused) {
+            btnControl.style.background = 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)';
+            btnControl.innerHTML = '<i data-lucide="play"></i> PLAY';
+        } else {
+            btnControl.style.background = 'linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)';
+            btnControl.innerHTML = '<i data-lucide="pause"></i> PAUSE';
+        }
+        if (window.lucide) window.lucide.createIcons();
     });
     
     function logEvent(text, color = '#cbd5e1') {
@@ -1653,9 +1745,22 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     let currentPeriod = 1;
     let currentSecond = 1200; // 20:00
     
+    // Initial wait before match actually starts
+    for (let i = 0; i < 25; i++) { // 2.5 seconds total wait
+        if (isSkipped) break;
+        while (isPaused && !isSkipped) {
+            await wait(100);
+        }
+        await wait(100);
+    }
+    
     // Process event by event
     for (let event of timeline) {
         if (isSkipped) break; // If skipped, jump out of visual playback
+        
+        while (isPaused && !isSkipped) {
+            await wait(100);
+        }
         
         let eventTotalSeconds = event.minute * 60 + event.second;
         
@@ -1732,17 +1837,46 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     homeScoreEl.innerText = currentMatch.homeScore;
     awayScoreEl.innerText = currentMatch.awayScore;
     btnSkip.style.display = "none";
-    btnFinish.style.display = "block";
+    
+    isFinished = true;
+    btnControl.style.background = 'linear-gradient(180deg, #10b981 0%, #059669 100%)';
+    btnControl.innerHTML = '<i data-lucide="step-forward"></i> CONTINUE';
+    if (window.lucide) window.lucide.createIcons();
     
     logEvent(`--- MATCH FINISHED ---`);
     logEvent(`Final Score: ${isHome ? myTeam.name : oppTeam.name} ${currentMatch.homeScore} - ${!isHome ? myTeam.name : oppTeam.name} ${currentMatch.awayScore}`);
     
-    btnFinish.onclick = () => {
-        currentMatch.status = 'completed';
-        gameState.matchIndex++;
-        // TODO: Update Standings and calendar here in the future
-        switchView('dashboard');
-    };
+    // Economy Injection
+    let myScore = isHome ? currentMatch.homeScore : currentMatch.awayScore;
+    let oppScore = !isHome ? currentMatch.homeScore : currentMatch.awayScore;
+    
+    let baseReward = Math.floor(Math.random() * (45 - 30 + 1)) + 30; // 30 to 45 base (Average Win ~ 66 coins)
+    let finalReward = 0;
+    let rewardType = '';
+    
+    if (myScore > oppScore) {
+        finalReward = Math.floor(baseReward * 1.75);
+        rewardType = 'WIN';
+    } else if (myScore < oppScore) {
+        // Check if the game went to OT (period > 3)
+        let wentToOT = timeline.some(e => e.period > 3);
+        if (wentToOT) {
+            finalReward = Math.floor(baseReward * 1.5);
+            rewardType = 'OT LOSS';
+        } else {
+            finalReward = baseReward;
+            rewardType = 'LOSS';
+        }
+    } else {
+        // Fallback for ties if engine doesn't break them yet
+        finalReward = Math.floor(baseReward * 1.25);
+        rewardType = 'TIE';
+    }
+    
+    gameState.coins = (gameState.coins || 0) + finalReward;
+    if (window.saveGameState) window.saveGameState();
+    
+    logEvent(`Match Reward: +${finalReward} 🪙 (${rewardType})`, '#fbbf24');
 }
 
 function openBackConfirmationModal() {
@@ -2441,3 +2575,28 @@ function openEmptyPoolModal() {
         document.getElementById('empty-pool-modal').remove();
     });
 }
+
+function openIncompleteMatchModal() {
+    const modalHTML = `
+        <div id="incomplete-match-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #ef4444; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(239, 68, 68, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="shield-alert" style="color: #ef4444; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Incomplete Roster</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot start a match! Your roster is missing players. Ensure all <strong style="color: #fff;">20 positions</strong> are filled on the ice before the puck drops.</p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button class="btn btn-primary" id="btn-ok-incomplete" style="background-color: #ef4444; border-color: #ef4444; color: #fff; width: 100%;">Fix Roster</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-ok-incomplete').addEventListener('click', () => {
+        document.getElementById('incomplete-match-modal').remove();
+        switchView('roster');
+    });
+}
+
