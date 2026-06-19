@@ -636,6 +636,45 @@ function renderLeagueLeaders() {
 }
 
 // --- ROSTER ENGINE ---
+function getPlayerModifiers(player) {
+    if (!player || !player.location || player.location === 'bench' || player.location === 'sell' || player.location === 'collection') {
+        return 0; // No buffs/debuffs outside active roster
+    }
+    
+    let buff = 0;
+    
+    // 1. Position Check (+15% or -25%)
+    let expectedPos = player.location.split('_')[2];
+    if (expectedPos === 'Starter' || expectedPos === 'Backup') expectedPos = 'G';
+    
+    if (player.position === expectedPos) {
+        buff += 0.15;
+    } else {
+        buff -= 0.25;
+    }
+    
+    // 2. Real Team Synergy (+20%)
+    if (player.originalTeamId === gameState.teamId) {
+        buff += 0.20;
+    }
+    
+    // 3. Line Chemistry (+15%)
+    // Check if any other player on the same line has the same originalTeamId
+    const linePrefix = player.location.split('_').slice(0, 2).join('_');
+    const teammatesOnLine = gameState.players.filter(p => 
+        p.id !== player.id && 
+        p.location && 
+        p.location.startsWith(linePrefix)
+    );
+    
+    const hasChemistry = teammatesOnLine.some(t => t.originalTeamId === player.originalTeamId);
+    if (hasChemistry) {
+        buff += 0.15;
+    }
+    
+    return buff; // Total multiplier (e.g., +0.15, -0.10, +0.50)
+}
+
 function getPlayerCardHTML(player) {
     if (!player) return '';
     const posColors = {
@@ -651,6 +690,18 @@ function getPlayerCardHTML(player) {
     else if (player.tier === 'silver') tierColorHex = '#94a3b8';
     else if (player.tier === 'bronze') tierColorHex = '#b45309';
 
+    // Modifiers Math
+    const mod = getPlayerModifiers(player);
+    const finalOVR = Math.round(player.overall * (1 + mod));
+    let ovrDisplay = `${finalOVR}`;
+    let triangle = '';
+    
+    if (mod > 0) {
+        triangle = `<span style="color: #10b981; font-size: 0.8rem; margin-right: 0.2rem;" title="Buffed (+${Math.round(mod*100)}%)">▲</span>`;
+    } else if (mod < 0) {
+        triangle = `<span style="color: #ef4444; font-size: 0.8rem; margin-right: 0.2rem;" title="Debuffed (${Math.round(mod*100)}%)">▼</span>`;
+    }
+
     return `
         <div class="player-card" draggable="true" data-player-id="${player.id}" onclick="openPlayerCardModal('${player.id}')"
              style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
@@ -659,7 +710,10 @@ function getPlayerCardHTML(player) {
                 ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 18px; object-fit: contain;">` : ''}
                 <span style="font-weight: 500; color: var(--text-color); font-size: 0.95rem;">${player.name}</span>
             </div>
-            <span style="font-family: 'Blockletter', sans-serif; color: ${tierColorHex}; font-size: 1.2rem;">${player.overall}</span>
+            <div style="display: flex; align-items: center;">
+                ${triangle}
+                <span style="font-family: 'Blockletter', sans-serif; color: ${tierColorHex}; font-size: 1.2rem;">${ovrDisplay}</span>
+            </div>
         </div>
     `;
 }
@@ -686,6 +740,17 @@ window.openPlayerCardModal = function(playerId) {
     };
     const posFullName = fullPositions[player.position] || player.position;
 
+    // Modifiers Math
+    const mod = getPlayerModifiers(player);
+    const finalOVR = Math.round(player.overall * (1 + mod));
+    let modString = '';
+    
+    if (mod > 0) {
+        modString = `<span style="color: #10b981; font-family: 'Roboto', sans-serif; font-size: 0.85rem; font-weight: bold; margin: 2px 0;">+${Math.round(mod*100)}%</span>`;
+    } else if (mod < 0) {
+        modString = `<span style="color: #ef4444; font-family: 'Roboto', sans-serif; font-size: 0.85rem; font-weight: bold; margin: 2px 0;">${Math.round(mod*100)}%</span>`;
+    }
+
     const modalHTML = `
         <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
             <div class="player-premium-card" style="position: relative; width: 340px; border-radius: 16px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 2px solid ${tierColor}; overflow: hidden; padding-bottom: 1.5rem; text-align: center; cursor: default;" onclick="event.stopPropagation()">
@@ -695,7 +760,8 @@ window.openPlayerCardModal = function(playerId) {
                 
                 <!-- OVERALL BADGE -->
                 <div style="position: absolute; top: 1rem; left: 1rem; z-index: 2; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${player.overall}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${finalOVR}</span>
+                    ${modString}
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; opacity: 0.9;">OVR</span>
                 </div>
                 

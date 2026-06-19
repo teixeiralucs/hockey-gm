@@ -88,6 +88,7 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 ## [Alpha 0.1.3] - OHL Global Database (RF03)
 
 ### 1. Global Scraper (CHL API)
+
 - **O que é**: Script em Python (`scripts/scrape_all_teams.py`) desenhado para se conectar à API da HockeyTech/CHL e extrair os plantéis reais das franquias.
 - **Como funciona**: O script foca no `season_id=83` (Temporada 2024-2025). Faz o loop sobre os 20 times da liga, extraindo e processando metadados de jogadores em tempo real (calculando a idade baseada em data de nascimento).
 - **Dados Extraídos**:
@@ -98,25 +99,30 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 - **Storage**: O script gera o arquivo centralizado `data/rosters.json` (aprox. 730 jogadores reais).
 
 ### 2. Refatoração da Engine Principal (Init Game)
+
 - **Processamento Assíncrono**: As funções `initNewGame` e `handleTeamSelection` foram refatoradas para arquitetura `async/await`. O jogo pausa a UI até que o banco `rosters.json` seja carregado.
 - **Roster Inteligente**: O gerador de jogadores aleatórios ("J. Smith") foi permanentemente removido. O jogo pesquisa o arquivo JSON e constrói a Roster completa do usuário usando as Lendas reais da OHL.
 - **Inteligência da CPU**: Ao criar um save, não apenas o Roster do usuário, mas os elencos das outras 19 franquias (controladas pela máquina) também são montados na memória em estado `cpu_bench`, preparando o campo para partidas reais.
 
 ### 3. Ajustes no League Leaders
+
 - **Lógica de Fallback Vazio**: Com a remoção dos dummy data gerados aleatoriamente, as tabelas de líderes implementam tratamento para Arrays vazios, exibindo a mensagem: "No stats available yet. Play matches to see leaders." nas categorias de PTS, G, A e SV%.
 
 ## [Alpha 0.1.4] - OHL Ultimate Draft & Premium Cards (RF05/RF06)
 
 ### 1. Stats Reais e True Overalls
+
 - **Nova lógica do Scraper**: O Scraper agora coleta ativamente estatísticas oficiais da API CHL (Temporada 83) para Top Scorers e Goalies, preenchendo Gols, Assistências, Pontos, Vitórias e Porcentagem de Defesa (SV%).
-- **Balanceamento do Overall (RF06)**: As pontuações geram um Rating de Overall perfeitamente escalonado de 12 a 23, simulando os valores fiéis de ligas de base (juniores). 
+- **Balanceamento do Overall (RF06)**: As pontuações geram um Rating de Overall perfeitamente escalonado de 12 a 23, simulando os valores fiéis de ligas de base (juniores).
 - **Sistema de Tiers Visual**: O banco de dados classifica e armazena os Tiers (Gold, Silver e Bronze) baseados puramente no mérito numérico do novo Overall.
 
 ### 2. Sorteio de 20 Jogadores (Random Draft - RF03)
+
 - **Quebra do Roster Fixo**: O jogo abandona o fornecimento da Roster original da franquia selecionada. A engine embaralha os 730+ jogadores da OHL em um pool gigante e transfere exatamente 20 jogadores aleatórios, de diversos times e em diferentes quantidades posicionais, gerando um "Pack" inicial completamente randômico. As demais franquias controladas pela CPU mantém seus elencos originais intactos.
 - **Roster Dinâmico**: A interface fina de arraste (`.player-card`) passa a exibir a logomarca da franquia original de onde o jogador foi sorteado.
 
 ### 3. Player Cards Premium Interativos (RF05)
+
 - **Modal Glassmorphism**: Desenvolvido um modal escuro e estético ativado através do clique nativo no `.player-card`.
 - **Anatomia do Card**:
   - Máscara vetorial no topo tingida de acordo com a Posição do jogador no gelo.
@@ -125,31 +131,48 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
   - Stats dinâmicos com ícones para PTS/G/A (Forwards e Defensors) e WINS/SV% (Goalies), assim como metadados geográficos e faixa etária (`age`).
 
 ## Iteração Alpha 0.1.5 (Atual)
+
 ### 1. Refinamento de UI e UX
+
 - **Correção Visual de Logos**: O script JavaScript responsável pela manipulação de URLs e IDs das logos foi corrigido. Substituído o escape inválido `\s` por espaço literal no Regex, permitindo renderização perfeita dos escudos nas cartas.
 - **Transição de SVG para PNG**: Implementado fallback e priorização global para ícones `.png` devido a vetores encápsulados (base64) corrompidos na fonte original, melhorando a clareza da UI no Roster e nos Cards de Franquia.
-- **Roster Slot Consistente**: Adicionado `min-height: 48px` nas zonas de *drop* vazias do Roster no gelo, abolindo "saltos" visuais durante o Drag and Drop.
+- **Roster Slot Consistente**: Adicionado `min-height: 48px` nas zonas de _drop_ vazias do Roster no gelo, abolindo "saltos" visuais durante o Drag and Drop.
 
 ### 2. Otimização do Bench
+
 - **Cabeçalhos Interativos (Sortáveis)**: Implementada uma barra de atributos flutuante no topo da Pool de Reservas (`P`, `T`, `NAME`, `OVR`), copiando o mesmo comportamento dinâmico e flexível da tabela de Standings.
 
 ### 3. Bypass Anti-Bugs na Base de Dados Oficial
+
 - **Fuga do Person ID**: Escrita uma lógica inteligente para bypassar IDs incorretos fornecidos pela HockeyTech/CHL (Ex: o caso "Mason Roy com foto de Matthew Schaefer"). A engine frontal ignora o metadado `person_id` maculado do JSON e força a chamada HTTP extraindo matematicamente o `player_id` puro encapsulado no nó de identificação interna. Resolvendo assim de forma limpa o problema das fotos duplicadas/inválidas sem necessidade de web scraping adicional.
 
 ### Hotfix v0.1.5.1 (UI State & Routing)
+
 - **Degradê Nativo**: Injeção da cor principal e secundária da OHL diretamente no seletor de franquia, utilizando as cores designadas no sistema de cores base (`#047ac4` e `#aaaaaa`).
-- **Botão Voltar Dinâmico**: Restaurado o botão *Back to Leagues* no topo da tela de seleção de franquia.
-- **Vazamento de CSS Controlado**: Corrigido um bug onde o *Leave Game* limpava as variáveis dinâmicas mas mantinha a injeção em linha de `background`, causando poluição da tela preta/azul estelar na seleção de Ligas.
+- **Botão Voltar Dinâmico**: Restaurado o botão _Back to Leagues_ no topo da tela de seleção de franquia.
+- **Vazamento de CSS Controlado**: Corrigido um bug onde o _Leave Game_ limpava as variáveis dinâmicas mas mantinha a injeção em linha de `background`, causando poluição da tela preta/azul estelar na seleção de Ligas.
 
 ### Iteração Alpha 0.1.6 (Atributos Avançados)
-- **Engine Estatística**: Foi implementado um script Python gerador de sub-atributos baseado em orçamentos paramétricos de multiplicadores (Ratios). Cada jogador recebeu uma fração exata de seu rating nos pilares de `Skating, Creativity, Shooting, Defense`, divididos com uma variância randômica justa de `45%-55%` para suas 8 *skills* diretas (Speed, Agility, Vision, Intelligence, Power, Accuracy, Contact, Positioning).
-- **Player Card Analytics**: O Modal Premium das cartas foi refatorado. Onde antes existia o bloco *"Game Stats Will Appear Here"*, agora há uma tabela rica 2x2 com Barras de Progresso de neón dinâmicas refletindo as 4 habilidades Macro, e a contagem explícita de suas 8 Sub-habilidades. Goleiros usam a aba estendida com os mesmos atributos genéricos como abstrações de técnica no Gelo.
+
+- **Engine Estatística**: Foi implementado um script Python gerador de sub-atributos baseado em orçamentos paramétricos de multiplicadores (Ratios). Cada jogador recebeu uma fração exata de seu rating nos pilares de `Skating, Creativity, Shooting, Defense`, divididos com uma variância randômica justa de `45%-55%` para suas 8 _skills_ diretas (Speed, Agility, Vision, Intelligence, Power, Accuracy, Contact, Positioning).
+- **Player Card Analytics**: O Modal Premium das cartas foi refatorado. Onde antes existia o bloco _"Game Stats Will Appear Here"_, agora há uma tabela rica 2x2 com Barras de Progresso de neón dinâmicas refletindo as 4 habilidades Macro, e a contagem explícita de suas 8 Sub-habilidades. Goleiros usam a aba estendida com os mesmos atributos genéricos como abstrações de técnica no Gelo.
 
 ### Iteração Alpha 0.1.7 (Standings e Playoffs Bracket)
+
 - **Estrutura de Classificação**: Atualizado `data/teams.js` adicionando suporte às 4 divisões oficiais da OHL (East, Central, Midwest, West). O motor de estados `gameState.standings` foi aprimorado injetando as estatísticas vitais do hóquei: GF, GA e Tracking de Streak.
 - **Standings UI**: Extraímos a tabela compacta do Dashboard e arquitetamos uma nova página robusta acessível via barra lateral. A temporada regular exibe uma Mega-Tabela subdividida por Divisão, renderizando marcações visuais com os Seeds indicando quem vai aos playoffs (`xy`, `x`).
 - **Bracket Simulator (Mock)**: Desenhamos via CSS Flexbox a chave clássica de chaves esportivas de Playoffs norte-americanos. Implementamos um botão provisório ("Simulate Playoff Debug") que Randomiza todos os atributos necessários simulando 68 partidas para preencher a UI visual de Standings e rodar as chaves de campeão (J. Ross Robertson Cup).
 
-### Iteração Alpha 0.1.7.5 (Standings Clinching Logic)
+### Iteração Alpha 0.1.8 (Standings Clinching Logic)
+
 - **Magic Numbers Engine**: Criado o motor de cálculo lógico `updateClinchStatuses()` baseado em "Max Points Possíveis". Ele processa todos os adversários de uma equipe para determinar se um oponente ainda consegue, matematicamente, alcançá-la.
 - **Integração Visual**: Letras `x` (Playoffs), `y` (Divisão) e `z` (Temporada Regular) agora são renderizadas de forma programática baseadas no algoritmo, sendo independentes apenas de ranqueamento posicional estático. A função `simulatePlayoffDebug` foi atualizada para rodar o cálculo ao forçar o término da temporada de 68 jogos.
+- **UI Estática e Sem Hover**: Remoção da classe que atrelava a tela de classificação às propriedades do dashboard principal, anulando animações e brilhos indesejados e mantendo as tabelas como painéis analíticos fixos.
+- **Edge Cases Estatísticos**: Correção do tracking do estado de Streaks. Quando um time possui 0 jogos (início de temporada) o contador não imprime mais "None0", renderizando apenas o caractere '-' nativo.
+- **Árvore de Playoffs com Linhas**: Implementado todo o sistema de classes lógicas e pseudo-elementos em CSS (`::after`, `::before`) responsáveis por traçar programaticamente as famosas "linhas conectoras" de galhos entre as rodadas das chaves Oito-Avos até a Grande Final. Corrigidos também os cortes horizontais garantindo o scroll adequado de chaves extensas.
+
+### Iteração Alpha 0.1.9 (RF09 - Buffs e Modificadores)
+- **Engine de Modificadores OVR**: Desenvolvida a função `getPlayerModifiers()` que varre o roster e calcula incrementos aditivos no Overall base dos jogadores.
+- **Regras Matemáticas de Bônus**: Os jogadores recebem `+15%` de OVR se colocados em suas posições de origem no gelo, `-25%` caso arrastados para posições erradas, `+20%` se pertencerem na vida real à franquia controlada pelo jogador (Time do Coração), e `+15%` de bônus de Química de Linha caso compartilhem a mesma linha de gelo com outro ex-companheiro de time real. O buff máximo possível salta para generosos `+50%`.
+- **UI de Impacto Analítico**: Renderização dinâmica nas minicartas do Roster de setas geométricas `▲` (Verde Neon) ou `▼` (Vermelho Alerta) dependendo do estado do modificador final do jogador. No interior do Modal Premium, o multiplicador final é exibido matematicamente puro (Ex: `+35%`) entremeando o novo valor astronômico de OVR e a estampa "OVR".
+- **Reatividade Nativa**: Toda transação de "Drag and Drop" recalcula o quadro de modificadores da linha inteira simultaneamente e instantaneamente.
