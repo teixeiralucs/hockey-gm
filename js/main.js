@@ -134,8 +134,13 @@ async function initNewGame(teamIdOverride = null) {
             w: 0,
             l: 0,
             otl: 0,
-            pts: 0
+            pts: 0,
+            gf: 0,
+            ga: 0,
+            streak: { type: 'None', count: 0 },
+            clinch: ''
         })),
+        playoffs: null, // Será preenchido com a árvore quando a temporada regular acabar
         nextMatch: {
             homeId: isHome ? targetTeam.id : randomOpponent.id,
             awayId: isHome ? randomOpponent.id : targetTeam.id
@@ -264,6 +269,9 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-roster">
                         <i data-lucide="users" style="margin-right: 8px; width: 20px; height: 20px;"></i> Roster
                     </button>
+                    <button class="nav-btn" id="nav-standings">
+                        <i data-lucide="bar-chart-2" style="margin-right: 8px; width: 20px; height: 20px;"></i> Standings
+                    </button>
                     <button class="nav-btn" id="nav-calendar">
                         <i data-lucide="calendar" style="margin-right: 8px; width: 20px; height: 20px;"></i> Calendar
                     </button>
@@ -296,6 +304,7 @@ function initHomeScreen() {
     // Bind Sidebar Navigation
     document.getElementById('nav-dashboard').addEventListener('click', () => switchView('dashboard'));
     document.getElementById('nav-roster').addEventListener('click', () => switchView('roster'));
+    document.getElementById('nav-standings').addEventListener('click', () => switchView('standings'));
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     
@@ -315,7 +324,7 @@ function switchView(viewName) {
     // Update Sidebar Brand based on view
     const sidebarBrand = document.querySelector('.sidebar-brand');
     if (sidebarBrand && gameState) {
-        if (viewName === 'roster') {
+        if (viewName === 'roster' || viewName === 'standings') {
             const teamInfo = currentTeam;
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             sidebarBrand.innerHTML = `
@@ -346,6 +355,8 @@ function switchView(viewName) {
         renderDashboard(mainContent);
     } else if (viewName === 'roster') {
         renderRoster(mainContent);
+    } else if (viewName === 'standings') {
+        renderStandingsPage(mainContent);
     } else if (viewName === 'calendar') {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Calendar</h1><p>Season schedule coming soon.</p>`;
     } else if (viewName === 'collection') {
@@ -1063,3 +1074,379 @@ function openBackConfirmationModal() {
         initLeagueSelection();
     });
 }
+
+let standingsCurrentTab = 'regular'; // 'regular' or 'playoffs'
+let standingsGroupBy = 'division'; // 'division', 'conference', 'league'
+
+function updateClinchStatuses() {
+    if (!gameState || !gameState.standings) return;
+    
+    gameState.standings.forEach(s => {
+        s.pts = (s.w * 2) + s.otl;
+        s.maxPts = s.pts + ((68 - s.gp) * 2);
+        const info = ohlTeams.find(t => t.id === s.teamId);
+        s.conf = info.conference;
+        s.div = info.division;
+        s.clinch = ''; // reset
+    });
+
+    const checkClinch = (team, opponents, targetRank) => {
+        const sortedOpp = [...opponents].sort((a,b) => {
+            if (a.maxPts !== b.maxPts) return b.maxPts - a.maxPts;
+            const maxW_a = a.w + (68 - a.gp);
+            const maxW_b = b.w + (68 - b.gp);
+            return maxW_b - maxW_a;
+        });
+        const targetOpp = sortedOpp[targetRank];
+        if (!targetOpp) return true;
+        
+        if (team.pts > targetOpp.maxPts) return true;
+        if (team.pts === targetOpp.maxPts) {
+            const targetMaxW = targetOpp.w + (68 - targetOpp.gp);
+            if (team.w > targetMaxW) return true;
+        }
+        return false;
+    };
+
+    gameState.standings.forEach(s => {
+        const othersLeague = gameState.standings.filter(o => o.teamId !== s.teamId);
+        const othersConf = othersLeague.filter(o => o.conf === s.conf);
+        const othersDiv = othersLeague.filter(o => o.div === s.div);
+
+        if (checkClinch(s, othersLeague, 0)) {
+            s.clinch = 'z';
+        } else if (checkClinch(s, othersDiv, 0)) {
+            s.clinch = 'y';
+        } else if (checkClinch(s, othersConf, 7)) { // 8th team in opponents = 9th best overall
+            s.clinch = 'x';
+        }
+    });
+}
+
+function renderStandingsPage(container) {
+    if (!gameState) return;
+
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 class="title-main" style="margin: 0; text-align: left;">League Standings</h1>
+            
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button class="btn btn-sm" style="background-color: #8b5cf6; border: none; color: white;" onclick="simulatePlayoffDebug()">🎲 Simulate Playoff Debug</button>
+                
+                <div class="tabs" style="display: flex; background-color: rgba(0,0,0,0.2); padding: 0.2rem; border-radius: 8px;">
+                    <button class="tab-btn ${standingsCurrentTab === 'regular' ? 'active' : ''}" onclick="switchStandingsTab('regular')" style="padding: 0.5rem 1.5rem; border-radius: 6px; border: none; background: ${standingsCurrentTab === 'regular' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer;">Regular Season</button>
+                    <button class="tab-btn ${standingsCurrentTab === 'playoffs' ? 'active' : ''}" onclick="switchStandingsTab('playoffs')" style="padding: 0.5rem 1.5rem; border-radius: 6px; border: none; background: ${standingsCurrentTab === 'playoffs' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer;">Playoffs</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="standings-page-content">
+            <!-- Content will be injected here -->
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    const content = document.getElementById('standings-page-content');
+    if (standingsCurrentTab === 'regular') {
+        renderFullStandings(content);
+    } else {
+        renderPlayoffBracket(content);
+    }
+}
+
+window.switchStandingsTab = function(tab) {
+    standingsCurrentTab = tab;
+    switchView('standings');
+};
+
+window.switchStandingsGroup = function(group) {
+    standingsGroupBy = group;
+    const content = document.getElementById('standings-page-content');
+    if (content) {
+        renderFullStandings(content);
+    }
+};
+
+function renderFullStandings(container) {
+    let html = `
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
+            <div class="tabs" style="display: flex; background-color: rgba(0,0,0,0.2); padding: 0.2rem; border-radius: 8px;">
+                <button class="tab-btn ${standingsGroupBy === 'division' ? 'active' : ''}" onclick="switchStandingsGroup('division')" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: ${standingsGroupBy === 'division' ? 'rgba(255,255,255,0.1)' : 'transparent'}; color: white; cursor: pointer;">By Division</button>
+                <button class="tab-btn ${standingsGroupBy === 'conference' ? 'active' : ''}" onclick="switchStandingsGroup('conference')" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: ${standingsGroupBy === 'conference' ? 'rgba(255,255,255,0.1)' : 'transparent'}; color: white; cursor: pointer;">By Conference</button>
+                <button class="tab-btn ${standingsGroupBy === 'league' ? 'active' : ''}" onclick="switchStandingsGroup('league')" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: ${standingsGroupBy === 'league' ? 'rgba(255,255,255,0.1)' : 'transparent'}; color: white; cursor: pointer;">Entire League</button>
+            </div>
+        </div>
+    `;
+    
+    // Preparar dados
+    let allStandings = [...gameState.standings];
+    allStandings.forEach(s => {
+        s.pts = (s.w * 2) + s.otl;
+        const info = ohlTeams.find(t => t.id === s.teamId);
+        s.teamName = info.name;
+        s.conference = info.conference;
+        s.division = info.division;
+    });
+    
+    // Ordenação global base (Pts -> W -> OTL)
+    allStandings.sort((a, b) => {
+        if (a.pts !== b.pts) return b.pts - a.pts;
+        if (a.w !== b.w) return b.w - a.w;
+        if (a.otl !== b.otl) return b.otl - a.otl;
+        return 0;
+    });
+
+    const renderTable = (standingsArr) => {
+        let tableHtml = `
+            <div class="standings-card" style="background-color: color-mix(in srgb, var(--team-secondary, var(--primary-color)) 60%, var(--card-bg)); border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); margin-bottom: 2rem; padding: 1.5rem; overflow: hidden; position: relative;">
+                <table class="standings-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">#</th>
+                            <th style="text-align: left;">Team</th>
+                            <th style="text-align: center;">GP</th>
+                            <th style="text-align: center;">W</th>
+                            <th style="text-align: center;">L</th>
+                            <th style="text-align: center;">OTL</th>
+                            <th style="text-align: center; color: #fff;">PTS</th>
+                            <th style="text-align: center;">GF</th>
+                            <th style="text-align: center;">GA</th>
+                            <th style="text-align: center;">Streak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        standingsArr.forEach((s, idx) => {
+            const teamInfo = ohlTeams.find(t => t.id === s.teamId);
+            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            const isActiveTeam = teamInfo.id === currentTeam.id;
+            
+            // Seed Calculation based on Clinch algorithm
+            const seedLabel = s.clinch ? s.clinch : '';
+            
+            // Reutilizando a classe team-row-active e td team-cell do Dashboard para consistência
+            tableHtml += `
+                <tr class="${isActiveTeam ? 'team-row-active' : ''}">
+                    <td>${idx + 1}</td>
+                    <td class="team-cell">
+                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 32px; height: 32px;">
+                        <span>${seedLabel ? `<span style="color: var(--text-muted); font-family: monospace; font-size: 0.8rem; margin-right: 0.3rem;">${seedLabel} -</span>` : ''}${teamInfo.name.toUpperCase()}</span>
+                    </td>
+                    <td>${s.gp}</td>
+                    <td>${s.w}</td>
+                    <td>${s.l}</td>
+                    <td>${s.otl}</td>
+                    <td><strong>${s.pts}</strong></td>
+                    <td style="color: rgba(255,255,255,0.7);">${s.gf}</td>
+                    <td style="color: rgba(255,255,255,0.7);">${s.ga}</td>
+                    <td style="color: rgba(255,255,255,0.7);">${(!s.streak || s.streak.count === 0 || s.streak.type === 'None') ? '-' : s.streak.type + s.streak.count}</td>
+                </tr>
+            `;
+        });
+        
+        tableHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        return tableHtml;
+    };
+
+    if (standingsGroupBy === 'division') {
+        const conferences = [
+            { name: 'Eastern Conference', key: 'East', divisions: ['East', 'Central'] },
+            { name: 'Western Conference', key: 'West', divisions: ['Midwest', 'West'] }
+        ];
+        conferences.forEach(conf => {
+            html += `<h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">${conf.name}</h2>`;
+            conf.divisions.forEach(div => {
+                html += `<h3 style="font-family: 'Roboto', sans-serif; font-size: 1.2rem; color: var(--text-color); margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 0.5rem; border-left: 3px solid var(--team-primary);">${div} Division</h3>`;
+                html += renderTable(allStandings.filter(s => s.division === div));
+            });
+        });
+    } else if (standingsGroupBy === 'conference') {
+        const conferences = ['East', 'West'];
+        conferences.forEach(conf => {
+            html += `<h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">${conf}ern Conference</h2>`;
+            html += renderTable(allStandings.filter(s => s.conference === conf));
+        });
+    } else if (standingsGroupBy === 'league') {
+        html += `<h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Overall League</h2>`;
+        html += renderTable(allStandings);
+    }
+    
+    container.innerHTML = html;
+}
+
+function renderPlayoffBracket(container) {
+    if (!gameState.playoffs) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; color: var(--text-muted);">
+                <i data-lucide="git-merge" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0;">Playoffs Not Started</h3>
+                <p>The playoff bracket will be generated at the end of the regular season.</p>
+                <p>Use the "Simulate Playoff Debug" button above to test the view.</p>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+    
+    // We will render a flexbox bracket tree
+    const p = gameState.playoffs;
+    
+    function renderMatchup(m) {
+        if (!m) return `<div class="matchup-card empty">TBD</div>`;
+        const t1 = ohlTeams.find(t => t.id === m.team1) || { name: 'TBD' };
+        const t2 = ohlTeams.find(t => t.id === m.team2) || { name: 'TBD' };
+        
+        const logo1 = t1.name !== 'TBD' ? t1.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        const logo2 = t2.name !== 'TBD' ? t2.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        
+        const winner = m.winner;
+        
+        return `
+            <div class="matchup-card">
+                <div class="matchup-row ${winner === t1.id ? 'winner' : ''}">
+                    <div class="matchup-team">
+                        ${t1.name !== 'TBD' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${t1.name.split(' ').pop()}</span>
+                    </div>
+                    <span>${m.score1 !== undefined ? m.score1 : '-'}</span>
+                </div>
+                <div class="matchup-row ${winner === t2.id ? 'winner' : ''}">
+                    <div class="matchup-team">
+                        ${t2.name !== 'TBD' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${t2.name.split(' ').pop()}</span>
+                    </div>
+                    <span>${m.score2 !== undefined ? m.score2 : '-'}</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    let html = `
+        <div class="bracket-wrapper">
+            <div class="bracket-container">
+                <!-- WEST -->
+                <div class="bracket-col col-left-1">
+                    ${renderMatchup(p.r1.w1)}
+                    ${renderMatchup(p.r1.w8)}
+                    ${renderMatchup(p.r1.w2)}
+                    ${renderMatchup(p.r1.w7)}
+                </div>
+                <div class="bracket-col col-left-2">
+                    ${renderMatchup(p.r2.w1)}
+                    ${renderMatchup(p.r2.w2)}
+                </div>
+                <div class="bracket-col col-left-3">
+                    ${renderMatchup(p.r3.w)}
+                </div>
+                
+                <!-- FINAL -->
+                <div class="bracket-col" style="padding: 0 1rem;">
+                    <h3 style="text-align: center; font-family: 'Blockletter', sans-serif; margin-bottom: 1rem; color: #fcc82d; text-shadow: 0 0 10px rgba(252, 200, 45, 0.4);">J. Ross Robertson Cup</h3>
+                    ${renderMatchup(p.final)}
+                </div>
+                
+                <!-- EAST -->
+                <div class="bracket-col col-right-3">
+                    ${renderMatchup(p.r3.e)}
+                </div>
+                <div class="bracket-col col-right-2">
+                    ${renderMatchup(p.r2.e1)}
+                    ${renderMatchup(p.r2.e2)}
+                </div>
+                <div class="bracket-col col-right-1">
+                    ${renderMatchup(p.r1.e1)}
+                    ${renderMatchup(p.r1.e8)}
+                    ${renderMatchup(p.r1.e2)}
+                    ${renderMatchup(p.r1.e7)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+window.simulatePlayoffDebug = function() {
+    // 1. Randomize regular season standings
+    gameState.standings.forEach(s => {
+        s.w = Math.floor(Math.random() * 40) + 10;
+        s.l = Math.floor(Math.random() * 30) + 5;
+        s.otl = 68 - s.w - s.l;
+        if (s.otl < 0) { s.l += s.otl; s.otl = 0; }
+        s.gf = Math.floor(Math.random() * 150) + 150;
+        s.ga = Math.floor(Math.random() * 150) + 150;
+        s.pts = (s.w * 2) + s.otl;
+        s.gp = 68; // Forçando a rodada 68
+        
+        const streaks = ['W', 'L'];
+        s.streak = { type: streaks[Math.floor(Math.random()*2)], count: Math.floor(Math.random()*5)+1 };
+    });
+    
+    // Atualiza matematicamente os Seeds baseados nos 68 jogos
+    updateClinchStatuses();
+    
+    // Sort
+    let all = [...gameState.standings];
+    all.forEach(s => {
+        s.conf = ohlTeams.find(t=>t.id===s.teamId).conference;
+    });
+    
+    all.sort((a,b) => b.pts - a.pts);
+    
+    let east = all.filter(s => s.conf === 'East');
+    let west = all.filter(s => s.conf === 'West');
+    
+    // Top 8 advance
+    let eSeeds = east.slice(0, 8).map(s => s.teamId);
+    let wSeeds = west.slice(0, 8).map(s => s.teamId);
+    
+    function simSeries(t1, t2) {
+        let w1 = 0, w2 = 0;
+        while(w1 < 4 && w2 < 4) {
+            Math.random() > 0.5 ? w1++ : w2++;
+        }
+        return {
+            team1: t1, team2: t2,
+            score1: w1, score2: w2,
+            winner: w1 === 4 ? t1 : t2
+        };
+    }
+    
+    let p = { r1: {}, r2: {}, r3: {}, final: {} };
+    
+    // Round 1
+    p.r1.e1 = simSeries(eSeeds[0], eSeeds[7]);
+    p.r1.e8 = simSeries(eSeeds[3], eSeeds[4]);
+    p.r1.e2 = simSeries(eSeeds[1], eSeeds[6]);
+    p.r1.e7 = simSeries(eSeeds[2], eSeeds[5]);
+    
+    p.r1.w1 = simSeries(wSeeds[0], wSeeds[7]);
+    p.r1.w8 = simSeries(wSeeds[3], wSeeds[4]);
+    p.r1.w2 = simSeries(wSeeds[1], wSeeds[6]);
+    p.r1.w7 = simSeries(wSeeds[2], wSeeds[5]);
+    
+    // Round 2
+    p.r2.e1 = simSeries(p.r1.e1.winner, p.r1.e8.winner);
+    p.r2.e2 = simSeries(p.r1.e2.winner, p.r1.e7.winner);
+    
+    p.r2.w1 = simSeries(p.r1.w1.winner, p.r1.w8.winner);
+    p.r2.w2 = simSeries(p.r1.w2.winner, p.r1.w7.winner);
+    
+    // Round 3
+    p.r3.e = simSeries(p.r2.e1.winner, p.r2.e2.winner);
+    p.r3.w = simSeries(p.r2.w1.winner, p.r2.w2.winner);
+    
+    // Final
+    p.final = simSeries(p.r3.e.winner, p.r3.w.winner);
+    
+    gameState.playoffs = p;
+    
+    switchStandingsTab('playoffs');
+};
+

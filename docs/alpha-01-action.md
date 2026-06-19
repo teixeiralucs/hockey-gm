@@ -144,3 +144,12 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 ### Iteração Alpha 0.1.6 (Atributos Avançados)
 - **Engine Estatística**: Foi implementado um script Python gerador de sub-atributos baseado em orçamentos paramétricos de multiplicadores (Ratios). Cada jogador recebeu uma fração exata de seu rating nos pilares de `Skating, Creativity, Shooting, Defense`, divididos com uma variância randômica justa de `45%-55%` para suas 8 *skills* diretas (Speed, Agility, Vision, Intelligence, Power, Accuracy, Contact, Positioning).
 - **Player Card Analytics**: O Modal Premium das cartas foi refatorado. Onde antes existia o bloco *"Game Stats Will Appear Here"*, agora há uma tabela rica 2x2 com Barras de Progresso de neón dinâmicas refletindo as 4 habilidades Macro, e a contagem explícita de suas 8 Sub-habilidades. Goleiros usam a aba estendida com os mesmos atributos genéricos como abstrações de técnica no Gelo.
+
+### Iteração Alpha 0.1.7 (Standings e Playoffs Bracket)
+- **Estrutura de Classificação**: Atualizado `data/teams.js` adicionando suporte às 4 divisões oficiais da OHL (East, Central, Midwest, West). O motor de estados `gameState.standings` foi aprimorado injetando as estatísticas vitais do hóquei: GF, GA e Tracking de Streak.
+- **Standings UI**: Extraímos a tabela compacta do Dashboard e arquitetamos uma nova página robusta acessível via barra lateral. A temporada regular exibe uma Mega-Tabela subdividida por Divisão, renderizando marcações visuais com os Seeds indicando quem vai aos playoffs (`xy`, `x`).
+- **Bracket Simulator (Mock)**: Desenhamos via CSS Flexbox a chave clássica de chaves esportivas de Playoffs norte-americanos. Implementamos um botão provisório ("Simulate Playoff Debug") que Randomiza todos os atributos necessários simulando 68 partidas para preencher a UI visual de Standings e rodar as chaves de campeão (J. Ross Robertson Cup).
+
+### Iteração Alpha 0.1.7.5 (Standings Clinching Logic)
+- **Magic Numbers Engine**: Criado o motor de cálculo lógico `updateClinchStatuses()` baseado em "Max Points Possíveis". Ele processa todos os adversários de uma equipe para determinar se um oponente ainda consegue, matematicamente, alcançá-la.
+- **Integração Visual**: Letras `x` (Playoffs), `y` (Divisão) e `z` (Temporada Regular) agora são renderizadas de forma programática baseadas no algoritmo, sendo independentes apenas de ranqueamento posicional estático. A função `simulatePlayoffDebug` foi atualizada para rodar o cálculo ao forçar o término da temporada de 68 jogos.

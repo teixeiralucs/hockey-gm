@@ -322,18 +322,10 @@ h1, h2, h3, h4, h5, h6 {
     transition: color 0.2s ease;
 }
 
-.standings-table th:hover {
-    color: var(--text-color);
-}
-
 .standings-table td {
     padding: 0.8rem 0.5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     font-size: 1rem;
-}
-
-.standings-table tr:hover td {
-    background-color: rgba(255,255,255,0.02);
 }
 
 .standings-table tr.team-row-active td {
@@ -552,3 +544,116 @@ h1, h2, h3, h4, h5, h6 {
     background-color: rgba(59, 130, 246, 0.2);
 }
 
+
+/* Playoff Bracket Styles */
+.bracket-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    padding: 2rem 0;
+}
+
+.bracket-container {
+    display: flex;
+    justify-content: center;
+    min-width: 1000px;
+    margin: 0 auto;
+}
+
+.bracket-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    position: relative;
+    width: 200px;
+}
+
+.matchup-card {
+    background: color-mix(in srgb, var(--surface-color) 80%, black);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 180px;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 2;
+    margin: 0.5rem auto;
+}
+
+.matchup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.matchup-row:last-child {
+    border-bottom: none;
+}
+
+.matchup-row.winner {
+    background: rgba(255,255,255,0.1);
+    font-weight: bold;
+    color: #fff;
+}
+
+.matchup-team {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Connecting Lines - Left Side (West) */
+.col-left-1 .matchup-card::after,
+.col-left-2 .matchup-card::after {
+    content: '';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    width: 20px;
+    border-top: 2px solid rgba(255,255,255,0.2);
+}
+
+.col-left-2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 25%;
+    bottom: 25%;
+    border-left: 2px solid rgba(255,255,255,0.2);
+    width: 10px;
+}
+.col-left-3::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 2px;
+    width: 10px;
+    background-color: rgba(255,255,255,0.2);
+}
+
+/* Connecting Lines - Right Side (East) */
+.col-right-1 .matchup-card::before,
+.col-right-2 .matchup-card::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    width: 20px;
+    border-top: 2px solid rgba(255,255,255,0.2);
+}
+
+.col-right-2::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 25%;
+    bottom: 25%;
+    border-right: 2px solid rgba(255,255,255,0.2);
+    width: 10px;
+}
