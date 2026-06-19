@@ -143,6 +143,7 @@ async function initNewGame(teamIdOverride = null) {
         players: [],
         coins: 200,
         collection: [],
+        notifications: [],
         totalMatches: 68,
         record: {
             wins: 0,
@@ -283,8 +284,12 @@ function initHomeScreen() {
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
             <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #151e32);">
-                <div class="sidebar-brand">
+                <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center; padding-right: 1.5rem;">
                     <h2>HOCKEY GM</h2>
+                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease;">
+                        <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
+                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
+                    </div>
                 </div>
                 
                 <nav class="sidebar-nav">
@@ -374,17 +379,29 @@ function switchView(viewName) {
             const teamInfo = currentTeam;
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             sidebarBrand.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                    <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
-                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--text-color);">${teamInfo.name}</div>
-                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--text-muted);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</div>
+                <div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-start; padding-right: 0.5rem;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
+                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--text-color);">${teamInfo.name}</div>
+                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--text-muted);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</div>
+                    </div>
+                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease; margin-top: 0.5rem;">
+                        <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
+                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
+                    </div>
                 </div>
             `;
         } else {
             sidebarBrand.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                    <i data-lucide="shield" style="width: 50px; height: 50px; color: var(--text-color); filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
-                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; letter-spacing: 2px; line-height: 1;">HOCKEY<br>GM</div>
+                <div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-start; padding-right: 0.5rem;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
+                        <i data-lucide="shield" style="width: 50px; height: 50px; color: var(--text-color); filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
+                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; letter-spacing: 2px; line-height: 1; text-align: center;">HOCKEY<br>GM</div>
+                    </div>
+                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease; margin-top: 0.5rem;">
+                        <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
+                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
+                    </div>
                 </div>
             `;
         }
@@ -393,6 +410,11 @@ function switchView(viewName) {
     // Create icons immediately after injecting HTML
     if (window.lucide) {
         window.lucide.createIcons();
+    }
+    
+    // Restore notification badge state
+    if (window.updateNotificationBadge) {
+        window.updateNotificationBadge();
     }
     
     const mainContent = document.getElementById('main-content');
@@ -408,7 +430,7 @@ function switchView(viewName) {
     } else if (viewName === 'calendar') {
         mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Calendar</h1><p>Season schedule coming soon.</p>`;
     } else if (viewName === 'collection') {
-        mainContent.innerHTML = `<h1 class="title-main" style="text-align:left; margin-top:0;">Collection</h1><p>Your archived player cards.</p>`;
+        renderCollectionPage(mainContent);
     } else if (viewName === 'match') {
         renderMatchPage(mainContent);
     }
@@ -501,7 +523,11 @@ function renderDashboard(container) {
                     </div>
                     
                     <button class="btn" onclick="startMatchSimulation()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                        <i data-lucide="play" style="width: 24px; height: 24px;"></i> PLAY MATCH
+                        <i data-lucide="play-circle" style="width: 24px; height: 24px;"></i> PLAY MATCH
+                    </button>
+                    
+                    <button class="btn" onclick="advanceSeason()" style="width: 100%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; letter-spacing: 1px; background: transparent; color: #a1a1aa; transition: all 0.2s ease; margin-top: -0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="fast-forward" style="width: 16px; height: 16px;"></i> Debug: End Season (+1 Age)
                     </button>
                 </div>
                 
@@ -787,7 +813,10 @@ function getPlayerCardHTML(player) {
 }
 
 window.openPlayerCardModal = function(playerId) {
-    const player = gameState.players.find(p => p.id === playerId);
+    let player = gameState.players.find(p => p.id === playerId);
+    if (!player && gameState.collection) {
+        player = gameState.collection.find(p => p.id === playerId);
+    }
     if (!player) return;
     
     const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
@@ -1409,7 +1438,7 @@ window.buyPack = function(packType) {
     const activePlayerIds = new Set(userPlayers.map(p => p.id));
     const collectionPlayerIds = new Set((gameState.collection || []).map(p => p.id));
     
-    let availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id) && !collectionPlayerIds.has(p.id));
+    let availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id));
     
     if (config.filters) {
         availablePlayers = availablePlayers.filter(p => config.filters.includes(p.position));
@@ -2466,8 +2495,12 @@ window.loadGame = async function() {
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
             <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #151e32);">
-                <div class="sidebar-brand">
+                <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center; padding-right: 1.5rem;">
                     <h2>HOCKEY GM</h2>
+                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease;">
+                        <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
+                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
+                    </div>
                 </div>
                 
                 <nav class="sidebar-nav">
@@ -2614,6 +2647,8 @@ function openCollectionConfirmationModal(player) {
             gameState.players.splice(indexToRemove, 1);
             indexToRemove = gameState.players.findIndex(p => p.id === player.id);
         }
+        
+        checkTeamCompletion(player.originalTeamId);
         
         // Update UI explicitly AFTER drag lifecycle is over
         const mainContent = document.getElementById('main-content');
@@ -3089,3 +3124,336 @@ function openIncompleteMatchModal() {
     });
 }
 
+// --- NOTIFICATION & AGE MANAGEMENT ---
+
+window.advanceSeason = function() {
+    if (!gameState) return;
+    
+    let retiredPlayers = [];
+    
+    // Increase age of all active players
+    gameState.players.forEach(p => {
+        p.age = (p.age || 18) + 1;
+        if (p.teamId === currentTeam.id && p.age >= 22) {
+            retiredPlayers.push(p);
+        }
+    });
+    
+    // Process retirements (move to collection)
+    retiredPlayers.forEach(p => {
+        // Find index and remove from active roster
+        let index = gameState.players.findIndex(active => active.id === p.id);
+        if (index > -1) {
+            gameState.players.splice(index, 1);
+        }
+        
+        // Add to collection
+        gameState.collection = gameState.collection || [];
+        // Ensure no duplicates in collection just in case
+        if (!gameState.collection.find(c => c.id === p.id)) {
+            gameState.collection.push(p);
+        }
+        
+        checkTeamCompletion(p.originalTeamId);
+    });
+    
+    // Also increase age of players already in collection (just for lore)
+    if (gameState.collection) {
+        gameState.collection.forEach(p => {
+            if (!retiredPlayers.find(r => r.id === p.id)) {
+                p.age = (p.age || 22) + 1;
+            }
+        });
+    }
+    
+    // Create Notification
+    if (retiredPlayers.length > 0) {
+        gameState.notifications = gameState.notifications || [];
+        const namesStr = retiredPlayers.map(p => p.name).join(', ');
+        const message = `The season has ended. ${retiredPlayers.length} player(s) reached the age limit of 22 and were moved to your Collection: ${namesStr}. You can draft them again from the Shop with their original age!`;
+        
+        gameState.notifications.push({
+            id: Date.now().toString(),
+            message: message,
+            read: false,
+            date: new Date().toLocaleDateString()
+        });
+        
+        updateNotificationBadge();
+    } else {
+        alert("Season advanced! Everyone is 1 year older, but no players reached the age of 22.");
+    }
+    
+    // Refresh current view if necessary
+    const currentActiveBtn = document.querySelector('.sidebar-nav .nav-btn.active');
+    if (currentActiveBtn) {
+        const viewId = currentActiveBtn.id.replace('nav-', '');
+        switchView(viewId);
+    }
+}
+
+window.updateNotificationBadge = function() {
+    if (!gameState) return;
+    gameState.notifications = gameState.notifications || [];
+    const unreadCount = gameState.notifications.filter(n => !n.read).length;
+    const badge = document.getElementById('notification-badge');
+    if (badge) {
+        if (unreadCount > 0) {
+            badge.style.display = 'block';
+            badge.innerText = unreadCount;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+window.openNotificationsModal = function() {
+    if (!gameState) return;
+    gameState.notifications = gameState.notifications || [];
+    
+    let notificationsHtml = '';
+    if (gameState.notifications.length === 0) {
+        notificationsHtml = `<p style="color: var(--text-muted); text-align: center; padding: 2rem 0;">You have no new notifications.</p>`;
+    } else {
+        notificationsHtml = gameState.notifications.slice().reverse().map(n => `
+            <div style="background: rgba(255,255,255,0.05); border-left: 4px solid ${n.read ? '#a1a1aa' : '#3b82f6'}; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">${n.date}</div>
+                <div style="color: var(--text-color); line-height: 1.5;">${n.message}</div>
+            </div>
+        `).join('');
+    }
+    
+    // Mark all as read
+    gameState.notifications.forEach(n => n.read = true);
+    updateNotificationBadge();
+
+    const modalHTML = `
+        <div id="notifications-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #3b82f6; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                    <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2rem; letter-spacing: 1px; margin: 0;">Notifications</h2>
+                    <button id="btn-close-notifications" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s ease;">
+                        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                    </button>
+                </div>
+                
+                <div style="overflow-y: auto; flex: 1; padding-right: 0.5rem;">
+                    ${notificationsHtml}
+                </div>
+                
+                ${gameState.notifications.length > 0 ? `
+                <div class="modal-actions" style="margin-top: 1.5rem; justify-content: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-clear-notifications" style="width: 100%;">Clear All</button>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-close-notifications').addEventListener('click', () => {
+        document.getElementById('notifications-modal').remove();
+    });
+    
+    const btnClear = document.getElementById('btn-clear-notifications');
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            gameState.notifications = [];
+            document.getElementById('notifications-modal').remove();
+            updateNotificationBadge();
+        });
+    }
+}
+
+// Global click delegation for dynamically injected elements
+document.addEventListener('click', (e) => {
+    const bellBtn = e.target.closest('#notification-bell');
+    if (bellBtn) {
+        openNotificationsModal();
+    }
+});
+
+// --- COLLECTION (STICKER ALBUM) ---
+
+window.renderCollectionPage = function(container) {
+    if (!gameState) return;
+    
+    // Header
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 class="title-main" style="text-align:left; margin: 0; font-size: 2.5rem;">Sticker Album</h1>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 1.1rem;">Complete a full OHL team to unlock special FPHL (C-Tier) rewards.</p>
+            </div>
+            <div style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--team-primary);">
+                TOTAL COLLECTED: <span style="color: #fff;">${gameState.collection ? gameState.collection.length : 0}</span>
+            </div>
+        </div>
+    `;
+
+    // Team Selector (Horizontal Scroll)
+    html += `
+        <div style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    `;
+    
+    ohlTeams.forEach(team => {
+        const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+        const isSelected = window.currentCollectionTeamId === team.id || (!window.currentCollectionTeamId && team.id === currentTeam.id);
+        if (isSelected) window.currentCollectionTeamId = team.id;
+        
+        const isCompleted = (gameState.completedCollections || []).includes(team.id);
+        const borderStyle = isSelected ? `2px solid ${team.colors.primary}` : '2px solid transparent';
+        const bgStyle = isSelected ? `rgba(255,255,255,0.1)` : 'transparent';
+        const opacityStyle = isSelected ? '1' : '0.6';
+        
+        html += `
+            <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
+                 style="position: relative; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
+                 onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
+                <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name}" style="width: 60px; height: 60px; object-fit: contain;">
+                ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 16px; height: 16px;"></i></div>` : ''}
+            </div>
+        `;
+    });
+    html += `</div>`;
+
+    // Players Grid
+    const selectedTeam = ohlTeams.find(t => t.id === window.currentCollectionTeamId);
+    const originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === selectedTeam.id);
+    
+    let collectedCount = 0;
+    const cardsHtml = originalRoster.map(player => {
+        const isCollected = (gameState.collection || []).some(c => c.id === player.id);
+        if (isCollected) collectedCount++;
+        
+        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+        const posColor = posColors[player.position] || '#94a3b8';
+        
+        const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.3);';
+        const bgGradient = isCollected ? `linear-gradient(180deg, #1e293b 0%, #0f172a 100%)` : '#0f172a';
+        const cursorStyle = isCollected ? 'cursor: pointer;' : 'cursor: default;';
+        const clickHandler = isCollected ? `onclick="openPlayerCardModal('${player.id}')"` : '';
+        
+        return `
+            <div ${clickHandler} style="position: relative; border-radius: 12px; background: ${bgGradient}; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; padding-bottom: 1rem; text-align: center; transition: transform 0.2s; ${filterStyle} ${cursorStyle}" ${isCollected ? 'onmouseover="this.style.transform=\\\'scale(1.05)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'"' : ''}>
+                <div style="background-color: ${posColor}; height: 40px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
+                
+                <div style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff;">
+                    ${Math.round(player.overall)}
+                </div>
+                
+                <div style="position: relative; z-index: 1; margin-top: 1.5rem;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid #334155; background-color: #000;">
+                </div>
+                
+                <div style="position: relative; z-index: 1; margin-top: 0.5rem; padding: 0 0.5rem;">
+                    <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${player.name}</h3>
+                    <p style="color: ${posColor}; font-family: 'Blockletter', sans-serif; font-size: 1rem; margin: 0;">${player.position}</p>
+                </div>
+                
+                ${!isCollected ? `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;">
+                        <i data-lucide="lock" style="width: 40px; height: 40px; color: #fff; opacity: 0.5;"></i>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    html += `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+                ${collectedCount} / ${originalRoster.length} Collected
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem;">
+            ${cardsHtml}
+        </div>
+    `;
+
+    container.innerHTML = html;
+    if (window.lucide) window.lucide.createIcons();
+}
+
+window.checkTeamCompletion = function(teamId) {
+    if (!gameState) return;
+    gameState.completedCollections = gameState.completedCollections || [];
+    if (gameState.completedCollections.includes(teamId)) return; // Already completed
+
+    // Get all original players for this team
+    const originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
+    if (!originalRoster || originalRoster.length === 0) return;
+
+    // Check if user has all of them in collection
+    const hasAll = originalRoster.every(orig => (gameState.collection || []).some(c => c.id === orig.id));
+
+    if (hasAll) {
+        gameState.completedCollections.push(teamId);
+        awardCompletionPacks(teamId);
+    }
+}
+
+window.awardCompletionPacks = function(teamId) {
+    const team = ohlTeams.find(t => t.id === teamId);
+    
+    // Simulate FPHL (C-Tier) rewards using random OHL players buffed to Silver
+    let availablePlayers = window.globalDraftPool.filter(p => {
+        const activePlayerIds = new Set(gameState.players.map(active => active.id));
+        return !activePlayerIds.has(p.id);
+    });
+    
+    let rewardPlayers = [];
+    // Grant 2 players
+    for (let i = 0; i < 2; i++) {
+        if (availablePlayers.length === 0) break;
+        const randomIndex = Math.floor(Math.random() * availablePlayers.length);
+        const selectedData = availablePlayers[randomIndex];
+        availablePlayers.splice(randomIndex, 1);
+        
+        let newPlayer = {
+            id: selectedData.id,
+            name: selectedData.name + " (FPHL)",
+            position: selectedData.position,
+            number: selectedData.number,
+            photo: selectedData.photo,
+            birthplace: selectedData.birthplace,
+            age: selectedData.age,
+            teamId: currentTeam.id,
+            originalTeamId: selectedData.originalTeamId,
+            location: 'bench',
+            tier: 'silver',
+            overall: Math.round(selectedData.overall * 1.5),
+            attributes: JSON.parse(JSON.stringify(selectedData.attributes))
+        };
+        
+        // Multiply sub-attributes
+        Object.values(newPlayer.attributes).forEach(category => {
+            for (let key in category) {
+                if (key !== 'total') category[key] = parseFloat((category[key] * 1.5).toFixed(1));
+            }
+        });
+        
+        gameState.players.push(newPlayer);
+        rewardPlayers.push(newPlayer.id);
+    }
+    
+    // Notification
+    gameState.notifications = gameState.notifications || [];
+    gameState.notifications.push({
+        id: Date.now().toString(),
+        message: `CONGRATULATIONS! You completed the ${team ? team.name : 'Team'} sticker album! You have been awarded 2 FPHL (C-Tier) player cards as a reward!`,
+        read: false,
+        date: new Date().toLocaleDateString()
+    });
+    updateNotificationBadge();
+    
+    // Open Reveal Modal
+    setTimeout(() => {
+        alert(`You completed the ${team ? team.name : 'team'} album! Opening your 2 Special Packs...`);
+        openPackRevealModal(rewardPlayers);
+    }, 500);
+}
