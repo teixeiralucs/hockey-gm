@@ -177,7 +177,21 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 - **UI de Impacto Analítico**: Renderização dinâmica nas minicartas do Roster de setas geométricas `▲` (Verde Neon) ou `▼` (Vermelho Alerta) dependendo do estado do modificador final do jogador. No interior do Modal Premium, o multiplicador final é exibido matematicamente puro (Ex: `+35%`) entremeando o novo valor astronômico de OVR e a estampa "OVR".
 - **Reatividade Nativa**: Toda transação de "Drag and Drop" recalcula o quadro de modificadores da linha inteira simultaneamente e instantaneamente.
 
+### Iteração Alpha 0.1.9.1 (Hotfix de Motor & UI)
+- **Correção da Lógica de Sinergia (Franchise Buff)**: Corrigido o target de propriedade de `gameState.teamId` para `gameState.team.id` na engine de química, destravando com sucesso o multiplicador de +20% para jogadores vinculados à franquia escolhida.
+- **Correção do Infinite Money Glitch e Softlock**: Removida a duplicação inadvertida de jogadores selecionados no draft em times gerenciados pela CPU. O motor de anti-softlock foi aprimorado para contar ativamente apenas os jogadores não-CPU, barrando exclusões sob limite (mín. 20) com aviso dinâmico. Adicionado slice no filtro para limpar completamente os jogadores em cash out.
+- **Fim das Caixas Nativas (Alert/Confirm)**: Substituição radical de todos os eventos síncronos de `window.alert` e `window.confirm` do navegador para Modais Assíncronos Customizados da interface premium (Vender Jogador, Mandar para a Coleção, Falta de Moedas, Limite de Elenco, Draft Esgotado). Essa mudança previne bugs no ciclo de vida nativo do *Drag and Drop* HTML5 e elimina comportamentos de elementos "fantasmas".
+- **Reveal de Pacotes Múltiplos**: Adicionada a função `openPackRevealModal` que abre a animação de sorteio com os 3 cards do pacote injetados num modal Flexbox com microanimações de zoom, melhorando absurdamente o "feel" de *opening* do sistema de gacha.
+- **Sinalização Visual de Tiers**: A tela do Hockey Shop foi reestruturada para suportar Headers de Tier (ex: D-Tier Packs), segmentando as prateleiras de compra. Caso o elenco atinja o limite mínimo, a engine bloqueia transações a menos que o usuário possua ao menos 200 moedas para suprir a vaga comprando um substituto no Shopping.
+- **Sidebar Reativa**: A barra lateral foi reescrita para refletir dinamicamente o time ativo. Fora do Dashboard principal, todas as abas (Roster, Standings, Shop, etc.) exibem orgulhosamente o logo da franquia do usuário e seu record (V-D-OTL) no canto superior esquerdo.
+
 ### Iteração Alpha 0.1.10 (RF10 - Sistema Financeiro e Loja)
 - **Barreira Anti-Softlock**: O sistema de "Drag and Drop" do Roster foi fortificado. As áreas de "Sell" e "Collection" agora validam a contagem mínima de 20 jogadores ativos. Caso o elenco atinja o limite mínimo, a engine bloqueia transações a menos que o usuário possua ao menos 200 moedas para suprir a vaga comprando um substituto no Shopping.
 - **Loja e Economia**: Adicionado roteamento e tela dedicada "Hockey Shop" na sidebar. O jogador acessa seu saldo em tempo real (🪙 Coins).
-- **Draft de Pacotes**: Implementado o pacote "Standard Pack" (Custo 200). A transação sorteia e extrai aleatoriamente um jogador da base de dados global nativa da OHL (`window.globalDraftPool`), o injeta na posição `'bench'` e automaticamente evoca a carta do jogador em tela cheia na interface para celebrar o _pull_.
+- **Prateleira de Pacotes Modulares**: Implementado um motor genérico de draft (`buyPack`) que suporta configurações flexíveis de preço, quantidade de cartas, restrições posicionais e "drop rates" especiais.
+- **Expansão do D-Tier**: Foram criados 5 pacotes iniciais na prateleira da loja:
+  - **Standard Pack (200 🪙)**: 3 jogadores aleatórios.
+  - **Jumbo D-List (600 🪙)**: 6 jogadores aleatórios. Possui **15% de chance** (por carta) de critar num jogador **C-Tier**, elevando suas métricas em 50%, garantindo borda Silver e aplicando a tag " (C-TIER)".
+  - **Forwards Pack (400 🪙)**: 2 Atacantes garantidos (LW, C, RW).
+  - **Defense Pack (400 🪙)**: 2 Defensores garantidos (LD, RD).
+  - **Goalie Pack (400 🪙)**: 2 Goleiros garantidos (G).

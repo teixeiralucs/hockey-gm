@@ -120,7 +120,7 @@ async function initNewGame(teamIdOverride = null) {
         currentDate: date,
         matchIndex: 1,
         players: [],
-        coins: 1000,
+        coins: 200,
         collection: [],
         totalMatches: 68,
         record: {
@@ -185,11 +185,14 @@ async function initNewGame(teamIdOverride = null) {
             const teamRoster = allRosters[team.id];
             if (teamRoster && teamRoster.length > 0) {
                 teamRoster.forEach(p => {
-                    gameState.players.push({
-                        ...p,
-                        teamId: team.id,
-                        location: 'cpu_bench'
-                    });
+                    // Evita adicionar jogadores que já foram draftados pelo usuário
+                    if (!userDraftedPlayers.some(drafted => drafted.id === p.id)) {
+                        gameState.players.push({
+                            ...p,
+                            teamId: team.id,
+                            location: 'cpu_bench'
+                        });
+                    }
                 });
             }
         });
@@ -252,7 +255,7 @@ function initHomeScreen() {
     
     // Configuração inicial de franquia e cores
     gameState.team = currentTeam;
-    gameState.coins = 1000; // Saldo inicial
+    gameState.coins = 200; // Saldo inicial
     gameState.collection = []; // Coleção vazia
     document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
     
@@ -329,7 +332,7 @@ function switchView(viewName) {
     // Update Sidebar Brand based on view
     const sidebarBrand = document.querySelector('.sidebar-brand');
     if (sidebarBrand && gameState) {
-        if (viewName === 'roster' || viewName === 'standings') {
+        if (viewName !== 'dashboard') {
             const teamInfo = currentTeam;
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             sidebarBrand.innerHTML = `
@@ -377,7 +380,7 @@ let standingsSortDesc = true;
 let currentLeaderTab = 'pts';
 
 function updateCoinsDisplay() {
-    const coinsEl = document.getElementById('coins-amount');
+    const coinsEl = document.querySelector('.coins-amount');
     if (coinsEl && gameState) {
         coinsEl.textContent = gameState.coins || 0;
     }
@@ -867,7 +870,82 @@ window.openPlayerCardModal = function(playerId) {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    lucide.createIcons();
+    if (window.lucide) window.lucide.createIcons();
+}
+
+window.openPackRevealModal = function(playerIdsArray) {
+    if (!playerIdsArray || playerIdsArray.length === 0) return;
+    
+    let cardsHTML = '';
+    
+    playerIdsArray.forEach(playerId => {
+        const player = gameState.players.find(p => p.id === playerId);
+        if (!player) return;
+        
+        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+        const posColor = posColors[player.position] || 'var(--team-primary)';
+        
+        let tierColor = '#8b5cf6'; // default bronze fallback
+        if (player.tier === 'gold') { tierColor = '#fbbf24'; }
+        else if (player.tier === 'silver') { tierColor = '#94a3b8'; }
+        else if (player.tier === 'bronze') { tierColor = '#b45309'; }
+
+        const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+        const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+
+        const fullPositions = {
+            'LW': 'Left Wing', 'C': 'Center', 'RW': 'Right Wing',
+            'LD': 'Left Defense', 'RD': 'Right Defense', 'G': 'Goalie'
+        };
+        const posFullName = fullPositions[player.position] || player.position;
+
+        const finalOVR = Math.round(player.overall); // Base overall sem modifiers ainda (tá no banco recem comprado)
+
+        cardsHTML += `
+            <div class="player-premium-card" style="position: relative; width: 300px; height: 420px; border-radius: 16px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 2px solid ${tierColor}; overflow: hidden; padding-bottom: 1.5rem; text-align: center; cursor: default; transform: scale(0.9); transition: transform 0.3s ease; display: flex; flex-direction: column;" onclick="event.stopPropagation()" onmouseenter="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(0.9)'">
+                
+                <!-- TOP HEADER -->
+                <div style="background-color: ${posColor}; height: 80px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
+                
+                <!-- OVERALL BADGE -->
+                <div style="position: absolute; top: 1rem; left: 1rem; z-index: 2; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${finalOVR}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; opacity: 0.9;">OVR</span>
+                </div>
+                
+                <!-- LOGO BADGE -->
+                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="position: absolute; top: 1rem; right: 1rem; z-index: 2; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
+
+                <!-- PHOTO -->
+                <div style="position: relative; z-index: 1; margin-top: 3rem;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 140px; height: 140px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
+                    <div style="position: absolute; bottom: 0; right: 70px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">
+                        #${player.number}
+                    </div>
+                </div>
+                
+                <!-- INFO -->
+                <div style="position: relative; z-index: 1; margin-top: 1rem; padding: 0 1.5rem; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">${player.name}</h2>
+                    <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 0 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
+                </div>
+            </div>
+        `;
+    });
+
+    const modalHTML = `
+        <div id="pack-modal" class="modal-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem; background-color: rgba(0,0,0,0.85);" onclick="this.remove()">
+            <h1 style="font-family: 'Blockletter', sans-serif; font-size: 4rem; color: #fff; margin: 0; text-shadow: 0 0 20px rgba(255,255,255,0.5); letter-spacing: 2px;">PACK OPENED!</h1>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; max-width: 1200px;">
+                ${cardsHTML}
+            </div>
+            <p style="color: var(--text-muted); font-size: 1rem; margin-top: 1rem; opacity: 0.7;">Click anywhere to close</p>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function renderRosterSlot(slotId, label) {
@@ -1079,29 +1157,20 @@ function bindDragAndDropEvents() {
             
             // Handle Drop on Action Zones (Sell / Collection)
             if (targetSlotId === 'sell' || targetSlotId === 'collection') {
-                if (gameState.players.length <= 20 && (gameState.coins || 0) < 200) {
-                    alert("You cannot remove this player! You must keep at least 20 active players or have at least 200 coins to buy a replacement in the Shop.");
+                const userActiveCount = gameState.players.filter(p => p.location && !p.location.startsWith('cpu_')).length;
+                if (userActiveCount <= 20 && (gameState.coins || 0) < 200) {
+                    openRosterErrorModal();
                     return;
                 }
             }
             
             if (targetSlotId === 'sell') {
-                if (confirm(`Sell ${draggedPlayer.name} for ${Math.floor(200 * (draggedPlayer.overall / 100))} coins?`)) {
-                    gameState.coins = (gameState.coins || 0) + Math.floor(200 * (draggedPlayer.overall / 100));
-                    gameState.players = gameState.players.filter(p => p.id !== draggedPlayerId);
-                    updateCoinsDisplay();
-                } else {
-                    return; // Cancelled
-                }
+                openSellConfirmationModal(draggedPlayer);
+                return; // Async flow takes over, prevent synchronous renderRoster
             } 
             else if (targetSlotId === 'collection') {
-                if (confirm(`Send ${draggedPlayer.name} to Collection? He will be removed from your active roster.`)) {
-                    gameState.collection = gameState.collection || [];
-                    gameState.collection.push(draggedPlayer);
-                    gameState.players = gameState.players.filter(p => p.id !== draggedPlayerId);
-                } else {
-                    return; // Cancelled
-                }
+                openCollectionConfirmationModal(draggedPlayer);
+                return; // Async flow takes over, prevent synchronous renderRoster
             } 
             else {
                 // If target is NOT bench, check if it's occupied to perform swap
@@ -1136,22 +1205,67 @@ function renderShopPage(container) {
                 </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+            <div style="margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #94a3b8; margin: 0;">D-TIER PACKS</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem;">
                 
                 <!-- STANDARD PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 2rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -50px; left: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);"></div>
-                    
-                    <i data-lucide="package" style="width: 80px; height: 80px; color: #94a3b8; margin-bottom: 1rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">STANDARD PACK</h2>
-                    <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0 0 2rem 0; line-height: 1.5;">Includes 1 random OHL player.<br>Chance of pulling a Bronze, Silver or Gold tier player.</p>
-                    
-                    <button class="btn" onclick="buyStandardPack()" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.8rem; font-size: 1.2rem; padding: 1rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
-                        <span style="font-size: 1.2rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px;">200</span>
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);"></div>
+                    <i data-lucide="package" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">D-LIST PACK</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 3 random players.</p>
+                    <button class="btn" onclick="buyPack('standard')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">200</span>
                     </button>
                 </div>
-                
+
+                <!-- JUMBO PACK -->
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(148, 163, 184, 0.5); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(148, 163, 184, 0.5) 0%, transparent 70%);"></div>
+                    <i data-lucide="layers" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">JUMBO D-LIST</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">6 players. 15% chance for a C-Tier!</p>
+                    <button class="btn" onclick="buyPack('jumbo')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">600</span>
+                    </button>
+                </div>
+
+                <!-- FORWARDS PACK -->
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, transparent 70%);"></div>
+                    <i data-lucide="swords" style="width: 50px; height: 50px; color: #ef4444; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">FORWARDS PACK</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Forwards.</p>
+                    <button class="btn" onclick="buyPack('forwards')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(239, 68, 68, 0.2);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                    </button>
+                </div>
+
+                <!-- DEFENSE PACK -->
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);"></div>
+                    <i data-lucide="shield-half" style="width: 50px; height: 50px; color: #3b82f6; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">DEFENSE PACK</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Defensemen.</p>
+                    <button class="btn" onclick="buyPack('defense')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                    </button>
+                </div>
+
+                <!-- GOALIE PACK -->
+                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(245, 158, 11, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);"></div>
+                    <i data-lucide="hand-metal" style="width: 50px; height: 50px; color: #f59e0b; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">GOALIE PACK</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Goalies.</p>
+                    <button class="btn" onclick="buyPack('goalies')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(245, 158, 11, 0.2);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                    </button>
+                </div>
+
             </div>
         </div>
     `;
@@ -1161,9 +1275,20 @@ function renderShopPage(container) {
     }
 }
 
-window.buyStandardPack = function() {
-    if ((gameState.coins || 0) < 200) {
-        alert("Not enough coins! You need 200 coins to buy a Standard Pack.");
+window.buyPack = function(packType) {
+    const packConfigs = {
+        'standard': { cost: 200, count: 3, filters: null, cTierChance: 0 },
+        'jumbo':    { cost: 600, count: 6, filters: null, cTierChance: 0.15 },
+        'forwards': { cost: 400, count: 2, filters: ['LW', 'C', 'RW'], cTierChance: 0 },
+        'defense':  { cost: 400, count: 2, filters: ['LD', 'RD'], cTierChance: 0 },
+        'goalies':  { cost: 400, count: 2, filters: ['G'], cTierChance: 0 }
+    };
+    
+    const config = packConfigs[packType];
+    if (!config) return;
+
+    if ((gameState.coins || 0) < config.cost) {
+        openInsufficientCoinsModal(config.cost);
         return;
     }
     
@@ -1171,45 +1296,72 @@ window.buyStandardPack = function() {
     const activePlayerIds = new Set(gameState.players.map(p => p.id));
     const collectionPlayerIds = new Set((gameState.collection || []).map(p => p.id));
     
-    const availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id) && !collectionPlayerIds.has(p.id));
+    let availablePlayers = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id) && !collectionPlayerIds.has(p.id));
     
-    if (availablePlayers.length === 0) {
-        alert("The global player pool is completely empty! You have collected every single player in the OHL!");
+    if (config.filters) {
+        availablePlayers = availablePlayers.filter(p => config.filters.includes(p.position));
+    }
+    
+    if (availablePlayers.length < config.count) {
+        openEmptyPoolModal();
         return;
     }
     
     // Deduct coins
-    gameState.coins -= 200;
+    gameState.coins -= config.cost;
     updateCoinsDisplay();
     
-    // Pick random player
-    const randomIndex = Math.floor(Math.random() * availablePlayers.length);
-    const selectedData = availablePlayers[randomIndex];
-    
-    const newPlayer = {
-        id: selectedData.id,
-        name: selectedData.name,
-        position: selectedData.position,
-        number: selectedData.number,
-        photo: selectedData.photo,
-        birthplace: selectedData.birthplace,
-        age: selectedData.age,
-        overall: selectedData.overall,
-        tier: selectedData.tier,
-        originalTeamId: selectedData.originalTeamId,
-        stats: selectedData.stats,
-        attributes: selectedData.attributes,
-        location: 'bench' // Start on bench
-    };
-    
-    gameState.players.push(newPlayer);
+    // Pick random players
+    let drawnIds = [];
+    for(let i=0; i<config.count; i++) {
+        if(availablePlayers.length === 0) break;
+        const randomIndex = Math.floor(Math.random() * availablePlayers.length);
+        const selectedData = availablePlayers[randomIndex];
+        availablePlayers.splice(randomIndex, 1); // remove from available
+        
+        let newPlayer = {
+            id: selectedData.id,
+            name: selectedData.name,
+            position: selectedData.position,
+            number: selectedData.number,
+            photo: selectedData.photo,
+            birthplace: selectedData.birthplace,
+            age: selectedData.age,
+            overall: selectedData.overall,
+            tier: selectedData.tier,
+            originalTeamId: selectedData.originalTeamId,
+            stats: selectedData.stats,
+            attributes: JSON.parse(JSON.stringify(selectedData.attributes)), // Deep copy attributes
+            location: 'bench' // Start on bench
+        };
+        
+        // Upgrade to C-Tier Logic
+        if (Math.random() < config.cTierChance) {
+            newPlayer.tier = 'silver'; // Silver visual treatment for C-Tier
+            newPlayer.overall = Math.round(newPlayer.overall * 1.5);
+            newPlayer.name = newPlayer.name + " (C-TIER)";
+            
+            Object.values(newPlayer.attributes).forEach(category => {
+                for (let key in category) {
+                    if (key !== 'total') {
+                        category[key] = parseFloat((category[key] * 1.5).toFixed(1));
+                    }
+                }
+            });
+        }
+        
+        gameState.players.push(newPlayer);
+        drawnIds.push(newPlayer.id);
+    }
     
     // Re-render Shop
     const mainContent = document.getElementById('main-content');
     renderShopPage(mainContent);
     
-    // Show Premium Modal to celebrate
-    openPlayerCardModal(newPlayer.id);
+    // Show Premium Modal for all players to celebrate
+    if (drawnIds.length > 0) {
+        openPackRevealModal(drawnIds);
+    }
 };
 
 function openBackConfirmationModal() {
@@ -1239,9 +1391,94 @@ function openBackConfirmationModal() {
         document.body.style.removeProperty('background-color');
         document.body.style.removeProperty('background');
         document.body.style.removeProperty('background-attachment');
-        currentTeam = null;
+        gameState = null; // Reset game state
+        switchView('setup');
+    });
+}
+
+function openSellConfirmationModal(player) {
+    const salePrice = Math.floor(200 * (player.overall / 100));
+    const modalHTML = `
+        <div id="sell-confirm-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #ef4444; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(239, 68, 68, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="coins" style="color: #ef4444; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Sell Player?</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">Are you sure you want to sell <strong style="color: #fff;">${player.name}</strong>? You will receive <strong style="color: #fbbf24;">${salePrice} coins</strong>.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="btn-cancel-sell">Cancel</button>
+                    <button class="btn btn-danger" id="btn-confirm-sell" style="background-color: #ef4444; color: #fff;">Sell Player</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-cancel-sell').addEventListener('click', () => {
+        document.getElementById('sell-confirm-modal').remove();
+    });
+    
+    document.getElementById('btn-confirm-sell').addEventListener('click', () => {
+        document.getElementById('sell-confirm-modal').remove();
         
-        initLeagueSelection();
+        // Execute sale logic
+        gameState.coins = (gameState.coins || 0) + salePrice;
+        
+        let indexToRemove = gameState.players.findIndex(p => p.id === player.id);
+        while (indexToRemove > -1) {
+            gameState.players.splice(indexToRemove, 1);
+            indexToRemove = gameState.players.findIndex(p => p.id === player.id);
+        }
+        
+        updateCoinsDisplay();
+        
+        // Update UI explicitly AFTER drag lifecycle is over
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) renderRoster(mainContent);
+    });
+}
+
+function openCollectionConfirmationModal(player) {
+    const modalHTML = `
+        <div id="collection-confirm-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #3b82f6; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(59, 130, 246, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="archive" style="color: #3b82f6; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Send to Collection?</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">Send <strong style="color: #fff;">${player.name}</strong> to your Collection? He will be permanently removed from your active roster.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="btn-cancel-collection">Cancel</button>
+                    <button class="btn btn-danger" id="btn-confirm-collection" style="background-color: #3b82f6; color: #fff;">Send to Collection</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-cancel-collection').addEventListener('click', () => {
+        document.getElementById('collection-confirm-modal').remove();
+    });
+    
+    document.getElementById('btn-confirm-collection').addEventListener('click', () => {
+        document.getElementById('collection-confirm-modal').remove();
+        
+        // Execute collection logic
+        gameState.collection = gameState.collection || [];
+        gameState.collection.push(player);
+        
+        let indexToRemove = gameState.players.findIndex(p => p.id === player.id);
+        while (indexToRemove > -1) {
+            gameState.players.splice(indexToRemove, 1);
+            indexToRemove = gameState.players.findIndex(p => p.id === player.id);
+        }
+        
+        // Update UI explicitly AFTER drag lifecycle is over
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) renderRoster(mainContent);
     });
 }
 
@@ -1620,3 +1857,71 @@ window.simulatePlayoffDebug = function() {
     switchStandingsTab('playoffs');
 };
 
+function openRosterErrorModal() {
+    const modalHTML = `
+        <div id="roster-error-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #f59e0b; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(245, 158, 11, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="alert-triangle" style="color: #f59e0b; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Minimum Roster Limit</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot remove this player! You must keep at least <strong style="color: #fff;">20 active players</strong> in your franchise, or have at least <strong style="color: #fbbf24;">200 coins</strong> to buy a replacement.</p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button class="btn btn-primary" id="btn-ok-roster" style="background-color: #f59e0b; border-color: #f59e0b; color: #fff; width: 100%;">Understood</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-ok-roster').addEventListener('click', () => {
+        document.getElementById('roster-error-modal').remove();
+    });
+}
+
+function openInsufficientCoinsModal(cost) {
+    const modalHTML = `
+        <div id="coins-error-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #ef4444; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(239, 68, 68, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="x-circle" style="color: #ef4444; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Insufficient Funds</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You don't have enough coins! You need <strong style="color: #fbbf24;">${cost} coins</strong> to purchase this pack.</p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button class="btn btn-danger" id="btn-ok-coins" style="background-color: #ef4444; border-color: #ef4444; color: #fff; width: 100%;">Understood</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-ok-coins').addEventListener('click', () => {
+        document.getElementById('coins-error-modal').remove();
+    });
+}
+
+function openEmptyPoolModal() {
+    const modalHTML = `
+        <div id="empty-pool-modal" class="modal-overlay">
+            <div class="modal-content" style="border-color: #8b5cf6; max-width: 450px;">
+                <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background-color: rgba(139, 92, 246, 0.1); border-radius: 50%; margin: 0 auto 1.5rem auto;">
+                    <i data-lucide="award" style="color: #8b5cf6; width: 32px; height: 32px;"></i>
+                </div>
+                <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Pool Exhausted!</h2>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">Unbelievable! You have successfully scouted and collected <strong style="color: #fff;">every single player</strong> available in the OHL.</p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button class="btn btn-primary" id="btn-ok-pool" style="background-color: #8b5cf6; border-color: #8b5cf6; color: #fff; width: 100%;">Wow!</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+    
+    document.getElementById('btn-ok-pool').addEventListener('click', () => {
+        document.getElementById('empty-pool-modal').remove();
+    });
+}
