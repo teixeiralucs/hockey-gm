@@ -1,5 +1,6 @@
 import { ohlTeams } from '../data/teams.js';
 import { generateSeasonSchedule } from './schedule.js';
+import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Hockey GM initialized');
@@ -311,6 +312,9 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-shop">
                         <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
                     </button>
+                    <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
+                        <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
+                    </button>
                 </nav>
                 
                 <div class="sidebar-bottom">
@@ -341,6 +345,7 @@ function initHomeScreen() {
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
+    document.getElementById('nav-playoffs').addEventListener('click', () => switchView('playoffs'));
     
     // Bind Save Game
     const btnSaveGame = document.getElementById('btn-save-game');
@@ -369,6 +374,16 @@ function switchView(viewName) {
             sidebar.style.display = 'none';
         } else {
             sidebar.style.display = 'flex';
+        }
+    }
+    
+    // Toggle Playoffs Nav visibility
+    const playoffsBtn = document.getElementById('nav-playoffs');
+    if (playoffsBtn) {
+        if (gameState.playoffs) {
+            playoffsBtn.style.display = 'flex';
+        } else {
+            playoffsBtn.style.display = 'none';
         }
     }
     
@@ -419,6 +434,8 @@ function switchView(viewName) {
         renderStandingsPage(mainContent);
     } else if (viewName === 'shop') {
         renderShopPage(mainContent);
+    } else if (viewName === 'playoffs') {
+        renderPlayoffsPage(mainContent);
     } else if (viewName === 'calendar') {
         renderCalendarPage(mainContent);
     } else if (viewName === 'collection') {
@@ -508,7 +525,7 @@ function renderDashboard(container) {
         if (daysToSimulate > 0) {
             buttonHTML = `
                 <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, #475569 0%, #334155 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <i data-lucide="skip-forward" style="width: 24px; height: 24px;"></i> SIMULATE ${daysToSimulate} DAY(S)
+                    <i data-lucide="skip-forward" style="width: 24px; height: 24px;"></i> SIMULATE TO NEXT GAME
                 </button>
             `;
         } else {
@@ -519,10 +536,29 @@ function renderDashboard(container) {
             `;
         }
 
+        let matchTitle = 'Next Match';
+        if (nextMatchObj.isPlayoff && gameState.playoffs) {
+            let series = gameState.playoffs.series.find(s => s.id === nextMatchObj.seriesId);
+            if (series) {
+                let highTeamStr = series.highSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.highSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'HIGH');
+                let lowTeamStr = series.lowSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.lowSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'LOW');
+                
+                let scoreText = '';
+                if (series.highSeedWins === series.lowSeedWins) {
+                    scoreText = `Series Tied ${series.highSeedWins}-${series.lowSeedWins}`;
+                } else if (series.highSeedWins > series.lowSeedWins) {
+                    scoreText = `${highTeamStr} leads ${series.highSeedWins}-${series.lowSeedWins}`;
+                } else {
+                    scoreText = `${lowTeamStr} leads ${series.lowSeedWins}-${series.highSeedWins}`;
+                }
+                matchTitle = `Game ${nextMatchObj.gameNum} <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 0.5rem;">(${scoreText})</span>`;
+            }
+        }
+
         matchHTML = `
             <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--text-color);">Next Match</h3>
+                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--text-color);">${matchTitle}</h3>
                     <span style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.2rem;">${nextMatchDateStr}</span>
                 </div>
                 
@@ -530,7 +566,10 @@ function renderDashboard(container) {
                     <!-- Away Team -->
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
                         <img src="assets/logos/ohl/${awayLogo}.png" alt="Away Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center; margin-bottom: -0.3rem;">${awayTeam.name}</span>
+                        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: -0.3rem;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${awayTeam.name.split(' ').slice(0, -1).join(' ')}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${awayTeam.name.split(' ').slice(-1).join(' ')}</span>
+                        </div>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${awayOvr}</span>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
                     </div>
@@ -540,7 +579,10 @@ function renderDashboard(container) {
                     <!-- Home Team -->
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
                         <img src="assets/logos/ohl/${homeLogo}.png" alt="Home Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; text-align: center; margin-bottom: -0.3rem;">${homeTeam.name}</span>
+                        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: -0.3rem;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${homeTeam.name.split(' ').slice(0, -1).join(' ')}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${homeTeam.name.split(' ').slice(-1).join(' ')}</span>
+                        </div>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${homeOvr}</span>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
                     </div>
@@ -554,16 +596,40 @@ function renderDashboard(container) {
             </div>
         `;
     } else {
-        matchHTML = `
-            <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
-                <i data-lucide="calendar-check" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">SEASON COMPLETED</h3>
-                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">You have completed all 68 games of the regular season.</p>
-                <button class="btn" onclick="advanceSeason()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
-                    ENTER OFFSEASON
-                </button>
-            </div>
-        `;
+        if (!gameState.playoffs) {
+            matchHTML = `
+                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
+                    <i data-lucide="calendar-check" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">REGULAR SEASON COMPLETED</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">You have completed all 68 games of the regular season.</p>
+                    <button class="btn" onclick="startPlayoffs()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                        START PLAYOFFS
+                    </button>
+                </div>
+            `;
+        } else if (gameState.playoffs.isActive) {
+            matchHTML = `
+                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
+                    <i data-lucide="trophy" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
+                    <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                        SIMULATE WEEK
+                    </button>
+                </div>
+            `;
+        } else {
+            matchHTML = `
+                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
+                    <i data-lucide="award" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">CHAMPION CROWNED</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">The playoffs have concluded.</p>
+                    <button class="btn" onclick="advanceSeason()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                        ENTER OFFSEASON
+                    </button>
+                </div>
+            `;
+        }
     }
     
     // Calcula quantos jogos faltam
@@ -617,6 +683,12 @@ function renderDashboard(container) {
     }
 }
 
+window.startPlayoffs = function() {
+    generatePlayoffs(gameState);
+    if (window.saveGame) window.saveGame();
+    switchView('dashboard');
+};
+
 window.simulateBackgroundDays = function(daysCount) {
     if (!gameState.schedule) return;
     
@@ -633,6 +705,11 @@ window.simulateBackgroundDays = function(daysCount) {
             }
         });
         
+        // After all matches for the day are played, check if a playoff round should advance
+        if (gameState.playoffs && gameState.playoffs.isActive) {
+            advancePlayoffRound(gameState);
+        }
+        
         // Advance Date
         let nextDay = gameState.schedule[gameState.currentScheduleDayIndex + 1];
         if (nextDay) {
@@ -647,7 +724,15 @@ window.simulateBackgroundDays = function(daysCount) {
     
     if (daysSimulated > 0) {
         if (window.saveGame) window.saveGame();
-        renderDashboard(document.getElementById('app').querySelector('.container'));
+        
+        let container = document.getElementById('main-content');
+        if (container) {
+            // Check if we are still on the dashboard before re-rendering
+            const activeNav = document.querySelector('.sidebar-nav .nav-btn.active');
+            if (activeNav && activeNav.id === 'nav-dashboard') {
+                renderDashboard(container);
+            }
+        }
     }
 }
 
@@ -673,7 +758,11 @@ function simulateBackgroundMatch(match) {
     match.awayScore = awayScore;
     match.isOT = isOT;
     
-    updateStandings(match.homeId, match.awayId, homeScore, awayScore, isOT);
+    if (match.isPlayoff) {
+        processPlayoffMatchResult(match, gameState);
+    } else {
+        updateStandings(match.homeId, match.awayId, homeScore, awayScore, isOT);
+    }
     
     // Simulate player stats for CPU teams
     if (window.globalDraftPool) {
@@ -1072,7 +1161,7 @@ window.openPlayerCardModal = function(playerId) {
 
                 <!-- PHOTO -->
                 <div style="position: relative; z-index: 1; margin-top: 2rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://chl.ca/ohl/wp-content/plugins/fanreach-hockey/build/images/default-player.3e81c737.png'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
                     <div style="position: absolute; bottom: 0; right: 80px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">
                         #${player.number}
                     </div>
@@ -2605,14 +2694,19 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
             rewardType = 'LOSS';
         }
     } else {
-        // Fallback for ties if engine doesn't break them yet
-        finalReward = Math.floor(baseReward * 1.25);
-        rewardType = 'TIE';
+        // Fallback for ties if they somehow happen
+        finalReward = Math.floor(baseReward * 1.5);
+        rewardType = 'OT LOSS';
     }
     
     let isOT = timeline.some(e => e.period > 3);
     currentMatch.played = true;
-    updateStandings(currentMatch.homeId, currentMatch.awayId, currentMatch.homeScore, currentMatch.awayScore, isOT);
+    
+    if (currentMatch.isPlayoff) {
+        processPlayoffMatchResult(currentMatch, gameState);
+    } else {
+        updateStandings(currentMatch.homeId, currentMatch.awayId, currentMatch.homeScore, currentMatch.awayScore, isOT);
+    }
     
     gameState.matchIndex++; // Advance index just for display purposes
     
@@ -2625,6 +2719,11 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
                     simulateBackgroundMatch(m);
                 }
             });
+        }
+        
+        // After all matches for the day are played, check if a playoff round should advance
+        if (gameState.playoffs && gameState.playoffs.isActive) {
+            advancePlayoffRound(gameState);
         }
         
         let nextDay = gameState.schedule[gameState.currentScheduleDayIndex + 1];
@@ -2767,6 +2866,9 @@ window.loadGame = async function() {
                     <button class="nav-btn" id="nav-shop">
                         <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
                     </button>
+                    <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
+                        <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
+                    </button>
                 </nav>
                 
                 <div class="sidebar-bottom">
@@ -2796,7 +2898,7 @@ window.loadGame = async function() {
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
-    
+    document.getElementById('nav-playoffs').addEventListener('click', () => switchView('playoffs'));
     // Bind Save Game
     const btnSaveGame = document.getElementById('btn-save-game');
     if (btnSaveGame) {
@@ -3019,7 +3121,7 @@ function renderCalendarPage(container) {
     Object.keys(months).forEach(monthKey => {
         leftPaneHtml += `
             <div>
-                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--team-primary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">${monthKey}</h3>
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--team-secondary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">${monthKey}</h3>
                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; text-align: center; margin-bottom: 0.5rem;">
                     <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold;">Sun</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold;">Mon</div>
@@ -3100,7 +3202,7 @@ function renderCalendarPage(container) {
         
         rightPaneHtml += `
             <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
-                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: var(--text-color);">${displayDate.toLocaleDateString(undefined, {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</h2>
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: var(--text-color);">${displayDate.toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</h2>
                 <span style="color: var(--text-muted); font-size: 1rem; font-family: monospace;">${selectedDayObj.matches.length} MATCHES</span>
             </div>
         `;
@@ -3114,13 +3216,13 @@ function renderCalendarPage(container) {
             let statusHtml = `<span style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">SCHEDULED</span>`;
             
             if (match.played) {
-                let isOT = match.isOT ? ' <span style="font-size: 0.8rem; color: #fbbf24;">(OT)</span>' : '';
-                statusHtml = `<span style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; letter-spacing: 2px;">${match.homeScore} - ${match.awayScore}${isOT}</span>`;
+                let isOT = match.isOT ? '<div style="font-size: 1rem; color: #fbbf24; margin-top: -0.2rem;">(OT)</div>' : '';
+                statusHtml = `<div style="display: flex; flex-direction: column; align-items: center;"><span style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; letter-spacing: 2px; line-height: 1;">${match.homeScore} - ${match.awayScore}</span>${isOT}</div>`;
             }
             
             let isUserMatch = match.homeId === currentTeam.id || match.awayId === currentTeam.id;
             let cardBg = isUserMatch ? 'linear-gradient(90deg, color-mix(in srgb, var(--team-primary) 20%, transparent) 0%, var(--card-bg) 100%)' : 'var(--card-bg)';
-            let borderStyle = isUserMatch ? 'border: 1px solid var(--team-primary);' : 'border: 1px solid rgba(255,255,255,0.05);';
+            let borderStyle = isUserMatch ? 'border: 3px solid var(--team-primary);' : 'border: 1px solid rgba(255,255,255,0.05);';
             let glow = isUserMatch ? 'box-shadow: 0 0 20px color-mix(in srgb, var(--team-primary) 20%, transparent);' : '';
             
             rightPaneHtml += `
@@ -3928,3 +4030,101 @@ window.awardCompletionPacks = function(teamId) {
         openPackRevealModal(rewardPlayers);
     }, 500);
 }
+
+window.renderPlayoffsPage = function(container) {
+    if (!gameState.playoffs) {
+        container.innerHTML = `<h2 class="title-main">Playoffs have not started yet.</h2>`;
+        return;
+    }
+
+    let p = gameState.playoffs;
+    let roundName = p.round === 1 ? 'Quarterfinals' : (p.round === 2 ? 'Semifinals' : (p.round === 3 ? 'Conference Finals' : 'Championship'));
+    
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 class="title-main" style="margin: 0;">Playoff Tree</h1>
+                <span style="background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">
+                    ${p.champion ? 'CHAMPION CROWNED' : 'ROUND ' + p.round + ' - ' + roundName.toUpperCase()}
+                </span>
+            </div>
+            
+            <div class="playoff-bracket" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    `;
+
+    if (p.champion) {
+        let champTeam = ohlTeams.find(t => t.id === p.champion);
+        html += `
+            <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; border-color: #fbbf24; text-align: center;">
+                <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1rem;"></i>
+                <img src="assets/logos/ohl/${champTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 1.5rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fbbf24; margin: 0;">${champTeam.name.toUpperCase()}</h2>
+                <h3 style="color: var(--text-color); margin: 0; font-size: 1.5rem; opacity: 0.8;">OHL CHAMPIONS</h3>
+            </div>
+        `;
+    } else {
+        p.series.forEach(s => {
+            let high = ohlTeams.find(t => t.id === s.highSeedId);
+            let low = ohlTeams.find(t => t.id === s.lowSeedId);
+            
+            let highLogo = high.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            let lowLogo = low.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            
+            let highWins = s.highSeedWins;
+            let lowWins = s.lowSeedWins;
+            
+            let statusText = '';
+            if (s.winner) {
+                statusText = `<span style="color: #10b981; font-weight: bold;">${s.winner === high.id ? high.name : low.name} WINS ${s.winner === high.id ? highWins : lowWins}-${s.winner === high.id ? lowWins : highWins}</span>`;
+            } else if (highWins === lowWins) {
+                statusText = `Tied ${highWins}-${lowWins}`;
+            } else if (highWins > lowWins) {
+                statusText = `${high.name.split(' ').slice(-1).join(' ')} leads ${highWins}-${lowWins}`;
+            } else {
+                statusText = `${low.name.split(' ').slice(-1).join(' ')} leads ${lowWins}-${highWins}`;
+            }
+            
+            html += `
+                <div class="dashboard-card" style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 1rem; width: 30%;">
+                        <img src="assets/logos/ohl/${highLogo}.png" style="width: 60px; height: 60px; object-fit: contain; opacity: ${s.winner && s.winner !== high.id ? '0.3' : '1'};">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${high.conference} Seed</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; ${s.winner && s.winner !== high.id ? 'opacity: 0.3;' : ''}">${high.name}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; width: 40%;">
+                        <div style="font-size: 2.5rem; font-family: 'Blockletter', sans-serif; display: flex; gap: 1rem;">
+                            <span style="color: ${highWins === 4 ? '#10b981' : 'var(--text-color)'};">${highWins}</span>
+                            <span style="color: var(--text-muted);">-</span>
+                            <span style="color: ${lowWins === 4 ? '#10b981' : 'var(--text-color)'};">${lowWins}</span>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">
+                            ${statusText}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 1rem; width: 30%; justify-content: flex-end; text-align: right;">
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${low.conference} Seed</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; ${s.winner && s.winner !== low.id ? 'opacity: 0.3;' : ''}">${low.name}</span>
+                        </div>
+                        <img src="assets/logos/ohl/${lowLogo}.png" style="width: 60px; height: 60px; object-fit: contain; opacity: ${s.winner && s.winner !== low.id ? '0.3' : '1'};">
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    html += `
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+    
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+};
