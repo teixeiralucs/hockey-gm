@@ -12,17 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function initLeagueSelection() {
     const app = document.getElementById('app');
     
-    const hasSave = localStorage.getItem('hockeyGmSave') !== null;
-    let loadHtml = '';
-    if (hasSave) {
-        loadHtml = `
-            <div class="team-card team-card-square" id="league-load" style="--team-primary: #10b981; --team-secondary: #059669; margin-left: 2rem;">
-                <i data-lucide="save" style="width: 80px; height: 80px; color: var(--team-primary); margin-bottom: 1rem;"></i>
-                <h3 class="team-card-title">LOAD STATE</h3>
-                <p class="team-card-conf">Resume your franchise</p>
-            </div>
-        `;
-    }
+    // LOAD STATE always visible to allow importing from file even if localStorage is empty
+    let loadHtml = `
+        <div class="team-card team-card-square" id="league-load" style="--team-primary: #10b981; --team-secondary: #059669; margin-left: 2rem;">
+            <i data-lucide="save" style="width: 80px; height: 80px; color: var(--team-primary); margin-bottom: 1rem;"></i>
+            <h3 class="team-card-title">LOAD STATE</h3>
+            <p class="team-card-conf">Resume your franchise</p>
+        </div>
+    `;
     
     app.innerHTML = `
         <div class="container">
@@ -44,11 +41,9 @@ function initLeagueSelection() {
         initFranchiseSelection();
     });
     
-    if (hasSave) {
-        document.getElementById('league-load').addEventListener('click', () => {
-            loadGame();
-        });
-    }
+    document.getElementById('league-load').addEventListener('click', () => {
+        openLoadModal();
+    });
     
     if (window.lucide) window.lucide.createIcons();
 }
@@ -362,7 +357,7 @@ function initHomeScreen() {
     // Bind Save Game
     const btnSaveGame = document.getElementById('btn-save-game');
     if (btnSaveGame) {
-        btnSaveGame.addEventListener('click', () => saveGame());
+        btnSaveGame.addEventListener('click', () => openSaveModal());
     }
 
     // Bind Back to Selection
@@ -2951,18 +2946,170 @@ function openBackConfirmationModal() {
 }
 
 // --- SAVE & LOAD SYSTEM ---
-window.saveGame = function() {
+
+window.openSaveModal = function() {
+    let slotsHTML = '';
+    ['1', '2', '3'].forEach(slot => {
+        const saved = localStorage.getItem(`hockeyGmSave_${slot}`);
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                const year = data.gameState.seasonYear || new Date().getFullYear();
+                const teamName = data.currentTeam ? data.currentTeam.name : 'Unknown Team';
+                
+                slotsHTML += `
+                    <div class="save-slot" style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; color: #fff; font-size: 1.1rem; margin-bottom: 0.2rem;">Slot ${slot}: ${teamName}</div>
+                            <div style="color: var(--text-muted); font-size: 0.85rem;">Year: ${year}</div>
+                        </div>
+                        <button class="btn btn-sm" onclick="saveGame('${slot}')" style="background: #10b981;">Overwrite</button>
+                    </div>
+                `;
+            } catch(e) {
+                slotsHTML += `<div class="save-slot empty">Corrupted Save (${slot})</div>`;
+            }
+        } else {
+            slotsHTML += `
+                <div class="save-slot empty" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-muted);">Empty Slot ${slot}</span>
+                    <button class="btn btn-sm" onclick="saveGame('${slot}')" style="background: #3b82f6;">Save Here</button>
+                </div>
+            `;
+        }
+    });
+
+    const modalHTML = `
+        <div id="save-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: #151e32; width: 500px; max-width: 90%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); padding: 2rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center;">SAVE GAME</h2>
+                
+                <div style="margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;">
+                    ${slotsHTML}
+                </div>
+                
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: center;">
+                    <button class="btn btn-primary" onclick="exportSaveFile()" style="width: 100%; margin-bottom: 0.5rem; background: #8b5cf6;"><i data-lucide="download" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Export Save to File</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('save-modal').remove()" style="width: 100%;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+}
+
+window.openLoadModal = function() {
+    let slotsHTML = '';
+    ['auto', '1', '2', '3'].forEach(slot => {
+        const saved = localStorage.getItem(`hockeyGmSave_${slot}`);
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                const year = data.gameState.seasonYear || new Date().getFullYear();
+                const teamName = data.currentTeam ? data.currentTeam.name : 'Unknown Team';
+                const dateStr = data.gameState.currentDate ? new Date(data.gameState.currentDate).toLocaleDateString() : 'N/A';
+                
+                slotsHTML += `
+                    <div class="save-slot" onclick="loadGame('${slot}')" style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        <div>
+                            <div style="font-weight: bold; color: #fff; font-size: 1.1rem; margin-bottom: 0.2rem;">Slot ${slot.toUpperCase()}: ${teamName}</div>
+                            <div style="color: var(--text-muted); font-size: 0.85rem;">Year: ${year} • Date: ${dateStr}</div>
+                        </div>
+                        <i data-lucide="play" style="width: 20px; height: 20px; color: #10b981;"></i>
+                    </div>
+                `;
+            } catch(e) {
+                slotsHTML += `<div class="save-slot empty" style="color: #ef4444; margin-bottom: 0.5rem;">Corrupted Save (${slot})</div>`;
+            }
+        } else {
+            slotsHTML += `
+                <div class="save-slot empty" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px dashed rgba(255,255,255,0.1); color: var(--text-muted); text-align: center;">
+                    Empty Slot ${slot.toUpperCase()}
+                </div>
+            `;
+        }
+    });
+
+    const modalHTML = `
+        <div id="load-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: #151e32; width: 500px; max-width: 90%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); padding: 2rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center;">LOAD FRANCHISE</h2>
+                
+                <div style="margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;">
+                    ${slotsHTML}
+                </div>
+                
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: center;">
+                    <input type="file" id="import-save-file" accept=".json" style="display: none;" onchange="importSaveFile(event)">
+                    <button class="btn btn-primary" onclick="document.getElementById('import-save-file').click()" style="width: 100%; margin-bottom: 0.5rem; background: #3b82f6;"><i data-lucide="upload" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Import from File</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('load-modal').remove()" style="width: 100%;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+}
+
+window.exportSaveFile = function() {
     if (!gameState || !currentTeam) return;
     const saveData = {
         gameState: gameState,
         currentTeam: currentTeam
     };
-    localStorage.setItem('hockeyGmSave', JSON.stringify(saveData));
+    const jsonStr = JSON.stringify(saveData);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `HockeyGM_Save_${currentTeam.name.replace(/\s+/g, '')}_Year${gameState.seasonYear || new Date().getFullYear()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (document.getElementById('save-modal')) document.getElementById('save-modal').remove();
+}
+
+window.importSaveFile = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data && data.gameState && data.currentTeam) {
+                // Save it to auto slot to serve as the import destination
+                localStorage.setItem('hockeyGmSave_auto', JSON.stringify(data));
+                if (document.getElementById('load-modal')) document.getElementById('load-modal').remove();
+                loadGame('auto');
+            } else {
+                alert("Invalid save file format.");
+            }
+        } catch (err) {
+            alert("Error reading file.");
+        }
+    };
+    reader.readAsText(file);
+}
+
+window.saveGame = function(slotId = 'auto') {
+    if (!gameState || !currentTeam) return;
+    const saveData = {
+        gameState: gameState,
+        currentTeam: currentTeam
+    };
+    localStorage.setItem(`hockeyGmSave_${slotId}`, JSON.stringify(saveData));
+    
+    // Also update legacy slot just in case
+    if (slotId === 'auto') {
+        localStorage.setItem('hockeyGmSave', JSON.stringify(saveData));
+    }
+    
+    if (document.getElementById('save-modal')) document.getElementById('save-modal').remove();
     
     // Toast notification
     const toast = document.createElement('div');
     toast.style.cssText = "position: fixed; bottom: 2rem; right: 2rem; background: #10b981; color: #fff; padding: 1rem 2rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: opacity 0.5s ease;";
-    toast.innerHTML = '<i data-lucide="save" style="margin-right: 0.5rem; vertical-align: middle;"></i> GAME SAVED';
+    toast.innerHTML = `<i data-lucide="save" style="margin-right: 0.5rem; vertical-align: middle;"></i> GAME SAVED (SLOT: ${slotId.toUpperCase()})`;
     document.body.appendChild(toast);
     if (window.lucide) window.lucide.createIcons();
     
@@ -2972,8 +3119,15 @@ window.saveGame = function() {
     }, 2000);
 }
 
-window.loadGame = async function() {
-    const saved = localStorage.getItem('hockeyGmSave');
+window.loadGame = async function(slotId = 'auto') {
+    if (document.getElementById('load-modal')) document.getElementById('load-modal').remove();
+    let saved = localStorage.getItem(`hockeyGmSave_${slotId}`);
+    
+    // Fallback to legacy save
+    if (!saved && slotId === 'auto') {
+        saved = localStorage.getItem('hockeyGmSave');
+    }
+    
     if (!saved) return;
     
     const loadBtn = document.getElementById('league-load');
@@ -2997,6 +3151,11 @@ window.loadGame = async function() {
     
     const data = JSON.parse(saved);
     gameState = data.gameState;
+    if (data.currentTeam) {
+        currentTeam = data.currentTeam;
+    } else if (gameState.team && gameState.team.id) {
+        currentTeam = ohlTeams.find(t => t.id === gameState.team.id);
+    }
     
     // Revive or reset global stats
     if (gameState.globalDraftPool) {
@@ -3084,7 +3243,7 @@ window.loadGame = async function() {
     // Bind Save Game
     const btnSaveGame = document.getElementById('btn-save-game');
     if (btnSaveGame) {
-        btnSaveGame.addEventListener('click', () => saveGame());
+        btnSaveGame.addEventListener('click', () => openSaveModal());
     }
 
     // Bind Back to Selection
