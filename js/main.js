@@ -1,120 +1,16 @@
 import { ohlTeams } from '../data/teams.js';
 import { generateSeasonSchedule } from './schedule.js';
 import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
+import { initMainMenu } from './ui/setupUI.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Hockey GM initialized');
-    initLeagueSelection();
+    initMainMenu();
 });
 
 // --- UI VIEWS ---
 
-function initLeagueSelection() {
-    const app = document.getElementById('app');
-    
-    // LOAD STATE always visible to allow importing from file even if localStorage is empty
-    let loadHtml = `
-        <div class="team-card team-card-square" id="league-load" style="--team-primary: #10b981; --team-secondary: #059669; margin-left: 2rem;">
-            <i data-lucide="save" style="width: 80px; height: 80px; color: var(--team-primary); margin-bottom: 1rem;"></i>
-            <h3 class="team-card-title">LOAD STATE</h3>
-            <p class="team-card-conf">Resume your franchise</p>
-        </div>
-    `;
-    
-    app.innerHTML = `
-        <div class="container">
-            <h1 class="title-main">Hockey GM</h1>
-            <h2 class="subtitle">Select a League to start your journey</h2>
-            
-            <div class="team-grid" style="display: flex; justify-content: center;">
-                <div class="team-card team-card-square" id="league-ohl" style="--team-primary: #047ac4; --team-secondary: #aaaaaa;">
-                    <img src="assets/ohl-logo.svg" alt="OHL Logo" class="league-logo">
-                    <h3 class="team-card-title">OHL</h3>
-                    <p class="team-card-conf">Ontario Hockey League</p>
-                </div>
-                ${loadHtml}
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('league-ohl').addEventListener('click', () => {
-        initFranchiseSelection();
-    });
-    
-    document.getElementById('league-load').addEventListener('click', () => {
-        openLoadModal();
-    });
-    
-    if (window.lucide) window.lucide.createIcons();
-}
 
-function getRandomTeams(teams, count) {
-    const shuffled = [...teams].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-}
-
-function initFranchiseSelection() {
-    const app = document.getElementById('app');
-    
-    // Select 6 random teams
-    const selectedTeams = getRandomTeams(ohlTeams, 6);
-    
-    const teamsHTML = selectedTeams.map(team => {
-        const parts = team.name.split(' ');
-        const mascot = parts.pop();
-        const city = parts.join(' ');
-        const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        
-        return `
-        <div class="team-card" data-team-id="${team.id}" style="align-items: center; display: flex; flex-direction: column; --team-primary: ${team.colors.primary}; --team-secondary: ${team.colors.secondary};">
-            <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" class="team-card-logo">
-            <h3 class="team-card-title" style="line-height: 1.1; margin-top: 0.5rem;">
-                <span style="display: block; font-size: 0.55em; opacity: 0.7; letter-spacing: 2px;">${city}</span>
-                <span style="display: block;">${mascot}</span>
-            </h3>
-            <p class="team-card-conf" style="margin-top: 0.5rem;">${team.conference} Conference</p>
-        </div>
-        `;
-    }).join('');
-
-    app.innerHTML = `
-        <div style="min-height: 100vh; background: linear-gradient(135deg, rgba(4, 122, 196, 0.15) 0%, rgba(170, 170, 170, 0.25) 100%); padding: 2rem 0;">
-            <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 4rem); position: relative;">
-                
-                <button id="btn-back-league" class="btn btn-sm" style="position: absolute; top: 0; left: 1rem; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
-                    <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i> Back to Leagues
-                </button>
-
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <h1 class="title-main">HOCKEY GM</h1>
-                    <p class="subtitle">Select your franchise to start the journey</p>
-                </div>
-                
-                <div class="team-grid">
-                    ${teamsHTML}
-                </div>
-            </div>
-        </div>
-    `;
-
-    if (window.lucide) {
-        window.lucide.createIcons();
-    }
-    
-    document.getElementById('btn-back-league').addEventListener('click', () => {
-        initLeagueSelection();
-    });
-    
-    // Add event listeners
-    const teamCards = document.querySelectorAll('.team-card');
-    teamCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const teamId = card.getAttribute('data-team-id');
-            const team = ohlTeams.find(t => t.id === teamId);
-            openConfirmationModal(team);
-        });
-    });
-}
 
 let currentTeam = null;
 let gameState = null;
@@ -234,7 +130,7 @@ async function initNewGame(teamIdOverride = null) {
     // (O array de gameState.players já foi populado com sucesso via JSON acima)
 }
 
-function openConfirmationModal(team) {
+window.openConfirmationModal = function(team) {
     const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
     const modalHTML = `
         <div id="confirm-modal" class="modal-overlay">
@@ -2999,7 +2895,8 @@ window.openSaveModal = function() {
     if (window.lucide) window.lucide.createIcons();
 }
 
-window.openLoadModal = function() {
+export function openLoadModal() {
+    window.openLoadModal = openLoadModal;
     let slotsHTML = '';
     ['auto', '1', '2', '3'].forEach(slot => {
         const saved = localStorage.getItem(`hockeyGmSave_${slot}`);

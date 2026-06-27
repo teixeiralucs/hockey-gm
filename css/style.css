@@ -657,3 +657,267 @@ h1, h2, h3, h4, h5, h6 {
     border-right: 2px solid rgba(255,255,255,0.2);
     width: 10px;
 }
+
+/* ========================================= */
+/* PREMIUM UI ELEMENTS (Alpha 0.2+)          */
+/* ========================================= */
+
+/* Linear Style Cards (Main Menu) */
+.linear-card {
+    position: relative;
+    background: linear-gradient(180deg, rgba(20,25,40,0.95) 0%, rgba(10,15,25,0.95) 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: inset 0 2px 20px rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Glowing Border Effect using Pseudo-element */
+.linear-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--card-color-light), var(--card-color-dark));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+/* Inner Glow behind Icon */
+.linear-card-glow {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: var(--card-color-light);
+    filter: blur(40px);
+    opacity: 0.2;
+    transition: opacity 0.3s ease;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.linear-card:hover {
+    transform: translateY(-5px);
+    box-shadow: inset 0 2px 20px rgba(255, 255, 255, 0.1), 0 20px 40px rgba(0,0,0,0.7);
+}
+
+.linear-card:hover::before {
+    opacity: 1;
+}
+
+.linear-card:hover .linear-card-glow {
+    opacity: 0.4;
+}
+
+.linear-card-icon {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 1.5rem;
+    color: #fff;
+}
+
+.linear-card-title {
+    position: relative;
+    z-index: 2;
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+}
+
+.linear-card-subtitle {
+    position: relative;
+    z-index: 2;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
+/* Cover Flow Carousel (League Selection) */
+.cover-flow-container {
+    perspective: 1000px;
+    width: 100%;
+    max-width: 1000px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 0 auto;
+}
+
+.cover-card {
+    position: absolute;
+    width: 280px;
+    height: 400px;
+    background: linear-gradient(135deg, rgba(30,40,60,0.9), rgba(15,20,30,0.95));
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+    user-select: none;
+}
+
+.cover-card .league-logo {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 2rem;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.1));
+    transition: transform 0.5s ease;
+}
+
+/* Carousel States */
+.cover-card.active {
+    z-index: 10;
+    transform: translateX(0) scale(1.05) translateZ(0);
+    box-shadow: 0 0 0 2px var(--primary-color), 0 20px 50px rgba(0,0,0,0.8), 0 0 40px rgba(59, 130, 246, 0.4);
+    opacity: 1;
+}
+
+.cover-card.active .league-logo {
+    transform: scale(1.1);
+}
+
+.cover-card.prev {
+    z-index: 5;
+    transform: translateX(-180px) scale(0.85) translateZ(-100px) rotateY(25deg);
+    opacity: 0.6;
+    filter: brightness(0.5);
+}
+
+.cover-card.next {
+    z-index: 5;
+    transform: translateX(180px) scale(0.85) translateZ(-100px) rotateY(-25deg);
+    opacity: 0.6;
+    filter: brightness(0.5);
+}
+
+.cover-card.hidden-left {
+    z-index: 1;
+    transform: translateX(-300px) scale(0.7) translateZ(-200px) rotateY(35deg);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cover-card.hidden-right {
+    z-index: 1;
+    transform: translateX(300px) scale(0.7) translateZ(-200px) rotateY(-35deg);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Carousel Controls */
+.carousel-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    z-index: 20;
+}
+
+.carousel-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.carousel-btn:hover {
+    background: rgba(255,255,255,0.15);
+    transform: scale(1.1);
+}
+
+.carousel-btn:active {
+    transform: scale(0.95);
+}
+
+.carousel-play-btn {
+    background: linear-gradient(135deg, #d946ef, #c026d3);
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(217, 70, 239, 0.4);
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.carousel-play-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(217, 70, 239, 0.6);
+}
+
+.carousel-play-btn:disabled {
+    background: #333;
+    color: #666;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Page Transitions */
+.page-enter {
+    animation: pageFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.page-exit {
+    animation: pageFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pageFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.98);
+    }
+}
+
