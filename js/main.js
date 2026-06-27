@@ -17,7 +17,7 @@ function initLeagueSelection() {
     if (hasSave) {
         loadHtml = `
             <div class="team-card team-card-square" id="league-load" style="--team-primary: #10b981; --team-secondary: #059669; margin-left: 2rem;">
-                <i data-lucide="save" style="width: 80px; height: 80px; color: #fff; margin-bottom: 1rem;"></i>
+                <i data-lucide="save" style="width: 80px; height: 80px; color: var(--team-primary); margin-bottom: 1rem;"></i>
                 <h3 class="team-card-title">LOAD STATE</h3>
                 <p class="team-card-conf">Resume your franchise</p>
             </div>
@@ -91,7 +91,7 @@ function initFranchiseSelection() {
                 </button>
 
                 <div style="text-align: center; margin-bottom: 2rem;">
-                    <h1 class="title-main" style="text-shadow: 0 4px 15px rgba(4, 122, 196, 0.3);">HOCKEY GM</h1>
+                    <h1 class="title-main">HOCKEY GM</h1>
                     <p class="subtitle">Select your franchise to start the journey</p>
                 </div>
                 
@@ -179,10 +179,14 @@ async function initNewGame(teamIdOverride = null) {
         let globalDraftPool = [];
         Object.values(allRosters).forEach(teamRoster => {
             if (teamRoster && teamRoster.length > 0) {
+                teamRoster.forEach(p => {
+                    p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+                });
                 globalDraftPool = globalDraftPool.concat(teamRoster);
             }
         });
         window.globalDraftPool = globalDraftPool;
+        gameState.globalDraftPool = globalDraftPool;
         
         // Embaralhar o draft pool usando algoritmo Fisher-Yates
         for (let i = globalDraftPool.length - 1; i > 0; i--) {
@@ -242,7 +246,7 @@ function openConfirmationModal(team) {
             <div class="modal-content">
                 <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" class="modal-logo">
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem;">Are you sure?</h2>
-                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Do you want to select the <strong style="color: ${team.colors.primary}; text-shadow: 0 0 10px ${team.colors.primary}40;">${team.name}</strong> as your franchise? You won't be able to change this later.</p>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Do you want to select the <strong style="color: ${team.colors.primary};">${team.name}</strong> as your franchise? You won't be able to change this later.</p>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="btn-cancel-select">Cancel</button>
                     <button class="btn" id="btn-confirm-select" style="background-color: ${team.colors.primary}; border-color: ${team.colors.primary};">Confirm Selection</button>
@@ -273,7 +277,7 @@ function initHomeScreen() {
     
     // Remove as propriedades anteriores se existirem e define o background gradient globalmente
     document.body.style.removeProperty('--bg-color');
-    document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 60%, #0b1121) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #0b1121) 100%)`;
+    document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 15%, var(--bg-color)) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 15%, var(--bg-color)) 100%)`;
     document.body.style.backgroundAttachment = 'fixed';
     
     // Configuração inicial de franquia e cores
@@ -281,13 +285,14 @@ function initHomeScreen() {
     gameState.coins = 200; // Saldo inicial
     gameState.collection = []; // Coleção vazia
     document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
+    document.documentElement.style.setProperty('--team-secondary', currentTeam.colors.secondary);
     
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
-            <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #151e32);">
+            <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 15%, var(--surface-color));">
                 <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center; padding-right: 1.5rem;">
                     <h2>HOCKEY GM</h2>
-                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease;">
+                    <div id="notification-bell" style="position: relative; cursor: pointer; color: var(--text-color); transition: color 0.2s ease;">
                         <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
                         <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
                     </div>
@@ -312,8 +317,14 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-shop">
                         <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
                     </button>
+                    <button class="nav-btn" id="nav-halloffame">
+                        <i data-lucide="star" style="margin-right: 8px; width: 20px; height: 20px;"></i> Hall of Fame
+                    </button>
                     <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
                         <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
+                    </button>
+                    <button class="nav-btn" onclick="simulateToPlayoffs()" style="margin-top: 1rem; border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem; justify-content: center;">
+                        <i data-lucide="fast-forward" style="margin-right: 8px; width: 16px; height: 16px;"></i> Skip to Playoffs
                     </button>
                 </nav>
                 
@@ -345,6 +356,7 @@ function initHomeScreen() {
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
+    document.getElementById('nav-halloffame').addEventListener('click', () => switchView('halloffame'));
     document.getElementById('nav-playoffs').addEventListener('click', () => switchView('playoffs'));
     
     // Bind Save Game
@@ -440,6 +452,8 @@ function switchView(viewName) {
         renderCalendarPage(mainContent);
     } else if (viewName === 'collection') {
         renderCollectionPage(mainContent);
+    } else if (viewName === 'halloffame') {
+        renderHallOfFame(mainContent);
     } else if (viewName === 'match') {
         renderMatchPage(mainContent);
     }
@@ -524,13 +538,16 @@ function renderDashboard(container) {
         let buttonHTML = '';
         if (daysToSimulate > 0) {
             buttonHTML = `
-                <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, #475569 0%, #334155 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <i data-lucide="skip-forward" style="width: 24px; height: 24px;"></i> SIMULATE TO NEXT GAME
+                <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff;">
+                    <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE WEEK
+                </button>
+                <button class="btn" onclick="simulateToPlayoffs()" style="width: 100%; border: 1px solid rgba(255,255,255,0.1); background: transparent; font-size: 0.9rem; margin-top: -0.5rem; color: var(--text-muted); padding: 0.5rem;">
+                    DEBUG: SKIP TO PLAYOFFS
                 </button>
             `;
         } else {
             buttonHTML = `
-                <button class="btn" onclick="startMatchSimulation()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(0,0,0,0.5); background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <button class="btn" onclick="startMatchSimulation()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff;">
                     <i data-lucide="play-circle" style="width: 24px; height: 24px;"></i> PLAY MATCH
                 </button>
             `;
@@ -559,7 +576,7 @@ function renderDashboard(container) {
             <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--text-color);">${matchTitle}</h3>
-                    <span style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.2rem;">${nextMatchDateStr}</span>
+                    <span style="color: var(--team-primary); font-family: 'Blockletter', sans-serif; font-size: 1.2rem;">${nextMatchDateStr}</span>
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -570,7 +587,7 @@ function renderDashboard(container) {
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${awayTeam.name.split(' ').slice(0, -1).join(' ')}</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${awayTeam.name.split(' ').slice(-1).join(' ')}</span>
                         </div>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${awayOvr}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--team-primary);">OVR ${awayOvr}</span>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
                     </div>
                     
@@ -583,16 +600,13 @@ function renderDashboard(container) {
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${homeTeam.name.split(' ').slice(0, -1).join(' ')}</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${homeTeam.name.split(' ').slice(-1).join(' ')}</span>
                         </div>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: #fbbf24; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">OVR ${homeOvr}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--team-primary);">OVR ${homeOvr}</span>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
                     </div>
                 </div>
                 
                 ${buttonHTML}
                 
-                <button class="btn" onclick="advanceSeason()" style="width: 100%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; letter-spacing: 1px; background: transparent; color: #a1a1aa; transition: all 0.2s ease; margin-top: -0.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
-                    <i data-lucide="fast-forward" style="width: 16px; height: 16px;"></i> Debug: End Season (+1 Age)
-                </button>
             </div>
         `;
     } else {
@@ -640,7 +654,7 @@ function renderDashboard(container) {
             <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1;">
                 <img src="assets/logos/ohl/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 15px color-mix(in srgb, var(--team-primary) 40%, transparent));">
                 <div>
-                    <h1 class="title-main" style="text-align: left; margin: 0 0 0.3rem 0; font-size: 2rem; text-shadow: 0 0 10px color-mix(in srgb, var(--team-primary) 50%, transparent); line-height: 1;">${currentTeam.name}</h1>
+                    <h1 class="title-main" style="text-align: left; margin: 0 0 0.3rem 0; font-size: 2rem; line-height: 1;">${currentTeam.name}</h1>
                     <div style="font-size: 1rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.3rem; font-family: 'Roboto', sans-serif;">
                         <div style="color: var(--text-color); font-weight: 700; letter-spacing: 1px;">${dateStr}</div>
                         <div style="display: flex; gap: 0.8rem; align-items: center;">
@@ -667,7 +681,7 @@ function renderDashboard(container) {
             <div class="dashboard-sidebar-column" style="display: flex; flex-direction: column; gap: 2rem;">
                 ${matchHTML}
                 
-                <div class="dashboard-card" id="league-leaders-container" style="padding: 1.5rem; display: flex; flex-direction: column;">
+                <div class="dashboard-card" id="league-leaders-container" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
                     <!-- Generated by renderLeagueLeaders() -->
                 </div>
             </div>
@@ -706,8 +720,9 @@ window.simulateBackgroundDays = function(daysCount) {
         });
         
         // After all matches for the day are played, check if a playoff round should advance
+        let advancedPlayoffs = false;
         if (gameState.playoffs && gameState.playoffs.isActive) {
-            advancePlayoffRound(gameState);
+            advancedPlayoffs = advancePlayoffRound(gameState);
         }
         
         // Advance Date
@@ -720,6 +735,10 @@ window.simulateBackgroundDays = function(daysCount) {
         }
         gameState.currentScheduleDayIndex++;
         daysSimulated++;
+        
+        if (advancedPlayoffs) {
+            break; // Stop simulating so the user can see the next round matchups
+        }
     }
     
     if (daysSimulated > 0) {
@@ -732,6 +751,38 @@ window.simulateBackgroundDays = function(daysCount) {
             if (activeNav && activeNav.id === 'nav-dashboard') {
                 renderDashboard(container);
             }
+        }
+    }
+}
+
+window.simulateToPlayoffs = function() {
+    if (gameState.playoffs) return;
+    
+    // Simulate all remaining regular season matches
+    while (gameState.currentScheduleDayIndex < gameState.schedule.length && !gameState.playoffs) {
+        let day = gameState.schedule[gameState.currentScheduleDayIndex];
+        if (!day) break;
+        
+        day.matches.forEach(match => {
+            if (!match.played) simulateBackgroundMatch(match);
+        });
+        
+        let nextDay = gameState.schedule[gameState.currentScheduleDayIndex + 1];
+        if (nextDay) {
+            gameState.currentDate = new Date(nextDay.date);
+        } else {
+            gameState.currentDate.setDate(gameState.currentDate.getDate() + 1);
+        }
+        gameState.currentScheduleDayIndex++;
+    }
+    
+    if (window.saveGame) window.saveGame();
+    
+    let container = document.getElementById('main-content');
+    if (container) {
+        const activeNav = document.querySelector('.sidebar-nav .nav-btn.active');
+        if (activeNav && activeNav.id === 'nav-dashboard') {
+            renderDashboard(container);
         }
     }
 }
@@ -768,33 +819,59 @@ function simulateBackgroundMatch(match) {
     if (window.globalDraftPool) {
         let homePlayers = window.globalDraftPool.filter(p => p.originalTeamId === homeTeam.id);
         let awayPlayers = window.globalDraftPool.filter(p => p.originalTeamId === awayTeam.id);
-        assignRandomStats(homePlayers, homeScore);
-        assignRandomStats(awayPlayers, awayScore);
+        
+        let homeShots = homeScore + Math.floor(Math.random() * 20) + 15;
+        let awayShots = awayScore + Math.floor(Math.random() * 20) + 15;
+        
+        assignRandomStats(homePlayers, homeScore, awayScore, awayShots);
+        assignRandomStats(awayPlayers, awayScore, homeScore, homeShots);
     }
 }
 
-function assignRandomStats(players, goalsCount) {
+function assignRandomStats(players, goalsScored, goalsAllowed, shotsAgainst) {
     if (!players || players.length === 0) return;
-    for (let i = 0; i < goalsCount; i++) {
-        let scorer = players[Math.floor(Math.random() * players.length)];
-        scorer.stats = scorer.stats || { goals: 0, assists: 0, points: 0, games: 0 };
+    
+    let skaters = players.filter(p => p.position !== 'G');
+    let goalies = players.filter(p => p.position === 'G');
+    
+    skaters.sort((a, b) => b.overall - a.overall);
+    
+    for (let i = 0; i < goalsScored; i++) {
+        let scorerIndex = Math.floor(Math.abs(Math.random() - Math.random()) * skaters.length);
+        let scorer = skaters[scorerIndex] || skaters[0];
+        if (!scorer) continue;
+        
+        scorer.stats = scorer.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
         scorer.stats.goals++;
         scorer.stats.points++;
         
         if (Math.random() > 0.3) {
-            let assist = players[Math.floor(Math.random() * players.length)];
-            if (assist.id !== scorer.id) {
-                assist.stats = assist.stats || { goals: 0, assists: 0, points: 0, games: 0 };
+            let assistIndex = Math.floor(Math.abs(Math.random() - Math.random()) * skaters.length);
+            let assist = skaters[assistIndex] || skaters[1] || skaters[0];
+            if (assist && assist.id !== scorer.id) {
+                assist.stats = assist.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
                 assist.stats.assists++;
                 assist.stats.points++;
             }
         }
     }
-    players.forEach(p => {
-        p.stats = p.stats || { goals: 0, assists: 0, points: 0, games: 0 };
+    
+    if (goalies.length > 0 && shotsAgainst) {
+        let startingGoalie = goalies.sort((a, b) => b.overall - a.overall)[0];
+        startingGoalie.stats = startingGoalie.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        startingGoalie.stats.shotsAgainst = (startingGoalie.stats.shotsAgainst || 0) + shotsAgainst;
+        startingGoalie.stats.goalsAgainst = (startingGoalie.stats.goalsAgainst || 0) + goalsAllowed;
+        startingGoalie.stats.saves = (startingGoalie.stats.saves || 0) + (shotsAgainst - goalsAllowed);
+        startingGoalie.stats.games++;
+    }
+    
+    skaters.forEach(p => {
+        p.stats = p.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
         p.stats.games++;
     });
 }
+
+// Function already replaced above
 
 function updateStandings(homeId, awayId, homeScore, awayScore, isOT) {
     let homeStanding = gameState.standings.find(s => s.teamId === homeId);
@@ -959,11 +1036,62 @@ function renderStandings() {
     });
 }
 
+function updateLeagueLeadersData() {
+    if (!gameState) return;
+    
+    let playerMap = new Map();
+    if (window.globalDraftPool) {
+        window.globalDraftPool.forEach(p => playerMap.set(p.id, p));
+    }
+    if (gameState.players) {
+        gameState.players.forEach(p => playerMap.set(p.id, p));
+    }
+    
+    let allPlayers = Array.from(playerMap.values()).filter(p => p.stats && p.stats.games > 0);
+    
+    // Calculate Pts
+    let topPts = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.points - a.stats.points).slice(0, 10).map((p, i) => ({
+        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.points
+    }));
+    
+    // Calculate Goals
+    let topG = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.goals - a.stats.goals).slice(0, 10).map((p, i) => ({
+        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.goals
+    }));
+    
+    // Calculate Assists
+    let topA = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.assists - a.stats.assists).slice(0, 10).map((p, i) => ({
+        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.assists
+    }));
+    
+    // Calculate Save Percentage
+    let goalies = [...allPlayers].filter(p => p.position === 'G' && p.stats.shotsAgainst > 0);
+    let topSvp = goalies.sort((a, b) => {
+        let svpA = a.stats.saves / a.stats.shotsAgainst;
+        let svpB = b.stats.saves / b.stats.shotsAgainst;
+        return svpB - svpA;
+    }).slice(0, 10).map((p, i) => {
+        let svp = (p.stats.saves / p.stats.shotsAgainst).toFixed(3).replace('0.', '.');
+        return {
+            rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: svp
+        };
+    });
+    
+    gameState.leagueLeaders = {
+        pts: topPts,
+        g: topG,
+        a: topA,
+        svp: topSvp
+    };
+}
+
 function renderLeagueLeaders() {
     const container = document.getElementById('league-leaders-container');
     if (!container) return;
     
-    const leaders = gameState.leagueLeaders[currentLeaderTab];
+    updateLeagueLeadersData();
+    
+    const leaders = gameState.leagueLeaders[currentLeaderTab] || [];
     
     let listHTML = `<div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">`;
     
@@ -972,13 +1100,14 @@ function renderLeagueLeaders() {
     } else {
         leaders.forEach(l => {
             const teamInfo = ohlTeams.find(t => t.id === l.teamId);
-            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
+            const logoHtml = logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">` : '';
             
             listHTML += `
-                <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo.colors.primary}; cursor: pointer; transition: background-color 0.2s;">
+                <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo ? teamInfo.colors.primary : '#3b82f6'}; cursor: pointer; transition: background-color 0.2s;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-muted); width: 20px;">#${l.rank}</span>
-                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        ${logoHtml}
                         <span style="font-weight: 500; color: var(--text-color);">${l.name}</span>
                     </div>
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: var(--text-color);">${l.stat}</span>
@@ -1043,7 +1172,7 @@ function getPlayerModifiers(player) {
     }
     
     // 2. Real Team Synergy (+20%)
-    if (player.originalTeamId === gameState.team.id) {
+    if (player.originalTeamId && player.originalTeamId === currentTeam.id) {
         buff += 0.20;
     }
     
@@ -1055,7 +1184,7 @@ function getPlayerModifiers(player) {
         return p.id !== player.id && tLoc && tLoc.startsWith(linePrefix);
     });
     
-    const hasChemistry = teammatesOnLine.some(t => t.originalTeamId === player.originalTeamId);
+    const hasChemistry = teammatesOnLine.some(t => t.originalTeamId && t.originalTeamId === player.originalTeamId);
     if (hasChemistry) {
         buff += 0.15;
     }
@@ -1066,7 +1195,7 @@ function getPlayerModifiers(player) {
 function getPlayerCardHTML(player) {
     if (!player) return '';
     const posColors = {
-        'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981',
+        'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4',
         'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899'
     };
     const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
@@ -1113,7 +1242,7 @@ window.openPlayerCardModal = function(playerId) {
     }
     if (!player) return;
     
-    const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+    const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
     const posColor = posColors[player.position] || 'var(--team-primary)';
     
     let tierColor = '#8b5cf6'; // default bronze fallback
@@ -1161,7 +1290,7 @@ window.openPlayerCardModal = function(playerId) {
 
                 <!-- PHOTO -->
                 <div style="position: relative; z-index: 1; margin-top: 2rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://chl.ca/ohl/wp-content/plugins/fanreach-hockey/build/images/default-player.3e81c737.png'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
                     <div style="position: absolute; bottom: 0; right: 80px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">
                         #${player.number}
                     </div>
@@ -1173,6 +1302,52 @@ window.openPlayerCardModal = function(playerId) {
                     <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0 1rem 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
                     
+                    <!-- STATS -->
+                    ${player.stats ? `
+                    <div style="background-color: rgba(255,255,255,0.03); border-radius: 8px; padding: 1rem; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; width: 100%;">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff; margin: 0 0 0.8rem 0; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.3rem;">SEASON STATS</h4>
+                        ${player.position === 'G' ? `
+                        <div style="display: flex; justify-content: space-between; text-align: center; padding: 0 0.5rem;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GP</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games || 0}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Saves</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.saves || 0}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">SV%</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.shotsAgainst > 0 ? (player.stats.saves / player.stats.shotsAgainst).toFixed(3).replace('0.', '.') : '.000'}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GAA</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games > 0 ? ((player.stats.goalsAgainst || 0) / player.stats.games).toFixed(2) : '0.00'}</div>
+                            </div>
+                        </div>
+                        ` : `
+                        <div style="display: flex; justify-content: space-between; text-align: center; padding: 0 0.5rem;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GP</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games || 0}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">G</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.goals || 0}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">A</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.assists || 0}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">PTS</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.points || 0}</div>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                    ` : ''}
+
                     ${player.attributes ? `
                     <div style="background-color: rgba(255,255,255,0.03); border-radius: 8px; padding: 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; width: 100%;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left;">
@@ -1263,7 +1438,7 @@ window.openPackRevealModal = function(playerIdsArray) {
         const player = gameState.players.find(p => p.id === playerId);
         if (!player) return;
         
-        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
         const posColor = posColors[player.position] || 'var(--team-primary)';
         
         let tierColor = '#8b5cf6'; // default bronze fallback
@@ -1299,7 +1474,7 @@ window.openPackRevealModal = function(playerIdsArray) {
 
                 <!-- PHOTO -->
                 <div style="position: relative; z-index: 1; margin-top: 3rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 140px; height: 140px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 140px; height: 140px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
                     <div style="position: absolute; bottom: 0; right: 70px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">
                         #${player.number}
                     </div>
@@ -1439,7 +1614,7 @@ function renderRoster(container) {
                 <!-- ICE CONTAINER -->
                 <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; text-shadow: 0 0 10px rgba(255,255,255,0.2);">ACTIVE ROSTER</h2>
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">ACTIVE ROSTER</h2>
                         <div style="display: flex; gap: 0.5rem; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
                             <button onclick="setRosterTab('5v5')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab5v5Style}">5v5 LINES</button>
                             <button onclick="setRosterTab('3v3')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab3v3Style}">3v3 OVERTIME</button>
@@ -1468,11 +1643,11 @@ function renderRoster(container) {
                 <div style="display: flex; gap: 1.5rem; height: 100px; flex-shrink: 0;">
                     <div class="dashboard-card action-zone drop-zone" data-slot-id="sell" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.1); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; cursor: pointer;">
                         <i data-lucide="coins" style="color: #ef4444; width: 36px; height: 36px;"></i>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #ef4444; margin-top: 0.5rem;">SELL PLAYER</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #ef4444; margin-top: 0.5rem;">DRAG TO SELL PLAYER</span>
                     </div>
                     <div class="dashboard-card action-zone drop-zone" data-slot-id="collection" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(59, 130, 246, 0.1); border: 2px dashed rgba(59, 130, 246, 0.4); border-radius: 12px; cursor: pointer;">
                         <i data-lucide="archive" style="color: #3b82f6; width: 36px; height: 36px;"></i>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #3b82f6; margin-top: 0.5rem;">SEND TO COLLECTION</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #3b82f6; margin-top: 0.5rem;">DRAG TO SEND TO COLLECTION</span>
                     </div>
                 </div>` : ''}
             </div>
@@ -1494,7 +1669,7 @@ function renderRoster(container) {
                     <span class="bench-sort" data-sort="overall" style="cursor: pointer; user-select: none; padding-right: 0.5rem;">OVR</span>
                 </div>
                 
-                <div class="drop-zone" data-slot-id="bench" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background-color: rgba(0,0,0,0.2); border-radius: 8px; min-height: 200px;">
+                <div class="drop-zone" data-slot-id="bench" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background-color: rgba(0,0,0,0.05); border-radius: 8px; min-height: 200px;">
                     ${benchHTML}
                     ${benchPlayers.length === 0 ? '<p style="color: var(--text-muted); text-align: center; font-size: 1rem; margin-top: 2rem;">Bench is empty. Roster is fully active.</p>' : ''}
                 </div>
@@ -1636,7 +1811,7 @@ function renderShopPage(container) {
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; background-color: rgba(0,0,0,0.4); padding: 1rem 2rem; border-radius: 12px; border: 2px solid #fbbf24;">
                     <span style="font-size: 2rem;">🪙</span>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);">${gameState.coins || 0}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">${gameState.coins || 0}</span>
                 </div>
             </div>
             
@@ -1652,7 +1827,7 @@ function renderShopPage(container) {
                     <i data-lucide="package" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">D-LIST PACK</h2>
                     <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 3 random players.</p>
-                    <button class="btn" onclick="buyPack('standard')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
+                    <button class="btn" onclick="buyPack('standard')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color);">
                         <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">200</span>
                     </button>
                 </div>
@@ -1662,9 +1837,9 @@ function renderShopPage(container) {
                     <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(148, 163, 184, 0.5) 0%, transparent 70%);"></div>
                     <i data-lucide="layers" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">JUMBO D-LIST</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">6 players. 15% chance for a C-Tier!</p>
-                    <button class="btn" onclick="buyPack('jumbo')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.2);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">600</span>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">6 players. 5% chance for a C-Tier!</p>
+                    <button class="btn" onclick="buyPack('jumbo')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color);">
+                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">850</span>
                     </button>
                 </div>
 
@@ -1674,7 +1849,7 @@ function renderShopPage(container) {
                     <i data-lucide="swords" style="width: 50px; height: 50px; color: #ef4444; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">FORWARDS PACK</h2>
                     <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Forwards.</p>
-                    <button class="btn" onclick="buyPack('forwards')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <button class="btn" onclick="buyPack('forwards')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(239, 68, 68, 0.5); color: var(--text-color);">
                         <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
                     </button>
                 </div>
@@ -1685,7 +1860,7 @@ function renderShopPage(container) {
                     <i data-lucide="shield-half" style="width: 50px; height: 50px; color: #3b82f6; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">DEFENSE PACK</h2>
                     <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Defensemen.</p>
-                    <button class="btn" onclick="buyPack('defense')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(59, 130, 246, 0.2);">
+                    <button class="btn" onclick="buyPack('defense')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(59, 130, 246, 0.5); color: var(--text-color);">
                         <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
                     </button>
                 </div>
@@ -1696,7 +1871,7 @@ function renderShopPage(container) {
                     <i data-lucide="hand-metal" style="width: 50px; height: 50px; color: #f59e0b; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">GOALIE PACK</h2>
                     <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Goalies.</p>
-                    <button class="btn" onclick="buyPack('goalies')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(245, 158, 11, 0.2);">
+                    <button class="btn" onclick="buyPack('goalies')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(245, 158, 11, 0.5); color: var(--text-color);">
                         <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
                     </button>
                 </div>
@@ -1713,7 +1888,7 @@ function renderShopPage(container) {
 window.buyPack = function(packType) {
     const packConfigs = {
         'standard': { cost: 200, count: 3, filters: null, cTierChance: 0 },
-        'jumbo':    { cost: 600, count: 6, filters: null, cTierChance: 0.15 },
+        'jumbo':    { cost: 850, count: 6, filters: null, cTierChance: 0.05 },
         'forwards': { cost: 400, count: 2, filters: ['LW', 'C', 'RW'], cTierChance: 0 },
         'defense':  { cost: 400, count: 2, filters: ['LD', 'RD'], cTierChance: 0 },
         'goalies':  { cost: 400, count: 2, filters: ['G'], cTierChance: 0 }
@@ -2823,13 +2998,20 @@ window.loadGame = async function() {
     const data = JSON.parse(saved);
     gameState = data.gameState;
     
+    // Revive or reset global stats
+    if (gameState.globalDraftPool) {
+        window.globalDraftPool = gameState.globalDraftPool;
+    } else {
+        window.globalDraftPool.forEach(p => {
+            p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        });
+        gameState.globalDraftPool = window.globalDraftPool;
+    }
+    
     // Revive Date objects
     if (gameState.currentDate) {
         gameState.currentDate = new Date(gameState.currentDate);
     }
-    
-    currentTeam = data.currentTeam;
-    
     document.body.style.removeProperty('--bg-color');
     document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 60%, #0b1121) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #0b1121) 100%)`;
     document.body.style.backgroundAttachment = 'fixed';
@@ -3057,15 +3239,6 @@ function renderStandingsPage(container) {
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <h1 class="title-main" style="margin: 0; text-align: left;">League Standings</h1>
-            
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <button class="btn btn-sm" style="background-color: #8b5cf6; border: none; color: white;" onclick="simulatePlayoffDebug()">🎲 Simulate Playoff Debug</button>
-                
-                <div class="tabs" style="display: flex; background-color: rgba(0,0,0,0.2); padding: 0.2rem; border-radius: 8px;">
-                    <button class="tab-btn ${standingsCurrentTab === 'regular' ? 'active' : ''}" onclick="switchStandingsTab('regular')" style="padding: 0.5rem 1.5rem; border-radius: 6px; border: none; background: ${standingsCurrentTab === 'regular' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer;">Regular Season</button>
-                    <button class="tab-btn ${standingsCurrentTab === 'playoffs' ? 'active' : ''}" onclick="switchStandingsTab('playoffs')" style="padding: 0.5rem 1.5rem; border-radius: 6px; border: none; background: ${standingsCurrentTab === 'playoffs' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer;">Playoffs</button>
-                </div>
-            </div>
         </div>
         
         <div id="standings-page-content">
@@ -3076,11 +3249,7 @@ function renderStandingsPage(container) {
     container.innerHTML = html;
     
     const content = document.getElementById('standings-page-content');
-    if (standingsCurrentTab === 'regular') {
-        renderFullStandings(content);
-    } else {
-        renderPlayoffBracket(content);
-    }
+    renderFullStandings(content);
 }
 
 window.calendarSelectedDateStr = window.calendarSelectedDateStr || null;
@@ -3411,175 +3580,6 @@ function renderFullStandings(container) {
     container.innerHTML = html;
 }
 
-function renderPlayoffBracket(container) {
-    if (!gameState.playoffs) {
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; color: var(--text-muted);">
-                <i data-lucide="git-merge" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
-                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0;">Playoffs Not Started</h3>
-                <p>The playoff bracket will be generated at the end of the regular season.</p>
-                <p>Use the "Simulate Playoff Debug" button above to test the view.</p>
-            </div>
-        `;
-        if (window.lucide) window.lucide.createIcons();
-        return;
-    }
-    
-    // We will render a flexbox bracket tree
-    const p = gameState.playoffs;
-    
-    function renderMatchup(m) {
-        if (!m) return `<div class="matchup-card empty">TBD</div>`;
-        const t1 = ohlTeams.find(t => t.id === m.team1) || { name: 'TBD' };
-        const t2 = ohlTeams.find(t => t.id === m.team2) || { name: 'TBD' };
-        
-        const logo1 = t1.name !== 'TBD' ? t1.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
-        const logo2 = t2.name !== 'TBD' ? t2.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
-        
-        const winner = m.winner;
-        
-        return `
-            <div class="matchup-card">
-                <div class="matchup-row ${winner === t1.id ? 'winner' : ''}">
-                    <div class="matchup-team">
-                        ${t1.name !== 'TBD' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
-                        <span>${t1.name.split(' ').pop()}</span>
-                    </div>
-                    <span>${m.score1 !== undefined ? m.score1 : '-'}</span>
-                </div>
-                <div class="matchup-row ${winner === t2.id ? 'winner' : ''}">
-                    <div class="matchup-team">
-                        ${t2.name !== 'TBD' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
-                        <span>${t2.name.split(' ').pop()}</span>
-                    </div>
-                    <span>${m.score2 !== undefined ? m.score2 : '-'}</span>
-                </div>
-            </div>
-        `;
-    }
-    
-    let html = `
-        <div class="bracket-wrapper">
-            <div class="bracket-container">
-                <!-- WEST -->
-                <div class="bracket-col col-left-1">
-                    ${renderMatchup(p.r1.w1)}
-                    ${renderMatchup(p.r1.w8)}
-                    ${renderMatchup(p.r1.w2)}
-                    ${renderMatchup(p.r1.w7)}
-                </div>
-                <div class="bracket-col col-left-2">
-                    ${renderMatchup(p.r2.w1)}
-                    ${renderMatchup(p.r2.w2)}
-                </div>
-                <div class="bracket-col col-left-3">
-                    ${renderMatchup(p.r3.w)}
-                </div>
-                
-                <!-- FINAL -->
-                <div class="bracket-col" style="padding: 0 1rem;">
-                    <h3 style="text-align: center; font-family: 'Blockletter', sans-serif; margin-bottom: 1rem; color: #fcc82d; text-shadow: 0 0 10px rgba(252, 200, 45, 0.4);">J. Ross Robertson Cup</h3>
-                    ${renderMatchup(p.final)}
-                </div>
-                
-                <!-- EAST -->
-                <div class="bracket-col col-right-3">
-                    ${renderMatchup(p.r3.e)}
-                </div>
-                <div class="bracket-col col-right-2">
-                    ${renderMatchup(p.r2.e1)}
-                    ${renderMatchup(p.r2.e2)}
-                </div>
-                <div class="bracket-col col-right-1">
-                    ${renderMatchup(p.r1.e1)}
-                    ${renderMatchup(p.r1.e8)}
-                    ${renderMatchup(p.r1.e2)}
-                    ${renderMatchup(p.r1.e7)}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-}
-
-window.simulatePlayoffDebug = function() {
-    // 1. Randomize regular season standings
-    gameState.standings.forEach(s => {
-        s.w = Math.floor(Math.random() * 40) + 10;
-        s.l = Math.floor(Math.random() * 30) + 5;
-        s.otl = 68 - s.w - s.l;
-        if (s.otl < 0) { s.l += s.otl; s.otl = 0; }
-        s.gf = Math.floor(Math.random() * 150) + 150;
-        s.ga = Math.floor(Math.random() * 150) + 150;
-        s.pts = (s.w * 2) + s.otl;
-        s.gp = 68; // Forçando a rodada 68
-        
-        const streaks = ['W', 'L'];
-        s.streak = { type: streaks[Math.floor(Math.random()*2)], count: Math.floor(Math.random()*5)+1 };
-    });
-    
-    // Atualiza matematicamente os Seeds baseados nos 68 jogos
-    updateClinchStatuses();
-    
-    // Sort
-    let all = [...gameState.standings];
-    all.forEach(s => {
-        s.conf = ohlTeams.find(t=>t.id===s.teamId).conference;
-    });
-    
-    all.sort((a,b) => b.pts - a.pts);
-    
-    let east = all.filter(s => s.conf === 'East');
-    let west = all.filter(s => s.conf === 'West');
-    
-    // Top 8 advance
-    let eSeeds = east.slice(0, 8).map(s => s.teamId);
-    let wSeeds = west.slice(0, 8).map(s => s.teamId);
-    
-    function simSeries(t1, t2) {
-        let w1 = 0, w2 = 0;
-        while(w1 < 4 && w2 < 4) {
-            Math.random() > 0.5 ? w1++ : w2++;
-        }
-        return {
-            team1: t1, team2: t2,
-            score1: w1, score2: w2,
-            winner: w1 === 4 ? t1 : t2
-        };
-    }
-    
-    let p = { r1: {}, r2: {}, r3: {}, final: {} };
-    
-    // Round 1
-    p.r1.e1 = simSeries(eSeeds[0], eSeeds[7]);
-    p.r1.e8 = simSeries(eSeeds[3], eSeeds[4]);
-    p.r1.e2 = simSeries(eSeeds[1], eSeeds[6]);
-    p.r1.e7 = simSeries(eSeeds[2], eSeeds[5]);
-    
-    p.r1.w1 = simSeries(wSeeds[0], wSeeds[7]);
-    p.r1.w8 = simSeries(wSeeds[3], wSeeds[4]);
-    p.r1.w2 = simSeries(wSeeds[1], wSeeds[6]);
-    p.r1.w7 = simSeries(wSeeds[2], wSeeds[5]);
-    
-    // Round 2
-    p.r2.e1 = simSeries(p.r1.e1.winner, p.r1.e8.winner);
-    p.r2.e2 = simSeries(p.r1.e2.winner, p.r1.e7.winner);
-    
-    p.r2.w1 = simSeries(p.r1.w1.winner, p.r1.w8.winner);
-    p.r2.w2 = simSeries(p.r1.w2.winner, p.r1.w7.winner);
-    
-    // Round 3
-    p.r3.e = simSeries(p.r2.e1.winner, p.r2.e2.winner);
-    p.r3.w = simSeries(p.r2.w1.winner, p.r2.w2.winner);
-    
-    // Final
-    p.final = simSeries(p.r3.e.winner, p.r3.w.winner);
-    
-    gameState.playoffs = p;
-    
-    switchStandingsTab('playoffs');
-};
 
 function openRosterErrorModal() {
     const modalHTML = `
@@ -3676,8 +3676,69 @@ function openIncompleteMatchModal() {
 
 // --- NOTIFICATION & AGE MANAGEMENT ---
 
+function computeSeasonAwards() {
+    let awards = {};
+    let playerMap = new Map();
+    if (window.globalDraftPool) {
+        window.globalDraftPool.forEach(p => playerMap.set(p.id, p));
+    }
+    if (gameState.players) {
+        gameState.players.forEach(p => playerMap.set(p.id, p));
+    }
+    
+    let allPlayers = Array.from(playerMap.values()).filter(p => p.stats && p.stats.games > 0);
+    
+    awards.playoffsWinnerId = gameState.playoffs ? gameState.playoffs.champion : null;
+    let bestTeam = [...gameState.standings].sort((a, b) => b.pts - a.pts || b.w - a.w)[0];
+    awards.regularSeasonWinnerId = bestTeam ? bestTeam.teamId : null;
+    
+    let lowestGaTeam = [...gameState.standings].sort((a, b) => a.ga - b.ga)[0];
+    awards.lowestGaTeamId = lowestGaTeam ? lowestGaTeam.teamId : null;
+    
+    let topScorer = [...allPlayers].sort((a, b) => (b.stats.points) - (a.stats.points))[0];
+    awards.topScorerId = topScorer ? topScorer.id : null;
+    
+    let mop = [...allPlayers].sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
+    awards.mopId = mop ? mop.id : null;
+    
+    let topRw = [...allPlayers].filter(p => p.position === 'RW').sort((a, b) => (b.stats.points) - (a.stats.points))[0];
+    awards.topRwId = topRw ? topRw.id : null;
+    
+    let topD = [...allPlayers].filter(p => p.position === 'LD' || p.position === 'RD').sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
+    awards.topDefencemanId = topD ? topD.id : null;
+    
+    let topG = [...allPlayers].filter(p => p.position === 'G').sort((a, b) => b.overall - a.overall)[0];
+    awards.topGoalieId = topG ? topG.id : null;
+    
+    let rookieG = [...allPlayers].filter(p => p.position === 'G' && p.age <= 17).sort((a, b) => b.overall - a.overall)[0];
+    awards.rookieGoalieId = rookieG ? rookieG.id : null;
+    
+    let topRookie = [...allPlayers].filter(p => p.age <= 17).sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
+    awards.rookieId = topRookie ? topRookie.id : null;
+    
+    let topOverage = [...allPlayers].filter(p => p.age >= 20).sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
+    awards.overageId = topOverage ? topOverage.id : null;
+    
+    let playoffMvp = null;
+    if (awards.playoffsWinnerId) {
+        let champPlayers = [...allPlayers].filter(p => p.originalTeamId === awards.playoffsWinnerId || p.teamId === awards.playoffsWinnerId);
+        playoffMvp = champPlayers.sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
+    }
+    awards.playoffMvpId = playoffMvp ? playoffMvp.id : null;
+    
+    return awards;
+}
+
 window.advanceSeason = function() {
     if (!gameState) return;
+    
+    // Compute Awards and save history
+    let awards = computeSeasonAwards();
+    gameState.history = gameState.history || [];
+    gameState.history.push({
+        year: gameState.seasonYear || new Date().getFullYear(),
+        awards: awards
+    });
     
     let retiredPlayers = [];
     
@@ -3752,6 +3813,25 @@ window.advanceSeason = function() {
         streak: { type: 'None', count: 0 },
         clinch: ''
     }));
+    
+    gameState.playoffs = null; // Reset playoffs for the new season
+    
+    // Reset all player stats
+    if (window.globalDraftPool) {
+        window.globalDraftPool.forEach(p => {
+            p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        });
+    }
+    if (gameState.players) {
+        gameState.players.forEach(p => {
+            p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        });
+    }
+    if (gameState.collection) {
+        gameState.collection.forEach(p => {
+            p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        });
+    }
     
     gameState.schedule = generateSeasonSchedule(ohlTeams, newDate);
     
@@ -3850,6 +3930,18 @@ document.addEventListener('click', (e) => {
 
 // --- COLLECTION (STICKER ALBUM) ---
 
+window.unlockAllCollection = function() {
+    if (!gameState.collection) gameState.collection = [];
+    window.globalDraftPool.forEach(p => {
+        if (!gameState.collection.some(c => c.id === p.id)) {
+            gameState.collection.push(p);
+        }
+    });
+    if (window.saveGame) window.saveGame();
+    renderCollectionPage(document.getElementById('main-content'));
+    alert("All players unlocked in the collection!");
+};
+
 window.renderCollectionPage = function(container) {
     if (!gameState) return;
     
@@ -3891,6 +3983,14 @@ window.renderCollectionPage = function(container) {
         `;
     });
     html += `</div>`;
+    
+    html += `
+        <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
+            <button class="btn" onclick="unlockAllCollection()" style="background: var(--team-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-family: 'Blockletter', sans-serif; cursor: pointer; font-size: 1.2rem; letter-spacing: 1px;">
+                <i data-lucide="unlock" style="margin-right: 8px; width: 20px; height: 20px;"></i> DEBUG: UNLOCK ALL PLAYERS
+            </button>
+        </div>
+    `;
 
     // Players Grid
     const selectedTeam = ohlTeams.find(t => t.id === window.currentCollectionTeamId);
@@ -3901,7 +4001,7 @@ window.renderCollectionPage = function(container) {
         const isCollected = (gameState.collection || []).some(c => c.id === player.id);
         if (isCollected) collectedCount++;
         
-        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#10b981', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
+        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
         const posColor = posColors[player.position] || '#94a3b8';
         
         const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.3);';
@@ -3918,7 +4018,7 @@ window.renderCollectionPage = function(container) {
                 </div>
                 
                 <div style="position: relative; z-index: 1; margin-top: 1.5rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" onerror="this.src='https://images.chl.ca/images/chl/player-missing-photo.png'" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid #334155; background-color: #000;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid #334155; background-color: #000;">
                 </div>
                 
                 <div style="position: relative; z-index: 1; margin-top: 0.5rem; padding: 0 0.5rem;">
@@ -4027,13 +4127,21 @@ window.awardCompletionPacks = function(teamId) {
     // Open Reveal Modal
     setTimeout(() => {
         alert(`You completed the ${team ? team.name : 'team'} album! Opening your 2 Special Packs...`);
+
         openPackRevealModal(rewardPlayers);
     }, 500);
 }
 
 window.renderPlayoffsPage = function(container) {
     if (!gameState.playoffs) {
-        container.innerHTML = `<h2 class="title-main">Playoffs have not started yet.</h2>`;
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; color: var(--text-muted);">
+                <i data-lucide="git-merge" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0;">Playoffs Not Started</h3>
+                <p>The playoff bracket will be generated at the end of the regular season.</p>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
         return;
     }
 
@@ -4048,8 +4156,6 @@ window.renderPlayoffsPage = function(container) {
                     ${p.champion ? 'CHAMPION CROWNED' : 'ROUND ' + p.round + ' - ' + roundName.toUpperCase()}
                 </span>
             </div>
-            
-            <div class="playoff-bracket" style="display: flex; flex-direction: column; gap: 1.5rem;">
     `;
 
     if (p.champion) {
@@ -4062,69 +4168,242 @@ window.renderPlayoffsPage = function(container) {
                 <h3 style="color: var(--text-color); margin: 0; font-size: 1.5rem; opacity: 0.8;">OHL CHAMPIONS</h3>
             </div>
         `;
-    } else {
-        p.series.forEach(s => {
-            let high = ohlTeams.find(t => t.id === s.highSeedId);
-            let low = ohlTeams.find(t => t.id === s.lowSeedId);
-            
-            let highLogo = high.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-            let lowLogo = low.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-            
-            let highWins = s.highSeedWins;
-            let lowWins = s.lowSeedWins;
-            
-            let statusText = '';
-            if (s.winner) {
-                statusText = `<span style="color: #10b981; font-weight: bold;">${s.winner === high.id ? high.name : low.name} WINS ${s.winner === high.id ? highWins : lowWins}-${s.winner === high.id ? lowWins : highWins}</span>`;
-            } else if (highWins === lowWins) {
-                statusText = `Tied ${highWins}-${lowWins}`;
-            } else if (highWins > lowWins) {
-                statusText = `${high.name.split(' ').slice(-1).join(' ')} leads ${highWins}-${lowWins}`;
-            } else {
-                statusText = `${low.name.split(' ').slice(-1).join(' ')} leads ${lowWins}-${highWins}`;
-            }
-            
-            html += `
-                <div class="dashboard-card" style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 1rem; width: 30%;">
-                        <img src="assets/logos/ohl/${highLogo}.png" style="width: 60px; height: 60px; object-fit: contain; opacity: ${s.winner && s.winner !== high.id ? '0.3' : '1'};">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">${high.conference} Seed</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; ${s.winner && s.winner !== high.id ? 'opacity: 0.3;' : ''}">${high.name}</span>
-                        </div>
+    }
+
+    const wR1 = p.series.filter(s => s.round === 1 && s.conference === 'West');
+    const wR2 = p.series.filter(s => s.round === 2 && s.conference === 'West');
+    const wR3 = p.series.filter(s => s.round === 3 && s.conference === 'West');
+    
+    const eR1 = p.series.filter(s => s.round === 1 && s.conference === 'East');
+    const eR2 = p.series.filter(s => s.round === 2 && s.conference === 'East');
+    const eR3 = p.series.filter(s => s.round === 3 && s.conference === 'East');
+    
+    const fR = p.series.filter(s => s.round === 4);
+
+    function renderMatchup(s) {
+        if (!s) return `<div class="matchup-card empty">TBD</div>`;
+        const t1 = ohlTeams.find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
+        const t2 = ohlTeams.find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
+        
+        const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        
+        const winner = s.winner;
+        
+        return `
+            <div class="matchup-card" onclick="openSeriesModal('${s.id}')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                <div class="matchup-row ${winner === t1.id ? 'winner' : ''}">
+                    <div class="matchup-team">
+                        ${t1.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${t1.name.split(' ').pop()}</span>
                     </div>
-                    
-                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; width: 40%;">
-                        <div style="font-size: 2.5rem; font-family: 'Blockletter', sans-serif; display: flex; gap: 1rem;">
-                            <span style="color: ${highWins === 4 ? '#10b981' : 'var(--text-color)'};">${highWins}</span>
-                            <span style="color: var(--text-muted);">-</span>
-                            <span style="color: ${lowWins === 4 ? '#10b981' : 'var(--text-color)'};">${lowWins}</span>
-                        </div>
-                        <div style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">
-                            ${statusText}
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; gap: 1rem; width: 30%; justify-content: flex-end; text-align: right;">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">${low.conference} Seed</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; ${s.winner && s.winner !== low.id ? 'opacity: 0.3;' : ''}">${low.name}</span>
-                        </div>
-                        <img src="assets/logos/ohl/${lowLogo}.png" style="width: 60px; height: 60px; object-fit: contain; opacity: ${s.winner && s.winner !== low.id ? '0.3' : '1'};">
-                    </div>
+                    <span>${s.highSeedWins}</span>
                 </div>
-            `;
-        });
+                <div class="matchup-row ${winner === t2.id ? 'winner' : ''}">
+                    <div class="matchup-team">
+                        ${t2.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${t2.name.split(' ').pop()}</span>
+                    </div>
+                    <span>${s.lowSeedWins}</span>
+                </div>
+            </div>
+        `;
     }
 
     html += `
+            <div class="playoff-bracket" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="bracket-wrapper">
+                    <div class="bracket-container">
+                        <!-- WEST -->
+                        <div class="bracket-col col-left-1">
+                            ${renderMatchup(wR1[0])}
+                            ${renderMatchup(wR1[3])}
+                            ${renderMatchup(wR1[1])}
+                            ${renderMatchup(wR1[2])}
+                        </div>
+                        <div class="bracket-col col-left-2">
+                            ${renderMatchup(wR2[0])}
+                            ${renderMatchup(wR2[1])}
+                        </div>
+                        <div class="bracket-col col-left-3">
+                            ${renderMatchup(wR3[0])}
+                        </div>
+                        
+                        <!-- FINAL -->
+                        <div class="bracket-col" style="padding: 0 1rem;">
+                            <h3 style="text-align: center; font-family: 'Blockletter', sans-serif; margin-bottom: 1rem; color: #fcc82d; text-shadow: 0 0 10px rgba(252, 200, 45, 0.4);">J. Ross Robertson Cup</h3>
+                            ${renderMatchup(fR[0])}
+                        </div>
+                        
+                        <!-- EAST -->
+                        <div class="bracket-col col-right-3">
+                            ${renderMatchup(eR3[0])}
+                        </div>
+                        <div class="bracket-col col-right-2">
+                            ${renderMatchup(eR2[0])}
+                            ${renderMatchup(eR2[1])}
+                        </div>
+                        <div class="bracket-col col-right-1">
+                            ${renderMatchup(eR1[0])}
+                            ${renderMatchup(eR1[3])}
+                            ${renderMatchup(eR1[1])}
+                            ${renderMatchup(eR1[2])}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
 
     container.innerHTML = html;
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.openSeriesModal = function(seriesId) {
+    let series = gameState.playoffs.series.find(s => s.id === seriesId);
+    if (!series) return;
+    
+    let matches = gameState.schedule.flatMap(day => day.matches).filter(m => m.seriesId === seriesId);
+    
+    let matchesHtml = matches.map((m, idx) => {
+        let home = ohlTeams.find(t => t.id === m.homeId) || { name: 'TBD' };
+        let away = ohlTeams.find(t => t.id === m.awayId) || { name: 'TBD' };
+        
+        let scoreText = m.played ? `${m.homeScore} - ${m.awayScore}${m.isOT ? ' (OT)' : ''}` : 'Scheduled';
+        let colorText = m.played ? 'color: var(--text-color); font-weight: bold;' : 'color: var(--text-muted);';
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.1));">
+                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; width: 60px;">Game ${m.gameNum || (idx + 1)}</span>
+                <span style="flex: 1; text-align: right; ${colorText}">${away.name}</span>
+                <span style="margin: 0 1rem; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; ${colorText}">${scoreText}</span>
+                <span style="flex: 1; text-align: left; ${colorText}">${home.name}</span>
+            </div>
+        `;
+    }).join('');
+    
+    if (matches.length === 0) {
+        matchesHtml = `<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No games scheduled yet.</p>`;
+    }
+    
+    const high = ohlTeams.find(t => t.id === series.highSeedId) || { name: 'TBD' };
+    const low = ohlTeams.find(t => t.id === series.lowSeedId) || { name: 'TBD' };
+
+    let modalHTML = `
+        <div id="series-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+            <div class="dashboard-card" style="width: 500px; max-width: 90vw; background-color: var(--surface-color); border-radius: 12px; border: 1px solid var(--border-color, rgba(0,0,0,0.1)); padding: 2rem; position: relative;" onclick="event.stopPropagation()">
+                <button onclick="document.getElementById('series-modal').remove()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); cursor: pointer;"><i data-lucide="x"></i></button>
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin-top: 0; margin-bottom: 0.5rem; text-align: center;">Series Matchups</h2>
+                <h3 style="text-align: center; color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem;">${high.name} vs ${low.name}</h3>
+                <div style="display: flex; flex-direction: column; max-height: 400px; overflow-y: auto;">
+                    ${matchesHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.renderHallOfFame = function(container) {
+    if (!gameState) return;
+    
+    let html = `
+        <div style="padding: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; background: linear-gradient(90deg, rgba(251, 191, 36, 0.1) 0%, transparent 100%); padding: 1rem 1.5rem; border-radius: 12px; border-left: 4px solid #fbbf24;">
+                <i data-lucide="star" style="width: 48px; height: 48px; color: #fbbf24;"></i>
+                <div>
+                    <h1 class="title-main" style="text-align: left; margin: 0 0 0.2rem 0; font-size: 2.5rem; line-height: 1; text-shadow: 0 0 15px rgba(251, 191, 36, 0.5);">HALL OF FAME</h1>
+                    <div style="color: var(--text-muted); font-size: 1.1rem;">Official History & OHL Awards</div>
+                </div>
+            </div>
+    `;
+    
+    if (!gameState.history || gameState.history.length === 0) {
+        html += `<div style="text-align: center; color: var(--text-muted); font-size: 1.2rem; padding: 4rem;">No seasons have been completed yet. Win championships to fill the Hall of Fame!</div></div>`;
+        container.innerHTML = html;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+    
+    const getPlayer = (id) => {
+        if (!id) return null;
+        let p = window.globalDraftPool ? window.globalDraftPool.find(x => x.id === id) : null;
+        if (!p && gameState.players) p = gameState.players.find(x => x.id === id);
+        if (!p && gameState.collection) p = gameState.collection.find(x => x.id === id);
+        return p;
+    };
+    
+    const renderAward = (title, subtitle, playerId) => {
+        const p = getPlayer(playerId);
+        if (!p) return '';
+        const teamInfo = p.originalTeamId ? ohlTeams.find(t => t.id === p.originalTeamId) : null;
+        const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+        return `
+            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 1rem;">
+                <img src="https://assets.leaguestat.com/ohl/240x240/${p.id.split('_')[1]}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #fbbf24; background-color: #000;">
+                <div>
+                    <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; margin-bottom: 0.2rem;">${title}</div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 16px; object-fit: contain;">` : ''}
+                        <span style="color: #fff; font-weight: bold; font-size: 1rem;">${p.name}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+    
+    const renderTeamAward = (title, subtitle, teamId) => {
+        const t = ohlTeams.find(x => x.id === teamId);
+        if (!t) return '';
+        const logoFile = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+        return `
+            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.5); display: flex; align-items: center; gap: 1rem; flex: 1;">
+                <img src="assets/logos/ohl/${logoFile}.png" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));">
+                <div>
+                    <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; margin-bottom: 0.2rem;">${title}</div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>
+                    <div style="color: #fff; font-weight: bold; font-size: 1.2rem;">${t.name}</div>
+                </div>
+            </div>
+        `;
+    };
+
+    let reversedHistory = [...gameState.history].reverse();
+    
+    reversedHistory.forEach(h => {
+        html += `
+            <div style="margin-bottom: 4rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">SEASON ${h.year}</h2>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem;">
+                    ${renderTeamAward('J. Ross Robertson Cup', 'OHL Playoffs Champion', h.awards.playoffsWinnerId)}
+                    ${renderTeamAward('Hamilton Spectator Trophy', 'Regular Season Winner', h.awards.regularSeasonWinnerId)}
+                    ${renderTeamAward('Dave Pinkney Trophy', 'Lowest Team Goals-Against', h.awards.lowestGaTeamId)}
+                </div>
+                
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--text-muted); margin-bottom: 1rem;">Individual Awards</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                    ${renderAward('Red Tilson Trophy', 'Most Outstanding Player', h.awards.mopId)}
+                    ${renderAward('Wayne Gretzky ’99’ Award', 'OHL Playoff MVP', h.awards.playoffMvpId)}
+                    ${renderAward('Eddie Powers Trophy', 'Top Scorer', h.awards.topScorerId)}
+                    ${renderAward('Jim Mahon Trophy', 'Top Scoring Right Winger', h.awards.topRwId)}
+                    ${renderAward('Max Kaminsky Trophy', 'Defenceman of the Year', h.awards.topDefencemanId)}
+                    ${renderAward('Jim Rutherford Trophy', 'Goaltender of the Year', h.awards.topGoalieId)}
+                    ${renderAward('FW "Dinty" Moore Trophy', 'Best Rookie Goaltender', h.awards.rookieGoalieId)}
+                    ${renderAward('Emms Family Award', 'Rookie of the Year', h.awards.rookieId)}
+                    ${renderAward('Leo Lalonde Trophy', 'Overage Player of the Year', h.awards.overageId)}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    container.innerHTML = html;
     
     if (window.lucide) {
         window.lucide.createIcons();
     }
-};
+}

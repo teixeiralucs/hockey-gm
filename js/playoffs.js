@@ -36,6 +36,7 @@ export function generatePlayoffs(gameState) {
     const createSeries = (high, low, conf) => {
         return {
             id: `series_${seriesIdCounter++}`,
+            round: 1,
             conference: conf,
             highSeedId: high.id,
             lowSeedId: low.id,
@@ -74,7 +75,7 @@ export function generatePlayoffs(gameState) {
 export function schedulePlayoffRound(gameState) {
     if (!gameState.playoffs || !gameState.playoffs.isActive) return;
 
-    let roundSeries = gameState.playoffs.series;
+    let roundSeries = gameState.playoffs.series.filter(s => s.round === gameState.playoffs.round);
     if (roundSeries.length === 0) return;
 
     let currentDate = new Date(gameState.currentDate);
@@ -150,15 +151,16 @@ export function advancePlayoffRound(gameState) {
     if (!gameState.playoffs || !gameState.playoffs.isActive) return false;
 
     // Check if ALL series in the current round are completed
-    let allCompleted = gameState.playoffs.series.every(s => s.winner !== null);
+    let currentRoundSeries = gameState.playoffs.series.filter(s => s.round === gameState.playoffs.round);
+    let allCompleted = currentRoundSeries.every(s => s.winner !== null);
     if (!allCompleted) return false;
 
     let p = gameState.playoffs;
-    let oldSeries = p.series;
+    let prevRoundSeries = currentRoundSeries;
 
     // If Championship is completed
     if (p.round === 4) {
-        p.champion = oldSeries[0].winner;
+        p.champion = prevRoundSeries[0].winner;
         p.isActive = false;
         return true; // Reached end
     }
@@ -170,6 +172,7 @@ export function advancePlayoffRound(gameState) {
     const createSeries = (highId, lowId, conf) => {
         return {
             id: `series_${seriesIdCounter++}`,
+            round: p.round,
             conference: conf,
             highSeedId: highId,
             lowSeedId: lowId,
@@ -181,8 +184,8 @@ export function advancePlayoffRound(gameState) {
 
     if (p.round === 2) {
         // Conf Semifinals (Highest vs Lowest remaining, 2nd Highest vs 2nd Lowest)
-        let eastWinners = oldSeries.filter(s => s.conference === 'East').map(s => s.winner);
-        let westWinners = oldSeries.filter(s => s.conference === 'West').map(s => s.winner);
+        let eastWinners = prevRoundSeries.filter(s => s.conference === 'East').map(s => s.winner);
+        let westWinners = prevRoundSeries.filter(s => s.conference === 'West').map(s => s.winner);
 
         const sortByPoints = (aId, bId) => {
             let stA = gameState.standings.find(s => s.teamId === aId);
@@ -205,8 +208,8 @@ export function advancePlayoffRound(gameState) {
         }
     } else if (p.round === 3) {
         // Conf Finals
-        let eastWinners = oldSeries.filter(s => s.conference === 'East').map(s => s.winner);
-        let westWinners = oldSeries.filter(s => s.conference === 'West').map(s => s.winner);
+        let eastWinners = prevRoundSeries.filter(s => s.conference === 'East').map(s => s.winner);
+        let westWinners = prevRoundSeries.filter(s => s.conference === 'West').map(s => s.winner);
         
         const sortByPoints = (aId, bId) => {
             let stA = gameState.standings.find(s => s.teamId === aId);
@@ -227,8 +230,8 @@ export function advancePlayoffRound(gameState) {
         }
     } else if (p.round === 4) {
         // Championship
-        let eastWinner = oldSeries.find(s => s.conference === 'East')?.winner;
-        let westWinner = oldSeries.find(s => s.conference === 'West')?.winner;
+        let eastWinner = prevRoundSeries.find(s => s.conference === 'East')?.winner;
+        let westWinner = prevRoundSeries.find(s => s.conference === 'West')?.winner;
 
         if (eastWinner && westWinner) {
             let stEast = gameState.standings.find(s => s.teamId === eastWinner);
@@ -244,7 +247,7 @@ export function advancePlayoffRound(gameState) {
         }
     }
 
-    p.series = newSeries;
+    p.series.push(...newSeries);
     schedulePlayoffRound(gameState);
     return true;
 }

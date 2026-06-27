@@ -156,7 +156,7 @@ for api_team in api_teams:
         pass
 
 os.makedirs('data', exist_ok=True)
-with open('data/rosters.json', 'w') as f:
+with open('hockey-gm/data/rosters.json', 'w') as f:
     json.dump(all_rosters, f, indent=4)
 
 print(f"Successfully saved {total_players} players to data/rosters.json with true Overalls (12-23)")
