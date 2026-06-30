@@ -2,10 +2,16 @@ import { ohlTeams } from '../data/teams.js';
 import { generateSeasonSchedule } from './schedule.js';
 import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
 import { initMainMenu } from './ui/setupUI.js';
+import { renderDashboard as renderDashboardUI } from './ui/dashboardUI.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Hockey GM initialized');
-    initMainMenu();
+    
+    // Attempt to load auto-save directly
+    const hasSave = await window.loadGame('auto');
+    if (!hasSave) {
+        initMainMenu();
+    }
 });
 
 // --- UI VIEWS ---
@@ -92,7 +98,8 @@ async function initNewGame(teamIdOverride = null) {
             gameState.players.push({
                 ...p,
                 teamId: targetTeam.id, // Pertence à sua franquia agora
-                location: 'bench' // Todos começam no banco!
+                location: 'bench', // Todos começam no banco!
+                stats: JSON.parse(JSON.stringify(p.stats)) // DEEP COPY
             });
         });
         
@@ -108,7 +115,8 @@ async function initNewGame(teamIdOverride = null) {
                         gameState.players.push({
                             ...p,
                             teamId: team.id,
-                            location: 'cpu_bench'
+                            location: 'cpu_bench',
+                            stats: JSON.parse(JSON.stringify(p.stats)) // DEEP COPY
                         });
                     }
                 });
@@ -163,6 +171,82 @@ async function handleTeamSelection(team) {
     initHomeScreen();
 }
 
+function autoFillRoster() {
+    let userPlayers = gameState.players.filter(p => !p.location || !p.location.startsWith('cpu_'));
+    
+    // Reset all locations to bench
+    userPlayers.forEach(p => {
+        p.location = 'bench';
+        p.ot_location = null;
+    });
+    
+    // Group by position and sort by overall rating descending
+    let forwards = userPlayers.filter(p => ['C', 'LW', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
+    let defense = userPlayers.filter(p => ['D', 'LD', 'RD'].includes(p.position)).sort((a,b) => b.overall - a.overall);
+    let goalies = userPlayers.filter(p => p.position === 'G').sort((a,b) => b.overall - a.overall);
+    
+    const f_slots = [
+        'f_1_LW', 'f_1_C', 'f_1_RW',
+        'f_2_LW', 'f_2_C', 'f_2_RW',
+        'f_3_LW', 'f_3_C', 'f_3_RW',
+        'f_4_LW', 'f_4_C', 'f_4_RW'
+    ];
+    const d_slots = [
+        'd_1_LD', 'd_1_RD',
+        'd_2_LD', 'd_2_RD',
+        'd_3_LD', 'd_3_RD'
+    ];
+    const g_slots = [
+        'g_1_Starter',
+        'g_2_Backup'
+    ];
+    const ot_slots = [
+        'ot_1_F1', 'ot_1_F2', 'ot_1_D',
+        'ot_2_F1', 'ot_2_F2', 'ot_2_D',
+        'ot_3_F1', 'ot_3_F2', 'ot_3_D'
+    ];
+    
+    // 5v5 Assign
+    f_slots.forEach(slot => {
+        let exactPos = slot.split('_')[2];
+        let p = forwards.find(p => p.location === 'bench' && p.position === exactPos);
+        if (!p) p = forwards.find(p => p.location === 'bench'); // fallback
+        if (!p) p = userPlayers.find(p => p.location === 'bench' && p.position !== 'G'); // skater fallback
+        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
+        if (p) p.location = slot;
+    });
+    
+    d_slots.forEach(slot => {
+        let exactPos = slot.split('_')[2];
+        let p = defense.find(p => p.location === 'bench' && p.position === exactPos);
+        if (!p) p = defense.find(p => p.location === 'bench' && p.position === 'D');
+        if (!p) p = defense.find(p => p.location === 'bench');
+        if (!p) p = userPlayers.find(p => p.location === 'bench' && p.position !== 'G'); // skater fallback
+        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
+        if (p) p.location = slot;
+    });
+    
+    g_slots.forEach(slot => {
+        let p = goalies.find(p => p.location === 'bench');
+        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
+        if (p) p.location = slot;
+    });
+    
+    // 3v3 Assign
+    ot_slots.forEach(slot => {
+        let type = slot.split('_')[2];
+        let pool = type.startsWith('F') ? forwards : defense;
+        let p = pool.find(p => !p.ot_location);
+        if (!p) p = userPlayers.find(p => !p.ot_location && p.position !== 'G');
+        if (!p) p = userPlayers.find(p => !p.ot_location);
+        if (p) p.ot_location = slot;
+    });
+    
+    saveGameState();
+    renderRoster(document.getElementById('main-content'));
+}
+window.autoAssignRoster = autoFillRoster;
+
 function initHomeScreen() {
     const app = document.getElementById('app');
     
@@ -180,10 +264,10 @@ function initHomeScreen() {
     
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
-            <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 15%, var(--surface-color));">
-                <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center; padding-right: 1.5rem;">
-                    <h2>HOCKEY GM</h2>
-                    <div id="notification-bell" style="position: relative; cursor: pointer; color: var(--text-color); transition: color 0.2s ease;">
+            <aside class="sidebar">
+                <div class="sidebar-brand" style="position: relative; display: flex; justify-content: center; align-items: center;">
+                    <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
+                    <div id="notification-bell" style="position: absolute; top: -10px; right: -10px; cursor: pointer; color: var(--text-color); transition: color 0.2s ease;">
                         <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
                         <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
                     </div>
@@ -220,10 +304,7 @@ function initHomeScreen() {
                 </nav>
                 
                 <div class="sidebar-bottom">
-                    <div class="coins-display">
-                        <span class="coins-icon">🪙</span>
-                        <span class="coins-amount">0</span>
-                    </div>
+
                     <!-- Save button -->
                     <button id="btn-save-game" class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
                         <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save Game
@@ -307,11 +388,8 @@ function switchView(viewName) {
             `;
         } else {
             sidebarBrand.innerHTML = `
-                <div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-start; padding-right: 0.5rem;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                        <i data-lucide="shield" style="width: 50px; height: 50px; color: var(--text-color); filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));"></i>
-                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; letter-spacing: 2px; line-height: 1; text-align: center;">HOCKEY<br>GM</div>
-                    </div>
+                <div style="position: relative; display: flex; width: 100%; justify-content: center; align-items: center;">
+                    <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
                 </div>
             `;
         }
@@ -350,11 +428,6 @@ function switchView(viewName) {
     }
 }
 
-let currentStandingsConf = null;
-let standingsSortMetric = 'pts';
-let standingsSortDesc = true;
-let currentLeaderTab = 'pts';
-
 function updateCoinsDisplay() {
     const coinsEl = document.querySelector('.coins-amount');
     if (coinsEl && gameState) {
@@ -364,227 +437,8 @@ function updateCoinsDisplay() {
 
 function renderDashboard(container) {
     updateCoinsDisplay();
-    if (!currentStandingsConf) currentStandingsConf = currentTeam.conference;
-
-    const logoFile = currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-    
-    // Find Next Match
-    let nextMatchObj = null;
-    let nextMatchDateStr = '';
-    let daysToSimulate = 0;
-    
-    if (gameState.schedule && gameState.schedule.length > 0) {
-        for (let i = gameState.currentScheduleDayIndex; i < gameState.schedule.length; i++) {
-            let day = gameState.schedule[i];
-            let match = day.matches.find(m => m.homeId === currentTeam.id || m.awayId === currentTeam.id);
-            if (match && !match.played) {
-                nextMatchObj = match;
-                
-                let mDate = new Date(day.date);
-                const d = mDate.getDate();
-                let suffix = 'th';
-                if (d % 10 === 1 && d !== 11) suffix = 'st';
-                else if (d % 10 === 2 && d !== 12) suffix = 'nd';
-                else if (d % 10 === 3 && d !== 13) suffix = 'rd';
-                
-                const dayName = mDate.toLocaleDateString('en-US', { weekday: 'long' });
-                const monthName = mDate.toLocaleDateString('en-US', { month: 'short' });
-                nextMatchDateStr = `${dayName}, ${monthName} ${d}${suffix}`;
-                
-                daysToSimulate = i - gameState.currentScheduleDayIndex;
-                break;
-            }
-        }
-    } else if (gameState.nextMatch) {
-        // Fallback for old saves
-        nextMatchObj = gameState.nextMatch;
-        nextMatchDateStr = 'TODAY';
-    }
-
-    // Formatar a data atual do jogo
-    const d = gameState.currentDate.getDate();
-    let suffix = 'th';
-    if (d % 10 === 1 && d !== 11) suffix = 'st';
-    else if (d % 10 === 2 && d !== 12) suffix = 'nd';
-    else if (d % 10 === 3 && d !== 13) suffix = 'rd';
-    
-    const dayName = gameState.currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const monthName = gameState.currentDate.toLocaleDateString('en-US', { month: 'long' });
-    const year = gameState.currentDate.getFullYear();
-    const dateStr = `${dayName}. ${monthName} ${d}${suffix}, ${year}`;
-    
-    let matchHTML = '';
-    
-    if (nextMatchObj) {
-        const awayTeam = ohlTeams.find(t => t.id === nextMatchObj.awayId);
-        const homeTeam = ohlTeams.find(t => t.id === nextMatchObj.homeId);
-        const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id) || {w:0, l:0, otl:0};
-        const homeStandings = gameState.standings.find(s => s.teamId === homeTeam.id) || {w:0, l:0, otl:0};
-        
-        const awayOvr = getTeamOverall(awayTeam.id, awayTeam.id === currentTeam.id);
-        const homeOvr = getTeamOverall(homeTeam.id, homeTeam.id === currentTeam.id);
-        
-        let buttonHTML = '';
-        if (daysToSimulate > 0) {
-            buttonHTML = `
-                <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff;">
-                    <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE WEEK
-                </button>
-                <button class="btn" onclick="simulateToPlayoffs()" style="width: 100%; border: 1px solid rgba(255,255,255,0.1); background: transparent; font-size: 0.9rem; margin-top: -0.5rem; color: var(--text-muted); padding: 0.5rem;">
-                    DEBUG: SKIP TO PLAYOFFS
-                </button>
-            `;
-        } else {
-            buttonHTML = `
-                <button class="btn" onclick="startMatchSimulation()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff;">
-                    <i data-lucide="play-circle" style="width: 24px; height: 24px;"></i> PLAY MATCH
-                </button>
-            `;
-        }
-
-        let matchTitle = 'Next Match';
-        if (nextMatchObj.isPlayoff && gameState.playoffs) {
-            let series = gameState.playoffs.series.find(s => s.id === nextMatchObj.seriesId);
-            if (series) {
-                let highTeamStr = series.highSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.highSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'HIGH');
-                let lowTeamStr = series.lowSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.lowSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'LOW');
-                
-                let scoreText = '';
-                if (series.highSeedWins === series.lowSeedWins) {
-                    scoreText = `Series Tied ${series.highSeedWins}-${series.lowSeedWins}`;
-                } else if (series.highSeedWins > series.lowSeedWins) {
-                    scoreText = `${highTeamStr} leads ${series.highSeedWins}-${series.lowSeedWins}`;
-                } else {
-                    scoreText = `${lowTeamStr} leads ${series.lowSeedWins}-${series.highSeedWins}`;
-                }
-                matchTitle = `Game ${nextMatchObj.gameNum} <span style="font-size: 0.9rem; color: var(--text-muted); margin-left: 0.5rem;">(${scoreText})</span>`;
-            }
-        }
-
-        matchHTML = `
-            <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--text-color);">${matchTitle}</h3>
-                    <span style="color: var(--team-primary); font-family: 'Blockletter', sans-serif; font-size: 1.2rem;">${nextMatchDateStr}</span>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <!-- Away Team -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                        <img src="assets/logos/ohl/${awayLogo}.png" alt="Away Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: -0.3rem;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${awayTeam.name.split(' ').slice(0, -1).join(' ')}</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${awayTeam.name.split(' ').slice(-1).join(' ')}</span>
-                        </div>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--team-primary);">OVR ${awayOvr}</span>
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
-                    </div>
-                    
-                    <div style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-muted);">VS</div>
-                    
-                    <!-- Home Team -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                        <img src="assets/logos/ohl/${homeLogo}.png" alt="Home Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
-                        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: -0.3rem;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">${homeTeam.name.split(' ').slice(0, -1).join(' ')}</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem;">${homeTeam.name.split(' ').slice(-1).join(' ')}</span>
-                        </div>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--team-primary);">OVR ${homeOvr}</span>
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
-                    </div>
-                </div>
-                
-                ${buttonHTML}
-                
-            </div>
-        `;
-    } else {
-        if (!gameState.playoffs) {
-            matchHTML = `
-                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
-                    <i data-lucide="calendar-check" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">REGULAR SEASON COMPLETED</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">You have completed all 68 games of the regular season.</p>
-                    <button class="btn" onclick="startPlayoffs()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
-                        START PLAYOFFS
-                    </button>
-                </div>
-            `;
-        } else if (gameState.playoffs.isActive) {
-            matchHTML = `
-                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
-                    <i data-lucide="trophy" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
-                    <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
-                        SIMULATE WEEK
-                    </button>
-                </div>
-            `;
-        } else {
-            matchHTML = `
-                <div class="dashboard-card" style="padding: 2.5rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; border-color: #fbbf24;">
-                    <i data-lucide="award" style="width: 60px; height: 60px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fbbf24;">CHAMPION CROWNED</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5;">The playoffs have concluded.</p>
-                    <button class="btn" onclick="advanceSeason()" style="width: 100%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
-                        ENTER OFFSEASON
-                    </button>
-                </div>
-            `;
-        }
-    }
-    
-    // Calcula quantos jogos faltam
-    let playedGames = (gameState.record.wins || 0) + (gameState.record.losses || 0) + (gameState.record.otl || 0);
-    
-    container.innerHTML = `
-        <div class="dashboard-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, color-mix(in srgb, var(--team-primary) 20%, transparent) 0%, transparent 100%); padding: 1rem 1.5rem; border-radius: 12px; border-left: 4px solid var(--team-primary);">
-            <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1;">
-                <img src="assets/logos/ohl/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 15px color-mix(in srgb, var(--team-primary) 40%, transparent));">
-                <div>
-                    <h1 class="title-main" style="text-align: left; margin: 0 0 0.3rem 0; font-size: 2rem; line-height: 1;">${currentTeam.name}</h1>
-                    <div style="font-size: 1rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.3rem; font-family: 'Roboto', sans-serif;">
-                        <div style="color: var(--text-color); font-weight: 700; letter-spacing: 1px;">${dateStr}</div>
-                        <div style="display: flex; gap: 0.8rem; align-items: center;">
-                            <span style="background-color: color-mix(in srgb, var(--team-secondary) 20%, transparent); padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--team-secondary) 40%, transparent); font-size: 0.85rem;">Match ${playedGames + 1} of ${gameState.totalMatches || 68}</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-color); letter-spacing: 2px;">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="display: flex; justify-content: flex-end; align-items: center; padding-right: 0.5rem;">
-                <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease; background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
-                    <i data-lucide="bell" style="width: 28px; height: 28px;"></i>
-                    <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.8rem; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">0</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="dashboard-grid">
-            <div class="dashboard-card standings-card" id="standings-container" style="padding: 1.5rem;">
-                <!-- Generated by renderStandings() -->
-            </div>
-            
-            <div class="dashboard-sidebar-column" style="display: flex; flex-direction: column; gap: 2rem;">
-                ${matchHTML}
-                
-                <div class="dashboard-card" id="league-leaders-container" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1;">
-                    <!-- Generated by renderLeagueLeaders() -->
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Inject components
-    renderStandings(document.getElementById('standings-container'));
-    renderLeagueLeaders(document.getElementById('league-leaders-container'));
-    
-    if (window.lucide) {
-        window.lucide.createIcons();
+    if (container) {
+        renderDashboardUI(container, gameState, currentTeam);
     }
 }
 
@@ -707,9 +561,9 @@ function simulateBackgroundMatch(match) {
     }
     
     // Simulate player stats for CPU teams
-    if (window.globalDraftPool) {
-        let homePlayers = window.globalDraftPool.filter(p => p.originalTeamId === homeTeam.id);
-        let awayPlayers = window.globalDraftPool.filter(p => p.originalTeamId === awayTeam.id);
+    if (gameState.players) {
+        let homePlayers = gameState.players.filter(p => p.teamId === homeTeam.id);
+        let awayPlayers = gameState.players.filter(p => p.teamId === awayTeam.id);
         
         let homeShots = homeScore + Math.floor(Math.random() * 20) + 15;
         let awayShots = awayScore + Math.floor(Math.random() * 20) + 15;
@@ -805,231 +659,7 @@ function updateStandings(homeId, awayId, homeScore, awayScore, isOT) {
     }
 }
 
-function sortStandingsArray(arr, metric, desc) {
-    return arr.sort((a, b) => {
-        let valA = a[metric];
-        let valB = b[metric];
-        
-        // Handle ties
-        if (valA === valB) {
-            if (a.w !== b.w) return b.w - a.w; // Tiebreaker 1: Wins
-            if (a.otl !== b.otl) return b.otl - a.otl; // Tiebreaker 2: OTL > L
-            if (a.pts !== b.pts) return b.pts - a.pts; // Fallback
-        }
-        
-        if (valA < valB) return desc ? 1 : -1;
-        if (valA > valB) return desc ? -1 : 1;
-        return 0;
-    });
-}
-
-function renderStandings() {
-    const container = document.getElementById('standings-container');
-    if (!container) return;
-    
-    // Filter teams by conference
-    const confTeamsData = ohlTeams.filter(t => t.conference === currentStandingsConf);
-    const confTeamIds = confTeamsData.map(t => t.id);
-    
-    let tableData = gameState.standings.filter(s => confTeamIds.includes(s.teamId));
-    
-    // Populate derived state (Pts and Team Name) for sorting
-    tableData.forEach(s => {
-        s.pts = (s.w * 2) + s.otl;
-        const info = ohlTeams.find(t => t.id === s.teamId);
-        s.teamName = info.name;
-    });
-    
-    // Calculate absolute rank by sorting a copy of tableData by PTS -> W -> OTL
-    const rankArray = [...tableData].sort((a, b) => {
-        if (a.pts !== b.pts) return b.pts - a.pts;
-        if (a.w !== b.w) return b.w - a.w;
-        if (a.otl !== b.otl) return b.otl - a.otl;
-        return 0;
-    });
-    
-    // Assign absolute rank
-    tableData.forEach(s => {
-        s.rank = rankArray.findIndex(r => r.teamId === s.teamId) + 1;
-    });
-    
-    // Apply user's sort
-    tableData = sortStandingsArray(tableData, standingsSortMetric, standingsSortDesc);
-    
-    let rowsHTML = '';
-    tableData.forEach((s) => {
-        const teamInfo = ohlTeams.find(t => t.id === s.teamId);
-        const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const isActiveTeam = teamInfo.id === currentTeam.id;
-        
-        rowsHTML += `
-            <tr class="${isActiveTeam ? 'team-row-active' : ''}">
-                <td>${s.rank}</td>
-                <td class="team-cell">
-                    <img src="assets/logos/ohl/${logoFile}.png" alt="logo">
-                    <span>${teamInfo.name}</span>
-                </td>
-                <td>${s.gp}</td>
-                <td><strong>${s.pts}</strong></td>
-                <td>${s.w}</td>
-                <td>${s.l}</td>
-                <td>${s.otl}</td>
-            </tr>
-        `;
-    });
-    
-    container.innerHTML = `
-        <div class="standings-header">
-            <h2 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px;">Standings</h2>
-            <div class="standings-tabs">
-                <button class="tab-btn ${currentStandingsConf === 'East' ? 'active' : ''}" data-conf="East">East</button>
-                <button class="tab-btn ${currentStandingsConf === 'West' ? 'active' : ''}" data-conf="West">West</button>
-            </div>
-        </div>
-        <table class="standings-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px; cursor: pointer;" data-sort="pts" title="Sort by Rank/Points">#</th>
-                    <th style="text-align: left;" data-sort="teamName">Team</th>
-                    <th data-sort="gp" title="Games Played">GP</th>
-                    <th data-sort="pts" title="Points">PTS</th>
-                    <th data-sort="w" title="Wins">W</th>
-                    <th data-sort="l" title="Losses">L</th>
-                    <th data-sort="otl" title="Overtime Losses">OTL</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rowsHTML}
-            </tbody>
-        </table>
-    `;
-    
-    // Bind Tab Events
-    container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentStandingsConf = e.target.getAttribute('data-conf');
-            renderStandings();
-        });
-    });
-    
-    // Bind Sort Events
-    container.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', (e) => {
-            const metric = e.target.getAttribute('data-sort');
-            if (standingsSortMetric === metric) {
-                standingsSortDesc = !standingsSortDesc;
-            } else {
-                standingsSortMetric = metric;
-                standingsSortDesc = true;
-            }
-            renderStandings();
-        });
-    });
-}
-
-function updateLeagueLeadersData() {
-    if (!gameState) return;
-    
-    let playerMap = new Map();
-    if (window.globalDraftPool) {
-        window.globalDraftPool.forEach(p => playerMap.set(p.id, p));
-    }
-    if (gameState.players) {
-        gameState.players.forEach(p => playerMap.set(p.id, p));
-    }
-    
-    let allPlayers = Array.from(playerMap.values()).filter(p => p.stats && p.stats.games > 0);
-    
-    // Calculate Pts
-    let topPts = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.points - a.stats.points).slice(0, 10).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.points
-    }));
-    
-    // Calculate Goals
-    let topG = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.goals - a.stats.goals).slice(0, 10).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.goals
-    }));
-    
-    // Calculate Assists
-    let topA = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.assists - a.stats.assists).slice(0, 10).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: p.stats.assists
-    }));
-    
-    // Calculate Save Percentage
-    let goalies = [...allPlayers].filter(p => p.position === 'G' && p.stats.shotsAgainst > 0);
-    let topSvp = goalies.sort((a, b) => {
-        let svpA = a.stats.saves / a.stats.shotsAgainst;
-        let svpB = b.stats.saves / b.stats.shotsAgainst;
-        return svpB - svpA;
-    }).slice(0, 10).map((p, i) => {
-        let svp = (p.stats.saves / p.stats.shotsAgainst).toFixed(3).replace('0.', '.');
-        return {
-            rank: i + 1, name: p.name, teamId: p.originalTeamId || p.teamId, stat: svp
-        };
-    });
-    
-    gameState.leagueLeaders = {
-        pts: topPts,
-        g: topG,
-        a: topA,
-        svp: topSvp
-    };
-}
-
-function renderLeagueLeaders() {
-    const container = document.getElementById('league-leaders-container');
-    if (!container) return;
-    
-    updateLeagueLeadersData();
-    
-    const leaders = gameState.leagueLeaders[currentLeaderTab] || [];
-    
-    let listHTML = `<div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">`;
-    
-    if (leaders.length === 0) {
-        listHTML += `<p style="text-align: center; color: var(--text-muted); padding: 1rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see leaders.</p>`;
-    } else {
-        leaders.forEach(l => {
-            const teamInfo = ohlTeams.find(t => t.id === l.teamId);
-            const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
-            const logoHtml = logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 24px; height: 24px; object-fit: contain;">` : '';
-            
-            listHTML += `
-                <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem; background-color: rgba(255,255,255,0.05); border-radius: 8px; border-left: 3px solid ${teamInfo ? teamInfo.colors.primary : '#3b82f6'}; cursor: pointer; transition: background-color 0.2s;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: var(--text-muted); width: 20px;">#${l.rank}</span>
-                        ${logoHtml}
-                        <span style="font-weight: 500; color: var(--text-color);">${l.name}</span>
-                    </div>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: var(--text-color);">${l.stat}</span>
-                </div>
-            `;
-        });
-    }
-    
-    listHTML += `</div>`;
-    
-    container.innerHTML = `
-        <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; color: var(--text-color);">League Leaders</h3>
-        
-        <div class="standings-tabs" style="justify-content: flex-start; gap: 0.5rem;">
-            <button class="tab-btn ${currentLeaderTab === 'pts' ? 'active' : ''}" data-leadertab="pts" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">PTS</button>
-            <button class="tab-btn ${currentLeaderTab === 'g' ? 'active' : ''}" data-leadertab="g" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">G</button>
-            <button class="tab-btn ${currentLeaderTab === 'a' ? 'active' : ''}" data-leadertab="a" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">A</button>
-            <button class="tab-btn ${currentLeaderTab === 'svp' ? 'active' : ''}" data-leadertab="svp" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">SV%</button>
-        </div>
-        
-        ${listHTML}
-    `;
-    
-    // Bind Tab Events
-    container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentLeaderTab = e.target.getAttribute('data-leadertab');
-            renderLeagueLeaders();
-        });
-    });
-}
+// Render Standings and League Leaders moved to dashboardUI.js
 
 // --- ROSTER ENGINE ---
 function getPlayerModifiers(player) {
@@ -1506,9 +1136,14 @@ function renderRoster(container) {
                 <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
                         <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">ACTIVE ROSTER</h2>
-                        <div style="display: flex; gap: 0.5rem; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                            <button onclick="setRosterTab('5v5')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab5v5Style}">5v5 LINES</button>
-                            <button onclick="setRosterTab('3v3')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab3v3Style}">3v3 OVERTIME</button>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <button onclick="autoAssignRoster()" style="padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; font-family: 'Roboto', sans-serif; font-size: 0.9rem; font-weight: bold; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.4rem;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                                <i data-lucide="zap" style="width: 16px; height: 16px;"></i> AUTO-ASSIGN
+                            </button>
+                            <div style="display: flex; gap: 0.5rem; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                                <button onclick="setRosterTab('5v5')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab5v5Style}">5v5 LINES</button>
+                                <button onclick="setRosterTab('3v3')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab3v3Style}">3v3 OVERTIME</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -1826,6 +1461,7 @@ window.buyPack = function(packType) {
         if (existingPlayer) {
             existingPlayer.teamId = currentTeam.id;
             existingPlayer.location = 'bench';
+            existingPlayer.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 }; // RESET STATS ON TRANSFER
             
             if (Math.random() < config.cTierChance) {
                 existingPlayer.tier = 'silver';
@@ -1851,7 +1487,7 @@ window.buyPack = function(packType) {
                 tier: selectedData.tier,
                 originalTeamId: selectedData.originalTeamId,
                 teamId: currentTeam.id,
-                stats: selectedData.stats,
+                stats: { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 }, // RESET STATS ON TRANSFER
                 attributes: JSON.parse(JSON.stringify(selectedData.attributes)),
                 location: 'bench'
             };
@@ -1896,7 +1532,7 @@ window.getTeamOverall = function(teamId, isUser) {
         });
         return (sum / 20).toFixed(1);
     } else {
-        let cpuPlayers = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
+        let cpuPlayers = gameState.players.filter(p => p.teamId === teamId);
         
         // Take top 20 players to evaluate fairly
         cpuPlayers.sort((a,b) => b.overall - a.overall);
@@ -2146,7 +1782,7 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
                 lines.ot[lineNum].push(p);
             });
         } else {
-            let cpu = window.globalDraftPool.filter(p => p.originalTeamId === teamId);
+            let cpu = gameState.players.filter(p => p.teamId === teamId);
             let f = cpu.filter(p => ['LW', 'C', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
             let d = cpu.filter(p => ['LD', 'RD'].includes(p.position)).sort((a,b) => b.overall - a.overall);
             let g = cpu.filter(p => p.position === 'G').sort((a,b) => b.overall - a.overall);
@@ -2366,6 +2002,12 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
                         if (!gameState.matchStats[shooter.id]) gameState.matchStats[shooter.id] = { goals: 0, assists: 0 };
                         gameState.matchStats[shooter.id].goals++;
                         
+                        if (goalie.id) {
+                            if (!gameState.matchStats[goalie.id]) gameState.matchStats[goalie.id] = { shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+                            gameState.matchStats[goalie.id].shotsAgainst = (gameState.matchStats[goalie.id].shotsAgainst || 0) + 1;
+                            gameState.matchStats[goalie.id].goalsAgainst = (gameState.matchStats[goalie.id].goalsAgainst || 0) + 1;
+                        }
+                        
                         let assister1 = getPlayer(atk, null);
                         if (assister1.id !== shooter.id && Math.random() > 0.4) {
                             if (!gameState.matchStats[assister1.id]) gameState.matchStats[assister1.id] = { goals: 0, assists: 0 };
@@ -2381,6 +2023,12 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
                             break; // Sudden death
                         }
                     } else if (Math.random() < 0.4) {
+                        if (goalie.id) {
+                            if (!gameState.matchStats) gameState.matchStats = {};
+                            if (!gameState.matchStats[goalie.id]) gameState.matchStats[goalie.id] = { shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+                            gameState.matchStats[goalie.id].shotsAgainst = (gameState.matchStats[goalie.id].shotsAgainst || 0) + 1;
+                            gameState.matchStats[goalie.id].saves = (gameState.matchStats[goalie.id].saves || 0) + 1;
+                        }
                         addEvent(state.clock, 'save', def, `Kick save by ${goalie.name}!`);
                         if (Math.random() < 0.5) {
                             state.zone = 'neutral';
@@ -2774,6 +2422,45 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         updateStandings(currentMatch.homeId, currentMatch.awayId, currentMatch.homeScore, currentMatch.awayScore, isOT);
     }
     
+    // Merge match stats into permanent player stats
+    if (gameState.matchStats) {
+        Object.keys(gameState.matchStats).forEach(pid => {
+            let pStats = gameState.matchStats[pid];
+            let player = gameState.players.find(p => p.id === pid) || window.globalDraftPool.find(p => p.id === pid);
+            if (player) {
+                if (!player.stats) player.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+                player.stats.goals = (player.stats.goals || 0) + (pStats.goals || 0);
+                player.stats.assists = (player.stats.assists || 0) + (pStats.assists || 0);
+                player.stats.points = (player.stats.points || 0) + (pStats.goals || 0) + (pStats.assists || 0);
+                player.stats.shotsAgainst = (player.stats.shotsAgainst || 0) + (pStats.shotsAgainst || 0);
+                player.stats.saves = (player.stats.saves || 0) + (pStats.saves || 0);
+                player.stats.goalsAgainst = (player.stats.goalsAgainst || 0) + (pStats.goalsAgainst || 0);
+            }
+        });
+        gameState.matchStats = {}; // clear for next match
+    }
+    
+    // Add games played to active roster
+    let activeUserPlayers = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
+    activeUserPlayers.forEach(p => {
+        if (!p.stats) p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+        p.stats.games = (p.stats.games || 0) + 1;
+    });
+    
+    if (gameState.players) {
+        let oppTeamId = isHome ? currentMatch.awayId : currentMatch.homeId;
+        let cpu = gameState.players.filter(p => p.teamId === oppTeamId);
+        let activeCpu = [
+            ...cpu.filter(p => ['LW', 'C', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall).slice(0, 12),
+            ...cpu.filter(p => ['LD', 'RD'].includes(p.position)).sort((a,b) => b.overall - a.overall).slice(0, 6),
+            ...cpu.filter(p => p.position === 'G').sort((a,b) => b.overall - a.overall).slice(0, 2)
+        ];
+        activeCpu.forEach(p => {
+            if (!p.stats) p.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+            p.stats.games = (p.stats.games || 0) + 1;
+        });
+    }
+
     gameState.matchIndex++; // Advance index just for display purposes
     
     // Simulate remaining matches for today
@@ -2837,7 +2524,7 @@ function openBackConfirmationModal() {
         gameState = null;
         currentTeam = null;
         
-        initLeagueSelection();
+        initMainMenu();
     });
 }
 
@@ -3025,7 +2712,7 @@ window.loadGame = async function(slotId = 'auto') {
         saved = localStorage.getItem('hockeyGmSave');
     }
     
-    if (!saved) return;
+    if (!saved) return false;
     
     const loadBtn = document.getElementById('league-load');
     if(loadBtn) loadBtn.innerHTML = '<h3 class="team-card-title">LOADING...</h3>';
@@ -3043,7 +2730,7 @@ window.loadGame = async function(slotId = 'auto') {
     } catch(e) {
         console.error("Failed to load rosters", e);
         if(loadBtn) loadBtn.innerHTML = '<h3 class="team-card-title" style="color: #ef4444;">ERROR</h3>';
-        return;
+        return false;
     }
     
     const data = JSON.parse(saved);
@@ -3076,10 +2763,10 @@ window.loadGame = async function(slotId = 'auto') {
     const app = document.getElementById('app');
     app.innerHTML = `
         <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
-            <aside class="sidebar" style="background-color: color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #151e32);">
-                <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center; padding-right: 1.5rem;">
-                    <h2>HOCKEY GM</h2>
-                    <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: color 0.2s ease;">
+            <aside class="sidebar">
+                <div class="sidebar-brand" style="position: relative; display: flex; justify-content: center; align-items: center;">
+                    <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
+                    <div id="notification-bell" style="position: absolute; top: -10px; right: -10px; cursor: pointer; color: #fff; transition: color 0.2s ease;">
                         <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
                         <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
                     </div>
@@ -3110,10 +2797,7 @@ window.loadGame = async function(slotId = 'auto') {
                 </nav>
                 
                 <div class="sidebar-bottom">
-                    <div class="coins-display">
-                        <span class="coins-icon">🪙</span>
-                        <span class="coins-amount">0</span>
-                    </div>
+
                     <!-- Save button -->
                     <button id="btn-save-game" class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
                         <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save Game
@@ -3151,6 +2835,7 @@ window.loadGame = async function(slotId = 'auto') {
     updateCoinsDisplay();
     if (window.lucide) window.lucide.createIcons();
     switchView('dashboard');
+    return true;
 }
 
 function openSellConfirmationModal(player) {
@@ -3243,6 +2928,10 @@ function openCollectionConfirmationModal(player) {
 
 let standingsCurrentTab = 'regular'; // 'regular' or 'playoffs'
 let standingsGroupBy = 'division'; // 'division', 'conference', 'league'
+
+function saveGameState() {
+    localStorage.setItem('hockeyGmSave', JSON.stringify(gameState));
+}
 
 function updateClinchStatuses() {
     if (!gameState || !gameState.standings) return;
