@@ -3,10 +3,24 @@ import { generateSeasonSchedule } from './schedule.js';
 import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
 import { initMainMenu } from './ui/setupUI.js';
 import { renderDashboard as renderDashboardUI } from './ui/dashboardUI.js';
+import { renderRoster, autoFillRoster } from './ui/rosterUI.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Hockey GM initialized');
     
+    // Attaching necessary globals for rosterUI
+    window.getPlayerModifiers = getPlayerModifiers;
+    window.getPlayerCardHTML = getPlayerCardHTML;
+    window.saveGameState = saveGameState;
+    window.openRosterErrorModal = openRosterErrorModal;
+    window.openSellConfirmationModal = openSellConfirmationModal;
+    window.openCollectionConfirmationModal = openCollectionConfirmationModal;
+
+    Object.defineProperty(window, 'gameState', {
+        get: function() { return gameState; },
+        set: function(val) { gameState = val; }
+    });
+
     // Attempt to load auto-save directly
     const hasSave = await window.loadGame('auto');
     if (!hasSave) {
@@ -171,81 +185,7 @@ async function handleTeamSelection(team) {
     initHomeScreen();
 }
 
-function autoFillRoster() {
-    let userPlayers = gameState.players.filter(p => !p.location || !p.location.startsWith('cpu_'));
-    
-    // Reset all locations to bench
-    userPlayers.forEach(p => {
-        p.location = 'bench';
-        p.ot_location = null;
-    });
-    
-    // Group by position and sort by overall rating descending
-    let forwards = userPlayers.filter(p => ['C', 'LW', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
-    let defense = userPlayers.filter(p => ['D', 'LD', 'RD'].includes(p.position)).sort((a,b) => b.overall - a.overall);
-    let goalies = userPlayers.filter(p => p.position === 'G').sort((a,b) => b.overall - a.overall);
-    
-    const f_slots = [
-        'f_1_LW', 'f_1_C', 'f_1_RW',
-        'f_2_LW', 'f_2_C', 'f_2_RW',
-        'f_3_LW', 'f_3_C', 'f_3_RW',
-        'f_4_LW', 'f_4_C', 'f_4_RW'
-    ];
-    const d_slots = [
-        'd_1_LD', 'd_1_RD',
-        'd_2_LD', 'd_2_RD',
-        'd_3_LD', 'd_3_RD'
-    ];
-    const g_slots = [
-        'g_1_Starter',
-        'g_2_Backup'
-    ];
-    const ot_slots = [
-        'ot_1_F1', 'ot_1_F2', 'ot_1_D',
-        'ot_2_F1', 'ot_2_F2', 'ot_2_D',
-        'ot_3_F1', 'ot_3_F2', 'ot_3_D'
-    ];
-    
-    // 5v5 Assign
-    f_slots.forEach(slot => {
-        let exactPos = slot.split('_')[2];
-        let p = forwards.find(p => p.location === 'bench' && p.position === exactPos);
-        if (!p) p = forwards.find(p => p.location === 'bench'); // fallback
-        if (!p) p = userPlayers.find(p => p.location === 'bench' && p.position !== 'G'); // skater fallback
-        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
-        if (p) p.location = slot;
-    });
-    
-    d_slots.forEach(slot => {
-        let exactPos = slot.split('_')[2];
-        let p = defense.find(p => p.location === 'bench' && p.position === exactPos);
-        if (!p) p = defense.find(p => p.location === 'bench' && p.position === 'D');
-        if (!p) p = defense.find(p => p.location === 'bench');
-        if (!p) p = userPlayers.find(p => p.location === 'bench' && p.position !== 'G'); // skater fallback
-        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
-        if (p) p.location = slot;
-    });
-    
-    g_slots.forEach(slot => {
-        let p = goalies.find(p => p.location === 'bench');
-        if (!p) p = userPlayers.find(p => p.location === 'bench'); // ultimate fallback
-        if (p) p.location = slot;
-    });
-    
-    // 3v3 Assign
-    ot_slots.forEach(slot => {
-        let type = slot.split('_')[2];
-        let pool = type.startsWith('F') ? forwards : defense;
-        let p = pool.find(p => !p.ot_location);
-        if (!p) p = userPlayers.find(p => !p.ot_location && p.position !== 'G');
-        if (!p) p = userPlayers.find(p => !p.ot_location);
-        if (p) p.ot_location = slot;
-    });
-    
-    saveGameState();
-    renderRoster(document.getElementById('main-content'));
-}
-window.autoAssignRoster = autoFillRoster;
+
 
 function initHomeScreen() {
     const app = document.getElementById('app');
@@ -374,25 +314,11 @@ function switchView(viewName) {
     // Update Sidebar Brand based on view
     const sidebarBrand = document.querySelector('.sidebar-brand');
     if (sidebarBrand && gameState) {
-        if (viewName !== 'dashboard' && viewName !== 'match') {
-            const teamInfo = currentTeam;
-            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-            sidebarBrand.innerHTML = `
-                <div style="display: flex; width: 100%; justify-content: space-between; align-items: flex-start; padding-right: 0.5rem;">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; flex: 1;">
-                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
-                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: var(--text-color);">${teamInfo.name}</div>
-                        <div style="font-family: 'Blockletter', sans-serif; font-size: 1rem; color: var(--text-muted);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</div>
-                    </div>
-                </div>
-            `;
-        } else {
-            sidebarBrand.innerHTML = `
-                <div style="position: relative; display: flex; width: 100%; justify-content: center; align-items: center;">
-                    <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
-                </div>
-            `;
-        }
+        sidebarBrand.innerHTML = `
+            <div style="position: relative; display: flex; width: 100%; justify-content: center; align-items: center;">
+                <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
+            </div>
+        `;
     }
     
     // Create icons immediately after injecting HTML
@@ -410,7 +336,7 @@ function switchView(viewName) {
     if (viewName === 'dashboard') {
         renderDashboard(mainContent);
     } else if (viewName === 'roster') {
-        renderRoster(mainContent);
+        renderRoster(mainContent, gameState);
     } else if (viewName === 'standings') {
         renderStandingsPage(mainContent);
     } else if (viewName === 'shop') {
@@ -665,7 +591,7 @@ function updateStandings(homeId, awayId, homeScore, awayScore, isOT) {
 function getPlayerModifiers(player) {
     if (!player) return 0;
     
-    let loc = window.rosterTab === '3v3' ? player.ot_location : player.location;
+    let loc = player.location;
     
     if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
         return 0; // No buffs/debuffs outside active roster
@@ -701,7 +627,7 @@ function getPlayerModifiers(player) {
     // Check if any other player on the same line has the same originalTeamId
     const linePrefix = loc.split('_').slice(0, 2).join('_');
     const teammatesOnLine = gameState.players.filter(p => {
-        let tLoc = window.rosterTab === '3v3' ? p.ot_location : p.location;
+        let tLoc = p.location;
         return p.id !== player.id && tLoc && tLoc.startsWith(linePrefix);
     });
     
@@ -711,6 +637,52 @@ function getPlayerModifiers(player) {
     }
     
     return buff; // Total multiplier (e.g., +0.15, -0.10, +0.50)
+}
+
+function getPlayerModifiersDetails(player) {
+    if (!player) return [];
+    
+    let loc = player.location;
+    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
+        return [];
+    }
+    
+    let details = [];
+    
+    let expectedPos = loc.split('_')[2];
+    if (expectedPos === 'Starter' || expectedPos === 'Backup') expectedPos = 'G';
+    
+    let isCorrectPos = false;
+    if (expectedPos === 'F1' || expectedPos === 'F2') {
+        if (['LW', 'C', 'RW'].includes(player.position)) isCorrectPos = true;
+    } else if (expectedPos === 'D') {
+        if (['LD', 'RD'].includes(player.position)) isCorrectPos = true;
+    } else {
+        if (player.position === expectedPos) isCorrectPos = true;
+    }
+    
+    if (isCorrectPos) {
+        details.push({ name: 'Right Position', value: '+15%', color: '#10b981' });
+    } else {
+        details.push({ name: 'Wrong Position', value: '-25%', color: '#ef4444' });
+    }
+    
+    if (player.originalTeamId && typeof currentTeam !== 'undefined' && player.originalTeamId === currentTeam.id) {
+        details.push({ name: 'Home Team', value: '+20%', color: '#10b981' });
+    }
+    
+    const linePrefix = loc.split('_').slice(0, 2).join('_');
+    const teammatesOnLine = gameState.players.filter(p => {
+        let tLoc = p.location;
+        return p.id !== player.id && tLoc && tLoc.startsWith(linePrefix);
+    });
+    
+    const hasChemistry = teammatesOnLine.some(t => t.originalTeamId && t.originalTeamId === player.originalTeamId);
+    if (hasChemistry) {
+        details.push({ name: 'Line Chemistry', value: '+15%', color: '#10b981' });
+    }
+    
+    return details;
 }
 
 function getPlayerCardHTML(player) {
@@ -756,21 +728,24 @@ function getPlayerCardHTML(player) {
     `;
 }
 
-window.openPlayerCardModal = function(playerId) {
-    let player = gameState.players.find(p => p.id === playerId);
-    if (!player && gameState.collection) {
-        player = gameState.collection.find(p => p.id === playerId);
+window.getTradingCardHTML = function(player, options = {}) {
+    if (!player) return '';
+
+    let tierColor = '#8b5cf6'; // default fallback
+    let metallicGradient = 'var(--metallic-bronze, linear-gradient(135deg, #cd7f32, #f5deb3, #8b4513, #ffdab9, #a0522d))';
+    if (player.tier === 'gold') { 
+        tierColor = '#fbbf24'; 
+        metallicGradient = 'var(--metallic-gold, linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c))';
+    } else if (player.tier === 'silver') { 
+        tierColor = '#94a3b8'; 
+        metallicGradient = 'var(--metallic-silver, linear-gradient(135deg, #8e9eab, #eef2f3, #757f9a, #d7dde8, #606b80))';
+    } else if (player.tier === 'bronze') { 
+        tierColor = '#b45309'; 
+        metallicGradient = 'var(--metallic-bronze, linear-gradient(135deg, #cd7f32, #f5deb3, #8b4513, #ffdab9, #a0522d))';
+    } else if (player.tier === 'c-tier') {
+        tierColor = '#94a3b8';
+        metallicGradient = 'var(--metallic-silver, linear-gradient(135deg, #8e9eab, #eef2f3, #757f9a, #d7dde8, #606b80))';
     }
-    if (!player) return;
-    
-    const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
-    const posColor = posColors[player.position] || 'var(--team-primary)';
-    
-    let tierColor = '#8b5cf6'; // default bronze fallback
-    let tierShadow = 'rgba(139, 92, 246, 0.5)';
-    if (player.tier === 'gold') { tierColor = '#fbbf24'; tierShadow = 'rgba(251, 191, 36, 0.7)'; }
-    else if (player.tier === 'silver') { tierColor = '#94a3b8'; tierShadow = 'rgba(148, 163, 184, 0.6)'; }
-    else if (player.tier === 'bronze') { tierColor = '#b45309'; tierShadow = 'rgba(180, 83, 9, 0.5)'; }
 
     const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
     const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
@@ -781,88 +756,168 @@ window.openPlayerCardModal = function(playerId) {
     };
     const posFullName = fullPositions[player.position] || player.position;
 
-    // Modifiers Math
     const mod = getPlayerModifiers(player);
     const finalOVR = Math.round(player.overall * (1 + mod));
-    let modString = '';
-    
-    if (mod > 0) {
-        modString = `<span style="color: #10b981; font-family: 'Roboto', sans-serif; font-size: 0.85rem; font-weight: bold; margin: 2px 0;">+${Math.round(mod*100)}%</span>`;
-    } else if (mod < 0) {
-        modString = `<span style="color: #ef4444; font-family: 'Roboto', sans-serif; font-size: 0.85rem; font-weight: bold; margin: 2px 0;">${Math.round(mod*100)}%</span>`;
-    }
 
-    const modalHTML = `
-        <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-            <div class="player-premium-card" style="position: relative; width: 340px; border-radius: 16px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 2px solid ${tierColor}; overflow: hidden; padding-bottom: 1.5rem; text-align: center; cursor: default;" onclick="event.stopPropagation()">
-                
-                <!-- TOP HEADER -->
-                <div style="background-color: ${posColor}; height: 80px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
-                
-                <!-- OVERALL BADGE -->
-                <div style="position: absolute; top: 1rem; left: 1rem; z-index: 2; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${finalOVR}</span>
-                    ${modString}
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; opacity: 0.9;">OVR</span>
-                </div>
-                
-                <!-- LOGO BADGE -->
-                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="position: absolute; top: 1rem; right: 1rem; z-index: 2; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
+    const photoUrl = player.id && player.id.includes('_') ? `https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg` : 'assets/default-player.svg';
 
-                <!-- PHOTO -->
-                <div style="position: relative; z-index: 1; margin-top: 2rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
-                    <div style="position: absolute; bottom: 0; right: 80px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">
-                        #${player.number}
+    const scale = options.scale || 1.0;
+    const transformStyle = scale !== 1.0 ? `transform: scale(${scale}); transform-origin: center;` : '';
+    const heightStyle = options.modal ? 'height: auto; align-self: stretch; width: 450px !important;' : '';
+    const hoverClass = options.modal ? 'no-hover' : '';
+
+    return `
+        <div class="trading-card-container ${hoverClass}" style="background: ${metallicGradient}; ${transformStyle}; ${heightStyle}" onclick="event.stopPropagation()">
+            <div class="trading-card-inner">
+                <div class="trading-card-photo-wrap">
+                    <img src="${photoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" class="trading-card-photo">
+                    <div class="trading-card-overlay">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.7rem; color: #fff; margin: 0; line-height: 0.9; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${player.name}</h2>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                            ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 28px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));">` : ''}
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${posFullName}</span>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- INFO -->
-                <div style="position: relative; z-index: 1; margin-top: 1rem; padding: 0 1.5rem;">
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">${player.name}</h2>
-                    <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0 1rem 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
+                <div class="trading-card-stripe" style="background: ${metallicGradient};">
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 1rem;">
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 3.0rem; color: #fff; line-height: 0.8; text-shadow: 0 2px 4px rgba(0,0,0,0.6);">${finalOVR}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.0rem; color: rgba(255,255,255,0.8); text-shadow: 0 1px 2px rgba(0,0,0,0.6); margin-top: 5px;">OVR</span>
+                    </div>
                     
+                    <div style="margin-top: auto; margin-bottom: 1rem; width: 36px; height: 36px; background: rgba(0,0,0,0.5); border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 5px rgba(0,0,0,0.5);">
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">#${player.number || '00'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+window.openPlayerCardModal = function(playerId) {
+    let player = gameState.players.find(p => p.id === playerId);
+    if (!player && gameState.collection) {
+        player = gameState.collection.find(p => p.id === playerId);
+    }
+    if (!player) return;
+    
+    let tierColor = '#8b5cf6'; // default bronze fallback
+    if (player.tier === 'gold') { tierColor = '#fbbf24'; }
+    else if (player.tier === 'silver') { tierColor = '#94a3b8'; }
+    else if (player.tier === 'bronze') { tierColor = '#b45309'; }
+
+    const tradingCardHTML = getTradingCardHTML(player, { modal: true });
+
+    const mod = getPlayerModifiers(player);
+    const finalOVR = Math.round(player.overall * (1 + mod));
+    const modDetails = getPlayerModifiersDetails(player);
+    
+    let equationHTML = `
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.8rem; width: 100%;">
+            <div style="text-align: center;">
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Base OVR</div>
+                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.overall}</div>
+            </div>
+    `;
+
+    if (modDetails.length > 0) {
+        modDetails.forEach(d => {
+            equationHTML += `
+                <div style="font-size: 1.2rem; color: var(--text-muted); font-family: 'Blockletter', sans-serif;">+</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">${d.name}</div>
+                    <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: ${d.color};">${d.value}</div>
+                </div>
+            `;
+        });
+    } else {
+        equationHTML += `
+            <div style="font-size: 1.2rem; color: var(--text-muted); font-family: 'Blockletter', sans-serif;">+</div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Buffs</div>
+                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">0%</div>
+            </div>
+        `;
+    }
+
+    equationHTML += `
+        </div>
+        <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.05); margin: 1rem 0;"></div>
+        <div style="text-align: center; width: 100%;">
+            <div style="font-size: 0.75rem; color: ${tierColor}; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Current OVR</div>
+            <div style="font-family: 'Blockletter', sans-serif; font-size: 3.2rem; color: ${tierColor}; text-shadow: 0 0 15px ${tierColor}60; line-height: 1;">${finalOVR}</div>
+        </div>
+    `;
+
+    const teamInfoModal = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    const teamName = teamInfoModal ? teamInfoModal.name : 'Unknown Team';
+    const teamColor = teamInfoModal ? teamInfoModal.primaryColor : '#0f172a';
+
+    const modalHTML = `
+        <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+            <div style="display: flex; gap: 2rem; max-width: 1100px; width: 100%; padding: 2rem; align-items: stretch; justify-content: center;">
+                
+                <!-- TRADING CARD -->
+                ${tradingCardHTML}
+                
+                <!-- BENTO STATS -->
+                <div class="bento-card" style="display: flex; flex-direction: column; flex: 1; min-width: 500px; background: color-mix(in srgb, ${teamColor} 15%, rgba(15, 23, 42, 0.75)); backdrop-filter: blur(16px); padding: 2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, ${teamColor} 40%, rgba(255,255,255,0.1)); box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 60px color-mix(in srgb, ${teamColor} 10%, transparent);" onclick="event.stopPropagation()">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                        <div>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">PLAYER INFO</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0.2rem 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} years old • ${teamName}</p>
+                        </div>
+                        <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>
+                    </div>
+                    
+                    <!-- OVERALL CALCULATION -->
+                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center;">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: center; text-transform: uppercase; width: 100%;">Overall Rating</h4>
+                        ${equationHTML}
+                    </div>
+
                     <!-- STATS -->
                     ${player.stats ? `
-                    <div style="background-color: rgba(255,255,255,0.03); border-radius: 8px; padding: 1rem; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; width: 100%;">
-                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff; margin: 0 0 0.8rem 0; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.3rem;">SEASON STATS</h4>
+                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem;">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: left; text-transform: uppercase;">Season Stats</h4>
                         ${player.position === 'G' ? `
-                        <div style="display: flex; justify-content: space-between; text-align: center; padding: 0 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; text-align: center;">
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GP</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">GP</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.games || 0}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Saves</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.saves || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Saves</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.saves || 0}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">SV%</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.shotsAgainst > 0 ? (player.stats.saves / player.stats.shotsAgainst).toFixed(3).replace('0.', '.') : '.000'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">SV%</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.shotsAgainst > 0 ? (player.stats.saves / player.stats.shotsAgainst).toFixed(3).replace('0.', '.') : '.000'}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GAA</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games > 0 ? ((player.stats.goalsAgainst || 0) / player.stats.games).toFixed(2) : '0.00'}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">GAA</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.games > 0 ? ((player.stats.goalsAgainst || 0) / player.stats.games).toFixed(2) : '0.00'}</div>
                             </div>
                         </div>
                         ` : `
-                        <div style="display: flex; justify-content: space-between; text-align: center; padding: 0 0.5rem;">
+                        <div style="display: flex; justify-content: space-between; text-align: center;">
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">GP</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.games || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">GP</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.games || 0}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">G</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.goals || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">G</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.goals || 0}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">A</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.assists || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">A</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.assists || 0}</div>
                             </div>
                             <div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">PTS</div>
-                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: #fff;">${player.stats.points || 0}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">PTS</div>
+                                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff;">${player.stats.points || 0}</div>
                             </div>
                         </div>
                         `}
@@ -870,19 +925,20 @@ window.openPlayerCardModal = function(playerId) {
                     ` : ''}
 
                     ${player.attributes ? `
-                    <div style="background-color: rgba(255,255,255,0.03); border-radius: 8px; padding: 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem; width: 100%;">
+                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: left; text-transform: uppercase;">Attributes</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left;">
                             
                             <!-- SKATING -->
                             <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Skating</span>
-                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.skating.total}</span>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Skating</span>
+                                    <span style="font-size: 0.95rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.skating.total}</span>
                                 </div>
-                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
-                                    <div style="width: ${(player.attributes.skating.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                <div style="width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+                                    <div style="width: ${(player.attributes.skating.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 8px ${tierColor};"></div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
                                     <span>SPD: <span style="color: #cbd5e1;">${player.attributes.skating.speed}</span></span>
                                     <span>AGI: <span style="color: #cbd5e1;">${player.attributes.skating.agility}</span></span>
                                 </div>
@@ -890,14 +946,14 @@ window.openPlayerCardModal = function(playerId) {
 
                             <!-- CREATIVITY -->
                             <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Creativity</span>
-                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.creativity.total}</span>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Creativity</span>
+                                    <span style="font-size: 0.95rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.creativity.total}</span>
                                 </div>
-                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
-                                    <div style="width: ${(player.attributes.creativity.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                <div style="width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+                                    <div style="width: ${(player.attributes.creativity.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 8px ${tierColor};"></div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
                                     <span>VIS: <span style="color: #cbd5e1;">${player.attributes.creativity.vision}</span></span>
                                     <span>INT: <span style="color: #cbd5e1;">${player.attributes.creativity.intelligence}</span></span>
                                 </div>
@@ -905,14 +961,14 @@ window.openPlayerCardModal = function(playerId) {
 
                             <!-- SHOOTING -->
                             <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Shooting</span>
-                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.shooting.total}</span>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Shooting</span>
+                                    <span style="font-size: 0.95rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.shooting.total}</span>
                                 </div>
-                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
-                                    <div style="width: ${(player.attributes.shooting.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                <div style="width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+                                    <div style="width: ${(player.attributes.shooting.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 8px ${tierColor};"></div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
                                     <span>POW: <span style="color: #cbd5e1;">${player.attributes.shooting.power}</span></span>
                                     <span>ACC: <span style="color: #cbd5e1;">${player.attributes.shooting.accuracy}</span></span>
                                 </div>
@@ -920,14 +976,14 @@ window.openPlayerCardModal = function(playerId) {
 
                             <!-- DEFENSE -->
                             <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Defense</span>
-                                    <span style="font-size: 0.85rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.defense.total}</span>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Defense</span>
+                                    <span style="font-size: 0.95rem; color: #fff; font-weight: bold; font-family: 'Blockletter', sans-serif;">${player.attributes.defense.total}</span>
                                 </div>
-                                <div style="width: 100%; background: rgba(0,0,0,0.4); height: 4px; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem;">
-                                    <div style="width: ${(player.attributes.defense.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 5px ${tierColor};"></div>
+                                <div style="width: 100%; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem;">
+                                    <div style="width: ${(player.attributes.defense.total / 35) * 100}%; background: ${tierColor}; height: 100%; box-shadow: 0 0 8px ${tierColor};"></div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
                                     <span>CON: <span style="color: #cbd5e1;">${player.attributes.defense.contact}</span></span>
                                     <span>POS: <span style="color: #cbd5e1;">${player.attributes.defense.positioning}</span></span>
                                 </div>
@@ -935,20 +991,14 @@ window.openPlayerCardModal = function(playerId) {
 
                         </div>
                     </div>
-                    ` : `
-                    <div style="background-color: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-size: 0.85rem;">
-                        <i data-lucide="bar-chart-2" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;"></i> Game Stats Will Appear Here During Sim
-                    </div>
-                    `}
+                    ` : ''}
                 </div>
-                
-                <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="margin-top: 1.5rem; border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     if (window.lucide) window.lucide.createIcons();
-}
+};
 
 window.openPackRevealModal = function(playerIdsArray) {
     if (!playerIdsArray || playerIdsArray.length === 0) return;
@@ -959,56 +1009,8 @@ window.openPackRevealModal = function(playerIdsArray) {
         const player = gameState.players.find(p => p.id === playerId);
         if (!player) return;
         
-        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
-        const posColor = posColors[player.position] || 'var(--team-primary)';
-        
-        let tierColor = '#8b5cf6'; // default bronze fallback
-        if (player.tier === 'gold') { tierColor = '#fbbf24'; }
-        else if (player.tier === 'silver') { tierColor = '#94a3b8'; }
-        else if (player.tier === 'bronze') { tierColor = '#b45309'; }
-
-        const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
-        const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
-
-        const fullPositions = {
-            'LW': 'Left Wing', 'C': 'Center', 'RW': 'Right Wing',
-            'LD': 'Left Defense', 'RD': 'Right Defense', 'G': 'Goalie'
-        };
-        const posFullName = fullPositions[player.position] || player.position;
-
-        const finalOVR = Math.round(player.overall); // Base overall sem modifiers ainda (tá no banco recem comprado)
-
-        cardsHTML += `
-            <div class="player-premium-card" style="position: relative; width: 300px; height: 420px; border-radius: 16px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 2px solid ${tierColor}; overflow: hidden; padding-bottom: 1.5rem; text-align: center; cursor: default; transform: scale(0.9); transition: transform 0.3s ease; display: flex; flex-direction: column;" onclick="event.stopPropagation()" onmouseenter="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(0.9)'">
-                
-                <!-- TOP HEADER -->
-                <div style="background-color: ${posColor}; height: 80px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
-                
-                <!-- OVERALL BADGE -->
-                <div style="position: absolute; top: 1rem; left: 1rem; z-index: 2; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: ${tierColor}; line-height: 1;">${finalOVR}</span>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; opacity: 0.9;">OVR</span>
-                </div>
-                
-                <!-- LOGO BADGE -->
-                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="position: absolute; top: 1rem; right: 1rem; z-index: 2; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : ''}
-
-                <!-- PHOTO -->
-                <div style="position: relative; z-index: 1; margin-top: 3rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 140px; height: 140px; object-fit: cover; border-radius: 50%; border: 4px solid ${tierColor}; background-color: #0f172a;">
-                    <div style="position: absolute; bottom: 0; right: 70px; transform: translateX(50%); background-color: #0f172a; border: 2px solid ${tierColor}; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">
-                        #${player.number}
-                    </div>
-                </div>
-                
-                <!-- INFO -->
-                <div style="position: relative; z-index: 1; margin-top: 1rem; padding: 0 1.5rem; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">${player.name}</h2>
-                    <p style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0.2rem 0 0 0; text-transform: uppercase;">${posFullName}</p>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 0 0;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} y/o</p>
-                </div>
-            </div>
-        `;
+        // Shop cards don't have active modifiers yet, so we disable them and scale them down slightly.
+        cardsHTML += getTradingCardHTML(player, { scale: 0.9, showModifiers: false });
     });
 
     const modalHTML = `
@@ -1025,307 +1027,7 @@ window.openPackRevealModal = function(playerIdsArray) {
     if (window.lucide) window.lucide.createIcons();
 }
 
-function renderRosterSlot(slotId, label) {
-    const isOT = slotId.startsWith('ot_');
-    const player = gameState.players.find(p => isOT ? p.ot_location === slotId : p.location === slotId);
-    return `
-        <div class="roster-slot drop-zone" data-slot-id="${slotId}" style="background-color: rgba(0,0,0,0.2); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; min-height: 48px; padding: 0.2rem; display: flex; flex-direction: column; justify-content: center; gap: 0.2rem; flex: 1;">
-            ${!player ? `<div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; text-align: center; margin: auto;">${label}</div>` : ''}
-            ${player ? getPlayerCardHTML(player) : ''}
-        </div>
-    `;
-}
 
-let benchSortMetric = 'overall';
-let benchSortDesc = true;
-
-window.rosterTab = window.rosterTab || '5v5';
-window.setRosterTab = function(tab) {
-    window.rosterTab = tab;
-    renderRoster(document.getElementById('main-content'));
-};
-
-function renderRoster(container) {
-    // Determine which players show up on the "bench".
-    // For 5v5, bench is anyone with location === 'bench'
-    // For 3v3, bench is anyone with location !== 'bench' (i.e. active players) who do NOT have an ot_location, plus actual bench players
-    const benchPlayers = gameState.players.filter(p => {
-        // Exclude all CPU players from the user's bench
-        if (p.location && p.location.startsWith('cpu_')) return false;
-        
-        if (window.rosterTab === '5v5') return p.location === 'bench';
-        return !p.ot_location; // In 3v3 tab, ANYONE without an ot_location is on the bench to be dragged!
-    });
-    
-    benchPlayers.sort((a, b) => {
-        let valA = a[benchSortMetric] || '';
-        let valB = b[benchSortMetric] || '';
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
-        
-        if (valA < valB) return benchSortDesc ? 1 : -1;
-        if (valA > valB) return benchSortDesc ? -1 : 1;
-        return 0;
-    });
-    
-    let benchHTML = '';
-    benchPlayers.forEach(p => {
-        benchHTML += getPlayerCardHTML(p);
-    });
-
-    // Generate Forwards HTML
-    let forwardsHTML = '';
-    for(let i=1; i<=4; i++) {
-        forwardsHTML += `
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
-                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">L${i}</div>
-                ${renderRosterSlot(`f_${i}_LW`, 'LW')}
-                ${renderRosterSlot(`f_${i}_C`, 'C')}
-                ${renderRosterSlot(`f_${i}_RW`, 'RW')}
-            </div>
-        `;
-    }
-
-    // Generate Defense HTML
-    let defenseHTML = '';
-    for(let i=1; i<=3; i++) {
-        defenseHTML += `
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
-                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">P${i}</div>
-                ${renderRosterSlot(`d_${i}_LD`, 'LD')}
-                ${renderRosterSlot(`d_${i}_RD`, 'RD')}
-            </div>
-        `;
-    }
-
-    // Goalies HTML
-    let goaliesHTML = `
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
-            <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">G</div>
-            ${renderRosterSlot(`g_1_Starter`, 'Starter')}
-            ${renderRosterSlot(`g_2_Backup`, 'Backup')}
-        </div>
-    `;
-    
-    // Generate OT HTML
-    let otHTML = '';
-    for(let i=1; i<=3; i++) {
-        otHTML += `
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
-                <div style="width: 30px; display: flex; align-items: center; justify-content: center; font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1rem;">OT${i}</div>
-                ${renderRosterSlot(`ot_${i}_F1`, 'F')}
-                ${renderRosterSlot(`ot_${i}_F2`, 'F')}
-                ${renderRosterSlot(`ot_${i}_D`, 'D')}
-            </div>
-        `;
-    }
-    
-    // Validate if Roster is complete (RF04)
-    const activeRosterCount = gameState.players.filter(p => p.location && p.location !== 'bench' && !p.location.startsWith('cpu_')).length;
-    const otRosterCount = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_')).length;
-    const isRosterComplete = activeRosterCount === 20 && otRosterCount === 9;
-
-    const tab5v5Style = window.rosterTab === '5v5' ? `background: var(--team-primary); color: #fff;` : `background: rgba(255,255,255,0.05); color: var(--text-muted);`;
-    const tab3v3Style = window.rosterTab === '3v3' ? `background: var(--team-primary); color: #fff;` : `background: rgba(255,255,255,0.05); color: var(--text-muted);`;
-
-    container.innerHTML = `
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: 100%; overflow: visible; padding-bottom: 2rem;">
-            <!-- LEFT COLUMN: ICE + ACTION ZONES -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
-                <!-- ICE CONTAINER -->
-                <div class="dashboard-card" style="padding: 1rem 1.5rem; overflow-y: auto; background-color: color-mix(in srgb, var(--team-secondary) 40%, var(--card-bg)); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem; margin-bottom: 1rem;">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">ACTIVE ROSTER</h2>
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <button onclick="autoAssignRoster()" style="padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; font-family: 'Roboto', sans-serif; font-size: 0.9rem; font-weight: bold; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.4rem;" onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                                <i data-lucide="zap" style="width: 16px; height: 16px;"></i> AUTO-ASSIGN
-                            </button>
-                            <div style="display: flex; gap: 0.5rem; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                                <button onclick="setRosterTab('5v5')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab5v5Style}">5v5 LINES</button>
-                                <button onclick="setRosterTab('3v3')" style="padding: 0.5rem 1rem; border: none; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; cursor: pointer; ${tab3v3Style}">3v3 OVERTIME</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    ${window.rosterTab === '5v5' ? `
-                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Forwards</h3>
-                    ${forwardsHTML}
-                    
-                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Defense</h3>
-                    ${defenseHTML}
-                    ` : `
-                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 0.5rem 0;">Overtime Lines (3v3)</h3>
-                    ${otHTML}
-                    `}
-                    
-                    ${window.rosterTab === '5v5' ? `
-                    <h3 style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin: 0.8rem 0 0.5rem 0;">Goalies</h3>
-                    ${goaliesHTML}
-                    ` : ''}
-                </div>
-                
-                ${window.rosterTab === '5v5' ? `
-                <!-- ACTION ZONES (SELL / COLLECTION) -->
-                <div style="display: flex; gap: 1.5rem; height: 100px; flex-shrink: 0;">
-                    <div class="dashboard-card action-zone drop-zone" data-slot-id="sell" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.1); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; cursor: pointer;">
-                        <i data-lucide="coins" style="color: #ef4444; width: 36px; height: 36px;"></i>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #ef4444; margin-top: 0.5rem;">DRAG TO SELL PLAYER</span>
-                    </div>
-                    <div class="dashboard-card action-zone drop-zone" data-slot-id="collection" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(59, 130, 246, 0.1); border: 2px dashed rgba(59, 130, 246, 0.4); border-radius: 12px; cursor: pointer;">
-                        <i data-lucide="archive" style="color: #3b82f6; width: 36px; height: 36px;"></i>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; color: #3b82f6; margin-top: 0.5rem;">DRAG TO SEND TO COLLECTION</span>
-                    </div>
-                </div>` : ''}
-            </div>
-
-            <!-- BENCH CONTAINER -->
-            <div class="dashboard-card" style="padding: 1.5rem; display: flex; flex-direction: column; background-color: var(--card-bg); border-radius: 12px; max-height: calc(100vh - 4rem);">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 0.5rem;">
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">BENCH</h2>
-                    <span style="background-color: var(--team-primary); padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 1rem; font-weight: bold; color: #fff;">${benchPlayers.length}</span>
-                </div>
-                
-                <!-- BENCH HEADER ROW -->
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.6rem; color: var(--text-muted); font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
-                        <span class="bench-sort" data-sort="position" style="width: 24px; cursor: pointer; user-select: none;">P</span>
-                        <span class="bench-sort" data-sort="originalTeamId" style="width: 18px; cursor: pointer; user-select: none;">T</span>
-                        <span class="bench-sort" data-sort="name" style="cursor: pointer; user-select: none; margin-left: 0.5rem;">NAME</span>
-                    </div>
-                    <span class="bench-sort" data-sort="overall" style="cursor: pointer; user-select: none; padding-right: 0.5rem;">OVR</span>
-                </div>
-                
-                <div class="drop-zone" data-slot-id="bench" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; background-color: rgba(0,0,0,0.05); border-radius: 8px; min-height: 200px;">
-                    ${benchHTML}
-                    ${benchPlayers.length === 0 ? '<p style="color: var(--text-muted); text-align: center; font-size: 1rem; margin-top: 2rem;">Bench is empty. Roster is fully active.</p>' : ''}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    if (window.lucide) {
-        window.lucide.createIcons();
-    }
-
-    bindDragAndDropEvents();
-    
-    // Bind Bench Sort Events
-    container.querySelectorAll('.bench-sort').forEach(th => {
-        th.addEventListener('click', (e) => {
-            const metric = e.target.getAttribute('data-sort');
-            if (benchSortMetric === metric) {
-                benchSortDesc = !benchSortDesc;
-            } else {
-                benchSortMetric = metric;
-                benchSortDesc = true;
-            }
-            // re-render the bench (which re-renders the roster)
-            renderRoster(container);
-        });
-    });
-    
-}
-
-let draggedPlayerId = null;
-
-function bindDragAndDropEvents() {
-    const cards = document.querySelectorAll('.player-card');
-    const dropZones = document.querySelectorAll('.drop-zone');
-
-    cards.forEach(card => {
-        card.addEventListener('dragstart', (e) => {
-            draggedPlayerId = card.getAttribute('data-player-id');
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => {
-                card.style.opacity = '0.5';
-            }, 0);
-        });
-
-        card.addEventListener('dragend', (e) => {
-            card.style.opacity = '1';
-            dropZones.forEach(z => z.classList.remove('drag-over'));
-            draggedPlayerId = null;
-        });
-    });
-
-    dropZones.forEach(zone => {
-        zone.addEventListener('dragover', (e) => {
-            e.preventDefault(); // Necessary to allow dropping
-            e.dataTransfer.dropEffect = 'move';
-            if (draggedPlayerId) {
-                zone.classList.add('drag-over');
-            }
-        });
-
-        zone.addEventListener('dragleave', () => {
-            zone.classList.remove('drag-over');
-        });
-
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            zone.classList.remove('drag-over');
-            
-            const targetSlotId = zone.getAttribute('data-slot-id');
-            if (!targetSlotId || !draggedPlayerId) return;
-
-            const draggedPlayer = gameState.players.find(p => p.id === draggedPlayerId);
-            const originalLocation = draggedPlayer.location;
-            
-            if (originalLocation === targetSlotId) return; // Dropped in same place
-            
-            // Handle Drop on Action Zones (Sell / Collection)
-            if (targetSlotId === 'sell' || targetSlotId === 'collection') {
-                const userActiveCount = gameState.players.filter(p => p.location && !p.location.startsWith('cpu_')).length;
-                if (userActiveCount <= 20 && (gameState.coins || 0) < 200) {
-                    openRosterErrorModal();
-                    return;
-                }
-            }
-            
-            if (targetSlotId === 'sell') {
-                openSellConfirmationModal(draggedPlayer);
-                return; // Async flow takes over, prevent synchronous renderRoster
-            } 
-            else if (targetSlotId === 'collection') {
-                openCollectionConfirmationModal(draggedPlayer);
-                return; // Async flow takes over, prevent synchronous renderRoster
-            } 
-            else if (targetSlotId.startsWith('ot_')) {
-                // Dragging to an OT slot
-                const occupant = gameState.players.find(p => p.ot_location === targetSlotId);
-                if (occupant) {
-                    occupant.ot_location = draggedPlayer.ot_location || null;
-                }
-                draggedPlayer.ot_location = targetSlotId;
-            }
-            else if (targetSlotId === 'bench') {
-                if (window.rosterTab === '3v3') {
-                    // Removing a player from OT
-                    draggedPlayer.ot_location = null;
-                } else {
-                    // Removing a player from 5v5 line (and implicitly OT)
-                    draggedPlayer.location = 'bench';
-                    draggedPlayer.ot_location = null;
-                }
-            }
-            else {
-                // If target is NOT bench, check if it's occupied to perform swap
-                if (targetSlotId !== 'bench') {
-                    const occupant = gameState.players.find(p => p.location === targetSlotId);
-                    if (occupant) {
-                        occupant.location = originalLocation; // Swap occupant to where draggedPlayer came from
-                    }
-                }
-                
-                draggedPlayer.location = targetSlotId;
-            }
-            
-            // Re-render the whole roster UI to reflect state changes cleanly
-            const mainContent = document.getElementById('main-content');
-            renderRoster(mainContent);
-        });
-    });
-}
 // --- SHOP ENGINE ---
 function renderShopPage(container) {
     container.innerHTML = `
@@ -1548,9 +1250,8 @@ window.getTeamOverall = function(teamId, isUser) {
 
 window.startMatchSimulation = function() {
     let activePlayers = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
-    let otPlayers = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_'));
     
-    if (activePlayers.length < 20 || otPlayers.length < 9) {
+    if (activePlayers.length < 20) {
         openIncompleteMatchModal();
         return;
     }
@@ -1761,7 +1462,7 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
     
     // 1. Gather Players
     function extractLines(isUser, teamId) {
-        let lines = { f: [[], [], [], []], d: [[], [], []], g: [], ot: [[], [], []] };
+        let lines = { f: [[], [], [], []], d: [[], [], []], g: [] };
         if (isUser) {
             let active = gameState.players.filter(p => p.location && (p.location.startsWith('f_') || p.location.startsWith('d_') || p.location.startsWith('g_')));
             active.forEach(p => {
@@ -1774,13 +1475,6 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
             // Sort goalies
             lines.g.sort((a, b) => a.location.includes('Starter') ? -1 : 1);
             
-            // OT Lines
-            let otActive = gameState.players.filter(p => p.ot_location && p.ot_location.startsWith('ot_'));
-            otActive.forEach(p => {
-                let parts = p.ot_location.split('_');
-                let lineNum = parseInt(parts[1]) - 1;
-                lines.ot[lineNum].push(p);
-            });
         } else {
             let cpu = gameState.players.filter(p => p.teamId === teamId);
             let f = cpu.filter(p => ['LW', 'C', 'RW'].includes(p.position)).sort((a,b) => b.overall - a.overall);
@@ -1790,14 +1484,6 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
             for(let i=0; i<4; i++) lines.f[i] = f.slice(i*3, i*3+3);
             for(let i=0; i<3; i++) lines.d[i] = d.slice(i*2, i*2+2);
             lines.g = g.slice(0, 2);
-            
-            // CPU OT Lines
-            for(let i=0; i<3; i++) {
-                lines.ot[i] = [];
-                if (f[i*2]) lines.ot[i].push(f[i*2]);
-                if (f[i*2+1]) lines.ot[i].push(f[i*2+1]);
-                if (d[i]) lines.ot[i].push(d[i]);
-            }
         }
         return lines;
     }
@@ -1828,18 +1514,9 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
         let lineD = team === 'home' ? state.homeLineD : state.awayLineD;
         let g = lines.g[0] || null;
         
-        if (state.period > 3) {
-            // Use OT lines
-            let otLineNum = lineF % 3; // Keep rotation synced
-            let otPlayers = lines.ot[otLineNum] || [];
-            let f = otPlayers.filter(p => ['LW', 'C', 'RW'].includes(p.position));
-            let d = otPlayers.filter(p => ['LD', 'RD'].includes(p.position));
-            return { f, d, g, all: otPlayers };
-        } else {
-            let f = lines.f[lineF] || [];
-            let d = lines.d[lineD] || [];
-            return { f, d, g, all: [...f, ...d] };
-        }
+        let f = lines.f[lineF] || [];
+        let d = lines.d[lineD] || [];
+        return { f, d, g, all: [...f, ...d] };
     }
     
     function getOnIceOvr(team) {
@@ -1902,7 +1579,7 @@ function generateMatchTimeline(myOvr, oppOvr, isHome, myTeam, oppTeam) {
     // TICK LOOP
     let maxPeriods = 3;
     for (state.period = 1; state.period <= maxPeriods; state.period++) {
-        state.clock = state.period > 3 ? 300 : 1200; // 5 min OT, 20 min regular
+        state.clock = 1200; // 20 min regular and OT
         state.zone = 'neutral';
         state.emptyNet = false;
         
@@ -2311,9 +1988,9 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
                 let nextEvent = timeline.find(e => e.period > currentPeriod);
                 if (nextEvent) {
                     currentPeriod = nextEvent.period;
-                    currentSecond = currentPeriod > 3 ? 300 : 1200;
+                    currentSecond = 1200;
                     periodEl.innerText = currentPeriod === 2 ? "2ND PERIOD" : currentPeriod === 3 ? "3RD PERIOD" : "OVERTIME";
-                    clockEl.innerText = currentPeriod > 3 ? "05:00" : "20:00";
+                    clockEl.innerText = "20:00";
                     logEvent(`--- Start of ${periodEl.innerText} ---`);
                     await wait(1500);
                 }
@@ -2878,7 +2555,7 @@ function openSellConfirmationModal(player) {
         
         // Update UI explicitly AFTER drag lifecycle is over
         const mainContent = document.getElementById('main-content');
-        if (mainContent) renderRoster(mainContent);
+        if (mainContent) renderRoster(mainContent, gameState);
     });
 }
 
@@ -2922,7 +2599,7 @@ function openCollectionConfirmationModal(player) {
         
         // Update UI explicitly AFTER drag lifecycle is over
         const mainContent = document.getElementById('main-content');
-        if (mainContent) renderRoster(mainContent);
+        if (mainContent) renderRoster(mainContent, gameState);
     });
 }
 
@@ -3403,7 +3080,7 @@ function openIncompleteMatchModal() {
                     <i data-lucide="shield-alert" style="color: #ef4444; width: 32px; height: 32px;"></i>
                 </div>
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem; text-align: center;">Incomplete Roster</h2>
-                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot start a match! Your roster is missing players. Ensure all <strong style="color: #fff;">20 regular positions</strong> and <strong style="color: #fff;">9 Overtime positions</strong> are filled before the puck drops.</p>
+                <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem; text-align: center;">You cannot start a match! Your roster is missing players. Ensure all <strong style="color: #fff;">20 regular positions</strong> are filled before the puck drops.</p>
                 <div class="modal-actions" style="justify-content: center;">
                     <button class="btn btn-primary" id="btn-ok-incomplete" style="background-color: #ef4444; border-color: #ef4444; color: #fff; width: 100%;">Fix Roster</button>
                 </div>
