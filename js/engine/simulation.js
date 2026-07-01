@@ -211,7 +211,7 @@ export function updateStandings(gameState, homeId, awayId, homeScore, awayScore,
                 updateStreak(awayStanding, false);
             }
         }
-    } else {
+    } else if (awayScore > homeScore) {
         if (awayStanding) { 
             awayStanding.w++; 
             awayStanding.pts += 2; 
@@ -227,19 +227,24 @@ export function updateStandings(gameState, homeId, awayId, homeScore, awayScore,
                 updateStreak(homeStanding, false);
             }
         }
+    } else {
+        // Fallback for ties (shouldn't happen)
+        if (homeStanding) { homeStanding.otl++; homeStanding.pts += 1; updateStreak(homeStanding, false); }
+        if (awayStanding) { awayStanding.otl++; awayStanding.pts += 1; updateStreak(awayStanding, false); }
     }
     
-    // Update player record if it's the user's team
     const currentTeamId = gameState.team ? gameState.team.id : null;
     if (currentTeamId) {
         if (homeId === currentTeamId) {
             if (homeScore > awayScore) gameState.record.wins++;
-            else if (isOT) gameState.record.otl++;
-            else gameState.record.losses++;
+            else if (homeScore < awayScore && isOT) gameState.record.otl++;
+            else if (homeScore < awayScore) gameState.record.losses++;
+            else gameState.record.otl++; // tie
         } else if (awayId === currentTeamId) {
             if (awayScore > homeScore) gameState.record.wins++;
-            else if (isOT) gameState.record.otl++;
-            else gameState.record.losses++;
+            else if (awayScore < homeScore && isOT) gameState.record.otl++;
+            else if (awayScore < homeScore) gameState.record.losses++;
+            else gameState.record.otl++; // tie
         }
     }
 }
@@ -367,7 +372,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
     
     let maxPeriods = 3;
     for (state.period = 1; state.period <= maxPeriods; state.period++) {
-        state.clock = 1200; // 20 min regular and OT
+        state.clock = state.period > 3 ? 300 : 1200; // 5 min OT, 20 min regular
         state.zone = 'neutral';
         state.emptyNet = false;
         
@@ -376,7 +381,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
         let hFace = parseFloat(homeC.overall);
         let aFace = parseFloat(awayC.overall);
         state.possession = Math.random() * (hFace + aFace) < hFace ? 'home' : 'away';
-        let periodName = state.period > 3 ? 'OVERTIME' : `Period ${state.period}`;
+        let periodName = state.period > 4 ? `OVERTIME ${state.period - 3}` : (state.period === 4 ? 'OVERTIME 1' : `Period ${state.period}`);
         addEvent(state.clock, 'faceoff', null, `Puck Drop! ${periodName} Faceoff won by ${state.possession === 'home' ? homeTeam.name : awayTeam.name}.`);
         
         let otWinner = false;
@@ -545,13 +550,12 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             addEvent(state.clock, 'end_period', null, `GAME OVER!`);
             break; // Stop simulating periods
         } else {
-            let pName = state.period > 3 ? 'Overtime' : `Period ${state.period}`;
+            let pName = state.period > 4 ? `Overtime ${state.period - 3}` : (state.period === 4 ? 'Overtime 1' : `Period ${state.period}`);
             addEvent(0, 'end_period', null, `End of ${pName}.`);
             
-            if (state.period === 3 && state.score.home === state.score.away) {
-                maxPeriods = 4; // Force Overtime
-            }
-            if (state.period === 4 && state.score.home === state.score.away) {
+            if (state.period >= 3 && state.period < 5 && state.score.home === state.score.away) {
+                maxPeriods = state.period + 1; // Force Overtime up to period 5
+            } else if (state.period === 5 && state.score.home === state.score.away) {
                 simulateShootout();
                 break;
             }
@@ -559,7 +563,8 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
     }
     
     function simulateShootout() {
-        addEvent(0, 'shootout', null, `--- SHOOTOUT ---`);
+        let soPeriod = 6;
+        addEvent(1200, 'shootout', null, `--- SHOOTOUT ---`);
         let hGoalie = homeLines.g[0] || { name: 'Goalie', overall: 70 };
         let aGoalie = awayLines.g[0] || { name: 'Goalie', overall: 70 };
         let hForwards = homeLines.f.flat().filter(p => p).sort((a,b) => b.overall - a.overall);
@@ -577,11 +582,12 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             // Home shoots
             let hShotOvr = parseFloat(hShooter.overall) + Math.random() * 20;
             let aSaveOvr = parseFloat(aGoalie.overall) + Math.random() * 20;
+            state.period = soPeriod;
             if (hShotOvr > aSaveOvr) {
                 soHomeScore++;
-                addEvent(0, 'shootout_goal', 'home', `Round ${round+1}: ${hShooter.name} scores on ${aGoalie.name}!`, true);
+                addEvent(1200, 'shootout_goal', 'home', `Round ${round+1}: ${hShooter.name} scores on ${aGoalie.name}!`, true);
             } else {
-                addEvent(0, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
+                addEvent(1200, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
             }
             
             // Check early win after home shoots
@@ -596,34 +602,38 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             // Away shoots
             let aShotOvr = parseFloat(aShooter.overall) + Math.random() * 20;
             let hSaveOvr = parseFloat(hGoalie.overall) + Math.random() * 20;
+            state.period = soPeriod;
             if (aShotOvr > hSaveOvr) {
                 soAwayScore++;
-                addEvent(0, 'shootout_goal', 'away', `Round ${round+1}: ${aShooter.name} scores on ${hGoalie.name}!`, true);
+                addEvent(1200, 'shootout_goal', 'away', `Round ${round+1}: ${aShooter.name} scores on ${hGoalie.name}!`, true);
             } else {
-                addEvent(0, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
+                addEvent(1200, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
             }
             
-            // Check winner
-            if (round < 2) {
-                let remainingHome = 2 - round;
-                let remainingAway = 2 - round;
-                if (soHomeScore > soAwayScore + remainingAway) {
-                    winner = 'home';
-                } else if (soAwayScore > soHomeScore + remainingHome) {
+            // Check win after away shoots
+            if (round < 3) {
+                let remainingHome = 3 - (round + 1);
+                if (soAwayScore > soHomeScore + remainingHome) {
                     winner = 'away';
+                    break;
                 }
             } else {
-                if (soHomeScore > soAwayScore) {
-                    winner = 'home';
-                } else if (soAwayScore > soHomeScore) {
-                    winner = 'away';
+                if (soHomeScore !== soAwayScore) {
+                    winner = soHomeScore > soAwayScore ? 'home' : 'away';
+                    break;
                 }
             }
+            
             round++;
+            if (round > 20) {
+                // Failsafe
+                winner = Math.random() > 0.5 ? 'home' : 'away';
+                break;
+            }
         }
         
-        state.score[winner]++;
-        addEvent(0, 'shootout_winner', winner, `${winner === 'home' ? homeTeam.name : awayTeam.name} is awarded the shootout win!`, true);
+        state.period = soPeriod;
+        addEvent(1200, 'shootout_winner', winner, `${winner === 'home' ? homeTeam.name : awayTeam.name} is awarded the shootout win!`, true);
         addEvent(0, 'end_period', null, `GAME OVER! ${winner === 'home' ? homeTeam.name : awayTeam.name} wins in Shootout!`);
     }
 

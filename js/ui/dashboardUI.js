@@ -191,8 +191,9 @@ export function renderDashboard(container, gameState, currentTeam) {
         }
     }
     
-    // Calcula quantos jogos faltam
-    let playedGames = (gameState.record.wins || 0) + (gameState.record.losses || 0) + (gameState.record.otl || 0);
+    // Calcula quantos jogos faltam usando o standings do proprio time
+    let myStand = gameState.standings.find(s => s.teamId === currentTeam.id) || {gp: 0};
+    let playedGames = myStand.gp;
     
     container.innerHTML = `
         <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; padding-bottom: 3rem;">
@@ -237,7 +238,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                         <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.4rem; line-height: 1.1;">${currentTeam.name}</h3>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem;">
                             <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Record:</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: var(--text-color);">${gameState.record.wins}-${gameState.record.losses}-${gameState.record.otl}</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: var(--text-color);">${gameState.standings.find(s => s.teamId === currentTeam.id)?.w || 0}-${gameState.standings.find(s => s.teamId === currentTeam.id)?.l || 0}-${gameState.standings.find(s => s.teamId === currentTeam.id)?.otl || 0}</span>
                         </div>
                     </div>
                 </div>
