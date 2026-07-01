@@ -309,6 +309,7 @@ function renderStandings() {
                         <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
                         <td class="team-cell" style="text-align: left;">
                             <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
+                            ${s.clinch ? `<span style="font-family: 'Blockletter', sans-serif; font-size: 0.9rem; color: #fbbf24; margin-right: 4px; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">${s.clinch}</span>` : ''}
                             <span style="font-weight: 500; font-size: 0.95rem;">${teamInfo.name}</span>
                         </td>
                         <td>${s.gp || 0}</td>
