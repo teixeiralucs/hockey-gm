@@ -82,9 +82,6 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 60%; border: none; font-size: 1.1rem; letter-spacing: 1px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 0.8rem; border-radius: 12px;">
                         <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE WEEK
                     </button>
-                    <button class="btn" onclick="simulateToPlayoffs()" style="width: 60%; border: 1px solid rgba(255,255,255,0.1); background: transparent; font-size: 0.8rem; color: var(--text-muted); padding: 0.4rem; border-radius: 12px;">
-                        DEBUG: SKIP TO PLAYOFFS
-                    </button>
                 </div>
             `;
         } else {

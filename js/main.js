@@ -9,10 +9,14 @@ import * as SimEngine from './engine/simulation.js';
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Hockey GM initialized');
     
-    // Attaching necessary globals for rosterUI
+    // Attaching necessary globals for rosterUI and SetupUI
     window.getPlayerModifiers = getPlayerModifiers;
     window.getPlayerCardHTML = getPlayerCardHTML;
     window.saveGameState = saveGameState;
+    window.saveGame = saveGame;
+    window.loadGame = loadGame;
+    window.openLoadModal = openLoadModal;
+    window.openSaveModal = openSaveModal;
     window.openRosterErrorModal = openRosterErrorModal;
     window.openSellConfirmationModal = openSellConfirmationModal;
     window.openCollectionConfirmationModal = openCollectionConfirmationModal;
@@ -22,11 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         set: function(val) { gameState = val; }
     });
 
-    // Attempt to load auto-save directly
-    const hasSave = await window.loadGame('auto');
-    if (!hasSave) {
-        initMainMenu();
-    }
+    // Always start at Main Menu
+    initMainMenu();
 });
 
 // --- UI VIEWS ---
@@ -198,8 +199,9 @@ function initHomeScreen() {
     
     // Configuração inicial de franquia e cores
     gameState.team = currentTeam;
-    gameState.coins = 200; // Saldo inicial
-    gameState.collection = []; // Coleção vazia
+    if (gameState.coins === undefined) gameState.coins = 200; // Saldo inicial apenas se não existir
+    if (gameState.collection === undefined) gameState.collection = []; // Coleção apenas se não existir
+    
     document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
     document.documentElement.style.setProperty('--team-secondary', currentTeam.colors.secondary);
     
@@ -235,9 +237,6 @@ function initHomeScreen() {
                     </button>
                     <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
                         <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
-                    </button>
-                    <button class="nav-btn" onclick="simulateToPlayoffs()" style="margin-top: 1rem; border: 1px dashed rgba(255,255,255,0.2); color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem; justify-content: center;">
-                        <i data-lucide="fast-forward" style="margin-right: 8px; width: 16px; height: 16px;"></i> Skip to Playoffs
                     </button>
                 </nav>
                 
@@ -1933,82 +1932,8 @@ window.loadGame = async function(slotId = 'auto') {
     if (gameState.currentDate) {
         gameState.currentDate = new Date(gameState.currentDate);
     }
-    document.body.style.removeProperty('--bg-color');
-    document.body.style.background = `linear-gradient(135deg, color-mix(in srgb, ${currentTeam.colors.primary} 60%, #0b1121) 0%, color-mix(in srgb, ${currentTeam.colors.secondary} 60%, #0b1121) 100%)`;
-    document.body.style.backgroundAttachment = 'fixed';
-    document.documentElement.style.setProperty('--team-primary', currentTeam.colors.primary);
-    
-    const app = document.getElementById('app');
-    app.innerHTML = `
-        <div class="app-layout" style="--team-primary: ${currentTeam.colors.primary}; --team-secondary: ${currentTeam.colors.secondary};">
-            <aside class="sidebar">
-                <div class="sidebar-brand" style="position: relative; display: flex; justify-content: center; align-items: center;">
-                    <img src="assets/logos/hockey_gm_logo.png" alt="Hockey GM Logo" style="height: 180px; width: auto; object-fit: contain; filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); margin-top: -10px;">
-                    <div id="notification-bell" style="position: absolute; top: -10px; right: -10px; cursor: pointer; color: #fff; transition: color 0.2s ease;">
-                        <i data-lucide="bell" style="width: 24px; height: 24px;"></i>
-                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px;">0</span>
-                    </div>
-                </div>
-                
-                <nav class="sidebar-nav">
-                    <button class="nav-btn active" id="nav-dashboard">
-                        <i data-lucide="layout-dashboard" style="margin-right: 8px; width: 20px; height: 20px;"></i> Dashboard
-                    </button>
-                    <button class="nav-btn" id="nav-roster">
-                        <i data-lucide="users" style="margin-right: 8px; width: 20px; height: 20px;"></i> Roster
-                    </button>
-                    <button class="nav-btn" id="nav-calendar">
-                        <i data-lucide="calendar" style="margin-right: 8px; width: 20px; height: 20px;"></i> Calendar
-                    </button>
-                    <button class="nav-btn" id="nav-collection">
-                        <i data-lucide="library" style="margin-right: 8px; width: 20px; height: 20px;"></i> Collection
-                    </button>
-                    <button class="nav-btn" id="nav-shop">
-                        <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
-                    </button>
-                    <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
-                        <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
-                    </button>
-                </nav>
-                
-                <div class="sidebar-bottom">
-
-                    <!-- Save button -->
-                    <button id="btn-save-game" class="btn btn-sm" style="width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; background-color: transparent; border: 2px solid var(--team-primary); color: var(--team-primary); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
-                        <i data-lucide="save" style="width: 18px; height: 18px;"></i> Save Game
-                    </button>
-                    <button class="btn btn-danger btn-sm" id="btn-back-selection" style="width: 100%; font-size: 0.9rem; background-color: #ef4444; color: #fff; border: none; display: flex; justify-content: center; align-items: center; gap: 0.4rem;">
-                        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i> Leave Game
-                    </button>
-                </div>
-            </aside>
-            
-            <main class="main-content" id="main-content">
-            </main>
-        </div>
-    `;
-    
-    // Bind Sidebar Navigation
-    document.getElementById('nav-dashboard').addEventListener('click', () => switchView('dashboard'));
-    document.getElementById('nav-roster').addEventListener('click', () => switchView('roster'));
-    document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
-    document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
-    document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
-    document.getElementById('nav-playoffs').addEventListener('click', () => switchView('playoffs'));
-    // Bind Save Game
-    const btnSaveGame = document.getElementById('btn-save-game');
-    if (btnSaveGame) {
-        btnSaveGame.addEventListener('click', () => openSaveModal());
-    }
-
-    // Bind Back to Selection
-    document.getElementById('btn-back-selection').addEventListener('click', () => {
-        openBackConfirmationModal();
-    });
-    
-    updateCoinsDisplay();
-    if (window.lucide) window.lucide.createIcons();
-    switchView('dashboard');
+    // Use the unified layout function instead of duplicating HTML
+    initHomeScreen();
     return true;
 }
 
@@ -2873,12 +2798,6 @@ window.renderCollectionPage = function(container) {
         `;
     });
     
-    html += `
-                    </div>
-                    <div style="margin-top: 1.5rem;">
-                        <button class="btn" onclick="unlockAllCollection()" style="width: 100%; background: var(--team-primary); color: #fff; border: none; padding: 0.5rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; cursor: pointer; font-size: 1rem; letter-spacing: 1px;">
-                            DEBUG: UNLOCK ALL
-                        </button>
                     </div>
                 </div>
             </div>
