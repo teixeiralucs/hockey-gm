@@ -864,63 +864,136 @@ function renderShopPage(container) {
             </div>
             
             <div style="margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
-                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #94a3b8; margin: 0;">D-TIER PACKS</h3>
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #94a3b8; margin: 0;">JUNIOR TIER PACKS</h3>
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem;">
+            <style>
+                .booster-pack {
+                    position: relative;
+                    width: 100%;
+                    aspect-ratio: 2.5 / 3.5;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.2);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 1.5rem 1rem;
+                    overflow: hidden;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    cursor: pointer;
+                }
+                .booster-pack:hover {
+                    transform: translateY(-10px) scale(1.05);
+                    box-shadow: 0 20px 30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.4);
+                }
+                .booster-pack::before,
+                .booster-pack::after {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    width: 100%;
+                    height: 12px;
+                    background: repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0px, rgba(255,255,255,0.15) 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
+                    z-index: 10;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+                }
+                .booster-pack::before { top: 0; border-bottom: 2px solid rgba(0,0,0,0.6); }
+                .booster-pack::after { bottom: 0; border-top: 2px solid rgba(0,0,0,0.6); }
+                
+                .foil-overlay {
+                    position: absolute;
+                    top: -50%; left: -50%;
+                    width: 200%; height: 200%;
+                    background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.15) 30%, rgba(255, 255, 255, 0.5) 40%, transparent 50%);
+                    transform: rotate(45deg) translateY(-100%);
+                    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                    pointer-events: none;
+                    z-index: 5;
+                }
+                .booster-pack:hover .foil-overlay {
+                    transform: rotate(45deg) translateY(100%);
+                }
+                
+                .pack-title { font-family: 'Blockletter', sans-serif; font-size: 2.3rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); letter-spacing: 2px; text-transform: uppercase; margin: 0; text-align: center; line-height: 1; z-index: 2; }
+                .pack-desc { color: rgba(255,255,255,0.8); font-size: 1.25rem; text-align: center; margin: 0.5rem 0; z-index: 2; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+                .pack-icon { width: 60px; height: 60px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8)); z-index: 2; margin: auto 0; }
+                
+                .pack-btn { margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1.5rem; padding: 0.6rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 2; transition: background 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
+                .booster-pack:hover .pack-btn { background: rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.5); }
+                
+                /* Gradients for Packs */
+                .pack-standard { background: radial-gradient(circle at 50% 30%, #475569 0%, #1e293b 100%); border: 2px solid #64748b; }
+                .pack-jumbo { background: radial-gradient(circle at 50% 30%, #8b5cf6 0%, #4c1d95 100%); border: 2px solid #a78bfa; }
+                .pack-forwards { background: radial-gradient(circle at 50% 30%, #ef4444 0%, #7f1d1d 100%); border: 2px solid #f87171; }
+                .pack-defense { background: radial-gradient(circle at 50% 30%, #3b82f6 0%, #1e3a8a 100%); border: 2px solid #60a5fa; }
+                .pack-goalies { background: radial-gradient(circle at 50% 30%, #f59e0b 0%, #78350f 100%); border: 2px solid #fbbf24; }
+            </style>
+            
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; align-items: center;">
                 
                 <!-- STANDARD PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(148, 163, 184, 0.3) 0%, transparent 70%);"></div>
-                    <i data-lucide="package" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">D-LIST PACK</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 3 random players.</p>
-                    <button class="btn" onclick="buyPack('standard')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">200</span>
+                <div class="booster-pack pack-standard" ${((gameState.coins||0) < 200) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('standard')"`}>
+                    <div class="foil-overlay"></div>
+                    <div style="z-index: 2; text-align: center;">
+                        <h2 class="pack-title">Standard<br>Pack</h2>
+                        <p class="pack-desc">3 Random Players</p>
+                    </div>
+                    <i data-lucide="package" class="pack-icon" style="color: #cbd5e1;"></i>
+                    <button class="pack-btn">
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">200</span>
                     </button>
                 </div>
 
                 <!-- JUMBO PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(148, 163, 184, 0.5); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(148, 163, 184, 0.5) 0%, transparent 70%);"></div>
-                    <i data-lucide="layers" style="width: 50px; height: 50px; color: #94a3b8; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">JUMBO D-LIST</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">6 players. 5% chance for a C-Tier!</p>
-                    <button class="btn" onclick="buyPack('jumbo')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">850</span>
+                <div class="booster-pack pack-jumbo" ${((gameState.coins||0) < 400) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('jumbo')"`}>
+                    <div class="foil-overlay"></div>
+                    <div style="z-index: 2; text-align: center;">
+                        <h2 class="pack-title">Jumbo<br>Junior</h2>
+                        <p class="pack-desc" style="color: #ddd6fe;">6 Players (15% C-Tier)</p>
+                    </div>
+                    <i data-lucide="layers" class="pack-icon" style="color: #ddd6fe;"></i>
+                    <button class="pack-btn">
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">400</span>
                     </button>
                 </div>
 
                 <!-- FORWARDS PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(239, 68, 68, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, transparent 70%);"></div>
-                    <i data-lucide="swords" style="width: 50px; height: 50px; color: #ef4444; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">FORWARDS PACK</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Forwards.</p>
-                    <button class="btn" onclick="buyPack('forwards')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(239, 68, 68, 0.5); color: var(--text-color);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                <div class="booster-pack pack-forwards" ${((gameState.coins||0) < 350) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('forwards')"`}>
+                    <div class="foil-overlay"></div>
+                    <div style="z-index: 2; text-align: center;">
+                        <h2 class="pack-title">Forwards<br>Pack</h2>
+                        <p class="pack-desc" style="color: #fca5a5;">2 Forwards</p>
+                    </div>
+                    <i data-lucide="swords" class="pack-icon" style="color: #fca5a5;"></i>
+                    <button class="pack-btn">
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
 
                 <!-- DEFENSE PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);"></div>
-                    <i data-lucide="shield-half" style="width: 50px; height: 50px; color: #3b82f6; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">DEFENSE PACK</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Defensemen.</p>
-                    <button class="btn" onclick="buyPack('defense')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(59, 130, 246, 0.5); color: var(--text-color);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                <div class="booster-pack pack-defense" ${((gameState.coins||0) < 350) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('defense')"`}>
+                    <div class="foil-overlay"></div>
+                    <div style="z-index: 2; text-align: center;">
+                        <h2 class="pack-title">Defense<br>Pack</h2>
+                        <p class="pack-desc" style="color: #93c5fd;">2 Defensemen</p>
+                    </div>
+                    <i data-lucide="shield-half" class="pack-icon" style="color: #93c5fd;"></i>
+                    <button class="pack-btn">
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
 
                 <!-- GOALIE PACK -->
-                <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%); border: 2px solid rgba(245, 158, 11, 0.3); border-radius: 16px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);"></div>
-                    <i data-lucide="hand-metal" style="width: 50px; height: 50px; color: #f59e0b; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));"></i>
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin: 0 0 0.5rem 0; letter-spacing: 1px;">GOALIE PACK</h2>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 1rem 0; line-height: 1.2;">Includes 2 random Goalies.</p>
-                    <button class="btn" onclick="buyPack('goalies')" style="margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.6rem; background: var(--surface-color); border: 1px solid rgba(245, 158, 11, 0.5); color: var(--text-color);">
-                        <span style="font-size: 1rem;">🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">400</span>
+                <div class="booster-pack pack-goalies" ${((gameState.coins||0) < 350) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('goalies')"`}>
+                    <div class="foil-overlay"></div>
+                    <div style="z-index: 2; text-align: center;">
+                        <h2 class="pack-title">Goalies<br>Pack</h2>
+                        <p class="pack-desc" style="color: #fcd34d;">2 Goalies</p>
+                    </div>
+                    <i data-lucide="hand-grab" class="pack-icon" style="color: #fcd34d;"></i>
+                    <button class="pack-btn">
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
 
@@ -936,10 +1009,10 @@ function renderShopPage(container) {
 window.buyPack = function(packType) {
     const packConfigs = {
         'standard': { cost: 200, count: 3, filters: null, cTierChance: 0 },
-        'jumbo':    { cost: 850, count: 6, filters: null, cTierChance: 0.05 },
-        'forwards': { cost: 400, count: 2, filters: ['LW', 'C', 'RW'], cTierChance: 0 },
-        'defense':  { cost: 400, count: 2, filters: ['LD', 'RD'], cTierChance: 0 },
-        'goalies':  { cost: 400, count: 2, filters: ['G'], cTierChance: 0 }
+        'jumbo':    { cost: 400, count: 6, filters: null, cTierChance: 0.15 },
+        'forwards': { cost: 350, count: 2, filters: ['LW', 'C', 'RW'], cTierChance: 0 },
+        'defense':  { cost: 350, count: 2, filters: ['LD', 'RD'], cTierChance: 0 },
+        'goalies':  { cost: 350, count: 2, filters: ['G'], cTierChance: 0 }
     };
     
     const config = packConfigs[packType];
