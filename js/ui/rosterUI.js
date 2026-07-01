@@ -143,18 +143,11 @@ export function renderRoster(container, gameState) {
                 
                 <!-- BENTO 1: HEADER -->
                 <div class="bento-card" style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-direction: row; flex-shrink: 0;">
-                    <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: #fff;">ACTIVE ROSTER</h2>
-                        <div style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">TEAM OVR</span>
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.6rem; color: #fbbf24;">${teamOvr}</span>
-                        </div>
-                    </div>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: #fff;">ACTIVE ROSTER</h2>
                     
-                    <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <button onclick="window.autoAssignRoster()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; font-size: 0.9rem; border-color: rgba(255,255,255,0.2); color: #fff; border-radius: 8px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);">
-                            <i data-lucide="zap" style="width: 16px; height: 16px;"></i> AUTO-ASSIGN
-                        </button>
+                    <div style="background: var(--team-primary); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 0.5rem; height: fit-content;">
+                        <span style="font-size: 0.75rem; color: rgba(255,255,255,0.9); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">TEAM OVR</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; line-height: 1;">${teamOvr}</span>
                     </div>
                 </div>
 
@@ -181,7 +174,14 @@ export function renderRoster(container, gameState) {
                 <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; min-height: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 0.5rem;">
                     <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0;">BENCH</h2>
-                    <span style="background-color: var(--team-primary); padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 1rem; font-weight: bold; color: #fff;">${benchPlayers.length}</span>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button onclick="window.autoAssignRoster()" class="btn" style="background: var(--team-primary); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 0.4rem; height: fit-content; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; color: #fff; cursor: pointer;">
+                            <i data-lucide="zap" style="width: 14px; height: 14px;"></i> AUTO-ASSIGN
+                        </button>
+                        <div style="background: var(--team-primary); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; height: fit-content; min-width: 45px;">
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; line-height: 1;">${benchPlayers.length}</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- BENCH HEADER ROW -->

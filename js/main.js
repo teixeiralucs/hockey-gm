@@ -763,7 +763,7 @@ window.getTradingCardHTML = function(player, options = {}) {
 
     const scale = options.scale || 1.0;
     const transformStyle = scale !== 1.0 ? `transform: scale(${scale}); transform-origin: center;` : '';
-    const heightStyle = options.modal ? 'height: auto; align-self: stretch; width: 450px !important;' : '';
+    const heightStyle = options.modal ? 'height: auto; align-self: stretch; width: 100% !important; flex: 1;' : '';
     const hoverClass = options.modal ? 'no-hover' : '';
 
     return `
@@ -858,30 +858,15 @@ window.openPlayerCardModal = function(playerId) {
         <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
             <div style="display: flex; gap: 2rem; max-width: 1100px; width: 100%; padding: 2rem; align-items: stretch; justify-content: center;">
                 
-                <!-- TRADING CARD -->
-                ${tradingCardHTML}
-                
-                <!-- BENTO STATS -->
-                <div class="bento-card" style="display: flex; flex-direction: column; flex: 1; min-width: 500px; background: color-mix(in srgb, ${teamColor} 15%, rgba(15, 23, 42, 0.75)); backdrop-filter: blur(16px); padding: 2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, ${teamColor} 40%, rgba(255,255,255,0.1)); box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 60px color-mix(in srgb, ${teamColor} 10%, transparent);" onclick="event.stopPropagation()">
+                <!-- LEFT COLUMN: CARD + SEASON STATS -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 450px;">
+                    <!-- TRADING CARD -->
+                    ${tradingCardHTML}
                     
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
-                        <div>
-                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">PLAYER INFO</h2>
-                            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0.2rem 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} years old • ${teamName}</p>
-                        </div>
-                        <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>
-                    </div>
-                    
-                    <!-- OVERALL CALCULATION -->
-                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center;">
-                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: center; text-transform: uppercase; width: 100%;">Overall Rating</h4>
-                        ${equationHTML}
-                    </div>
-
                     <!-- STATS -->
                     ${player.stats ? `
-                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem;">
-                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: left; text-transform: uppercase;">Season Stats</h4>
+                    <div style="background-color: rgba(15, 23, 42, 0.65); backdrop-filter: blur(12px); border-radius: 16px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: center; text-transform: uppercase;">Season Stats</h4>
                         ${player.position === 'G' ? `
                         <div style="display: flex; justify-content: space-between; text-align: center;">
                             <div>
@@ -923,10 +908,29 @@ window.openPlayerCardModal = function(playerId) {
                         `}
                     </div>
                     ` : ''}
+                </div>
+                
+                <!-- BENTO STATS -->
+                <div class="bento-card" style="display: flex; flex-direction: column; flex: 1; min-width: 500px; background: color-mix(in srgb, ${teamColor} 15%, rgba(15, 23, 42, 0.75)); backdrop-filter: blur(16px); padding: 2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, ${teamColor} 40%, rgba(255,255,255,0.1)); box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 60px color-mix(in srgb, ${teamColor} 10%, transparent);" onclick="event.stopPropagation()">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                        <div>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 1px;">PLAYER INFO</h2>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0.2rem 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><i data-lucide="map-pin" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${player.birthplace} • ${player.age} years old • ${teamName}</p>
+                        </div>
+                        <button class="btn btn-sm" onclick="document.getElementById('player-modal').remove()" style="border: 1px solid rgba(255,255,255,0.2); background: transparent;">Close</button>
+                    </div>
+                    
+                    <!-- OVERALL CALCULATION -->
+                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem 1.2rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center;">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: center; text-transform: uppercase; width: 100%;">Overall Rating</h4>
+                        ${equationHTML}
+                    </div>
 
+                    <!-- ATTRIBUTES -->
                     ${player.attributes ? `
-                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
-                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: left; text-transform: uppercase;">Attributes</h4>
+                    <div style="background-color: rgba(0,0,0,0.3); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); flex: 1;">
+                        <h4 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: ${tierColor}; margin: 0 0 1rem 0; text-align: center; text-transform: uppercase;">Attributes</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; text-align: left;">
                             
                             <!-- SKATING -->
