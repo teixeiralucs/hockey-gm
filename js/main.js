@@ -2797,7 +2797,7 @@ window.renderCollectionPage = function(container) {
                         </div>
         `;
     });
-    
+    html += `
                     </div>
                 </div>
             </div>
