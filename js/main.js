@@ -851,19 +851,22 @@ window.openPackRevealModal = function(playerIdsArray) {
 // --- SHOP ENGINE ---
 function renderShopPage(container) {
     container.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 2rem; height: 100%; padding: 1rem 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem 2rem;">
-                <div>
-                    <h1 class="title-main" style="text-align:left; margin: 0; font-size: 2.5rem;">HOCKEY SHOP</h1>
-                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-size: 1.1rem;">Use your coins to buy packs and recruit new players to your franchise.</p>
+        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; padding-bottom: 3rem;">
+            
+            <!-- HEADER -->
+            <div class="bento-card" style="grid-column: span 12; display: flex; justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Store</span>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">HOCKEY SHOP</h2>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; background-color: rgba(0,0,0,0.4); padding: 1rem 2rem; border-radius: 12px; border: 2px solid #fbbf24;">
-                    <span style="font-size: 2rem;">🪙</span>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">${gameState.coins || 0}</span>
+                <div style="display: flex; align-items: center; gap: 0.8rem; background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <i data-lucide="coins" style="color: #fbbf24; width: 20px; height: 20px;"></i>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fbbf24; line-height: 1;">${gameState.coins || 0}</span>
                 </div>
             </div>
             
-            <div style="margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+            <!-- CATEGORY TITLE -->
+            <div style="grid-column: span 12; margin-top: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                 <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #94a3b8; margin: 0;">JUNIOR TIER PACKS</h3>
             </div>
             
@@ -871,20 +874,20 @@ function renderShopPage(container) {
                 .booster-pack {
                     position: relative;
                     width: 100%;
-                    aspect-ratio: 2.5 / 3.5;
-                    border-radius: 8px;
+                    min-height: 350px;
+                    border-radius: 16px;
                     box-shadow: 0 10px 20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.2);
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 1.5rem 1rem;
+                    padding: 2rem 1.5rem;
                     overflow: hidden;
                     transition: transform 0.3s ease, box-shadow 0.3s ease;
                     cursor: pointer;
                 }
                 .booster-pack:hover {
-                    transform: translateY(-10px) scale(1.05);
+                    transform: translateY(-8px) scale(1.02);
                     box-shadow: 0 20px 30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.4);
                 }
                 .booster-pack::before,
@@ -893,7 +896,7 @@ function renderShopPage(container) {
                     position: absolute;
                     left: 0;
                     width: 100%;
-                    height: 12px;
+                    height: 15px;
                     background: repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0px, rgba(255,255,255,0.15) 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
                     z-index: 10;
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
@@ -905,7 +908,7 @@ function renderShopPage(container) {
                     position: absolute;
                     top: -50%; left: -50%;
                     width: 200%; height: 200%;
-                    background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.15) 30%, rgba(255, 255, 255, 0.5) 40%, transparent 50%);
+                    background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.1) 30%, rgba(255, 255, 255, 0.4) 40%, transparent 50%);
                     transform: rotate(45deg) translateY(-100%);
                     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
                     pointer-events: none;
@@ -915,22 +918,23 @@ function renderShopPage(container) {
                     transform: rotate(45deg) translateY(100%);
                 }
                 
-                .pack-title { font-family: 'Blockletter', sans-serif; font-size: 2.3rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); letter-spacing: 2px; text-transform: uppercase; margin: 0; text-align: center; line-height: 1; z-index: 2; }
-                .pack-desc { color: rgba(255,255,255,0.8); font-size: 1.25rem; text-align: center; margin: 0.5rem 0; z-index: 2; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-                .pack-icon { width: 60px; height: 60px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8)); z-index: 2; margin: auto 0; }
+                .pack-title { font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); letter-spacing: 2px; text-transform: uppercase; margin: 0; text-align: center; line-height: 1.1; z-index: 2; }
+                .pack-desc { color: rgba(255,255,255,0.8); font-size: 1.2rem; text-align: center; margin: 0.5rem 0; z-index: 2; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+                .pack-icon { width: 70px; height: 70px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8)); z-index: 2; margin: auto 0; }
                 
-                .pack-btn { margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1.5rem; padding: 0.6rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 2; transition: background 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
+                .pack-btn { margin-top: auto; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1.5rem; padding: 0.8rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; z-index: 2; transition: background 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
                 .booster-pack:hover .pack-btn { background: rgba(0,0,0,0.8); border-color: rgba(255,255,255,0.5); }
                 
-                /* Gradients for Packs */
-                .pack-standard { background: radial-gradient(circle at 50% 30%, #475569 0%, #1e293b 100%); border: 2px solid #64748b; }
-                .pack-jumbo { background: radial-gradient(circle at 50% 30%, #8b5cf6 0%, #4c1d95 100%); border: 2px solid #a78bfa; }
-                .pack-forwards { background: radial-gradient(circle at 50% 30%, #ef4444 0%, #7f1d1d 100%); border: 2px solid #f87171; }
-                .pack-defense { background: radial-gradient(circle at 50% 30%, #3b82f6 0%, #1e3a8a 100%); border: 2px solid #60a5fa; }
-                .pack-goalies { background: radial-gradient(circle at 50% 30%, #f59e0b 0%, #78350f 100%); border: 2px solid #fbbf24; }
+                /* Gradients with blur behind */
+                .pack-standard { background: radial-gradient(circle at 50% 30%, rgba(71,85,105,0.9) 0%, rgba(30,41,59,0.9) 100%); backdrop-filter: blur(10px); border: 2px solid #64748b; }
+                .pack-jumbo { background: radial-gradient(circle at 50% 30%, rgba(139,92,246,0.9) 0%, rgba(76,29,149,0.9) 100%); backdrop-filter: blur(10px); border: 2px solid #a78bfa; }
+                .pack-forwards { background: radial-gradient(circle at 50% 30%, rgba(239,68,68,0.9) 0%, rgba(127,29,29,0.9) 100%); backdrop-filter: blur(10px); border: 2px solid #f87171; }
+                .pack-defense { background: radial-gradient(circle at 50% 30%, rgba(59,130,246,0.9) 0%, rgba(30,58,138,0.9) 100%); backdrop-filter: blur(10px); border: 2px solid #60a5fa; }
+                .pack-goalies { background: radial-gradient(circle at 50% 30%, rgba(245,158,11,0.9) 0%, rgba(120,53,15,0.9) 100%); backdrop-filter: blur(10px); border: 2px solid #fbbf24; }
             </style>
             
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; align-items: center;">
+            <!-- PACKS CONTAINER (1x5 Layout) -->
+            <div style="grid-column: span 12; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; align-items: stretch;">
                 
                 <!-- STANDARD PACK -->
                 <div class="booster-pack pack-standard" ${((gameState.coins||0) < 200) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('standard')"`}>
@@ -946,7 +950,7 @@ function renderShopPage(container) {
                 </div>
 
                 <!-- JUMBO PACK -->
-                <div class="booster-pack pack-jumbo" ${((gameState.coins||0) < 400) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('jumbo')"`}>
+                <div class="booster-pack pack-jumbo" ${((gameState.coins||0) < 700) ? 'style="opacity: 0.5; pointer-events: none;"' : `onclick="buyPack('jumbo')"`}>
                     <div class="foil-overlay"></div>
                     <div style="z-index: 2; text-align: center;">
                         <h2 class="pack-title">Jumbo<br>Junior</h2>
@@ -954,7 +958,7 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="layers" class="pack-icon" style="color: #ddd6fe;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">400</span>
+                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">700</span>
                     </button>
                 </div>
 
@@ -996,8 +1000,8 @@ function renderShopPage(container) {
                         <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
-
             </div>
+
         </div>
     `;
     
@@ -1009,7 +1013,7 @@ function renderShopPage(container) {
 window.buyPack = function(packType) {
     const packConfigs = {
         'standard': { cost: 200, count: 3, filters: null, cTierChance: 0 },
-        'jumbo':    { cost: 400, count: 6, filters: null, cTierChance: 0.15 },
+        'jumbo':    { cost: 700, count: 6, filters: null, cTierChance: 0.15 },
         'forwards': { cost: 350, count: 2, filters: ['LW', 'C', 'RW'], cTierChance: 0 },
         'defense':  { cost: 350, count: 2, filters: ['LD', 'RD'], cTierChance: 0 },
         'goalies':  { cost: 350, count: 2, filters: ['G'], cTierChance: 0 }
@@ -2819,52 +2823,68 @@ window.renderCollectionPage = function(container) {
     
     // Header
     let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <div>
-                <h1 class="title-main" style="text-align:left; margin: 0; font-size: 2.5rem;">Sticker Album</h1>
-                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 1.1rem;">Complete a full OHL team to unlock special FPHL (C-Tier) rewards.</p>
+        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; height: 100%; padding-bottom: 0;">
+            
+            <!-- BENTO 1: HEADER -->
+            <div class="bento-card" style="grid-column: span 12; display: flex; justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Sticker Album</span>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">COLLECTION</h2>
+                </div>
+                
+                <div style="background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">TOTAL COLLECTED</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; line-height: 1;">${gameState.collection ? gameState.collection.length : 0}</span>
+                </div>
             </div>
-            <div style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--team-primary);">
-                TOTAL COLLECTED: <span style="color: #fff;">${gameState.collection ? gameState.collection.length : 0}</span>
-            </div>
-        </div>
     `;
 
-    // Team Selector (Horizontal Scroll)
+    // LEFT COLUMN: TEAM SELECTOR (2x10)
     html += `
-        <div style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
+                <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0; color: #fff;">FRANCHISES</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem;">
     `;
     
+    // Set default team if none selected
+    if (!window.currentCollectionTeamId) {
+        window.currentCollectionTeamId = ohlTeams[0].id;
+    }
+
     ohlTeams.forEach(team => {
         const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const isSelected = window.currentCollectionTeamId === team.id || (!window.currentCollectionTeamId && team.id === currentTeam.id);
-        if (isSelected) window.currentCollectionTeamId = team.id;
+        const isSelected = window.currentCollectionTeamId === team.id;
         
         const isCompleted = (gameState.completedCollections || []).includes(team.id);
-        const borderStyle = isSelected ? `2px solid ${team.colors.primary}` : '2px solid transparent';
-        const bgStyle = isSelected ? `rgba(255,255,255,0.1)` : 'transparent';
+        const borderStyle = isSelected ? `2px solid ${team.colors.primary}` : '2px solid rgba(255,255,255,0.05)';
+        const bgStyle = isSelected ? `rgba(255,255,255,0.1)` : 'rgba(0,0,0,0.2)';
         const opacityStyle = isSelected ? '1' : '0.6';
         
         html += `
-            <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
-                 style="position: relative; min-width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
-                 onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
-                <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name}" style="width: 60px; height: 60px; object-fit: contain;">
-                ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 16px; height: 16px;"></i></div>` : ''}
-            </div>
+                        <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
+                             style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
+                             onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
+                            <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name}" style="width: 70%; height: 70%; object-fit: contain;">
+                            ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>` : ''}
+                        </div>
         `;
     });
-    html += `</div>`;
     
     html += `
-        <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
-            <button class="btn" onclick="unlockAllCollection()" style="background: var(--team-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; font-family: 'Blockletter', sans-serif; cursor: pointer; font-size: 1.2rem; letter-spacing: 1px;">
-                <i data-lucide="unlock" style="margin-right: 8px; width: 20px; height: 20px;"></i> DEBUG: UNLOCK ALL PLAYERS
-            </button>
-        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem;">
+                        <button class="btn" onclick="unlockAllCollection()" style="width: 100%; background: var(--team-primary); color: #fff; border: none; padding: 0.5rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; cursor: pointer; font-size: 1rem; letter-spacing: 1px;">
+                            DEBUG: UNLOCK ALL
+                        </button>
+                    </div>
+                </div>
+            </div>
     `;
 
-    // Players Grid
+    // RIGHT COLUMN: CARDS (Span 9)
     const selectedTeam = ohlTeams.find(t => t.id === window.currentCollectionTeamId);
     const originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === selectedTeam.id);
     
@@ -2873,34 +2893,30 @@ window.renderCollectionPage = function(container) {
         const isCollected = (gameState.collection || []).some(c => c.id === player.id);
         if (isCollected) collectedCount++;
         
-        const posColors = { 'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4', 'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899' };
-        const posColor = posColors[player.position] || '#94a3b8';
+        let logoUrl = 'assets/default-player.svg';
+        if (player.id && player.id.includes('_')) {
+            logoUrl = `https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg`;
+        }
         
-        const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.3);';
-        const bgGradient = isCollected ? `linear-gradient(180deg, #1e293b 0%, #0f172a 100%)` : '#0f172a';
-        const cursorStyle = isCollected ? 'cursor: pointer;' : 'cursor: default;';
+        const tierColors = { 'gold': '#fbbf24', 'silver': '#94a3b8', 'bronze': '#b45309', 'c-tier': '#94a3b8' };
+        const bColor = tierColors[player.tier?.toLowerCase()] || '#3b82f6';
+        
+        const nameParts = player.name.split(' ');
+        const shortName = nameParts.length > 1 ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}` : player.name;
+        
+        const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.4);';
         const clickHandler = isCollected ? `onclick="openPlayerCardModal('${player.id}')"` : '';
+        const cursorStyle = isCollected ? 'cursor: pointer;' : 'cursor: default;';
+        const hoverEffect = isCollected ? 'onmouseover="this.style.transform=\\\'scale(1.05)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'"' : '';
         
         return `
-            <div ${clickHandler} style="position: relative; border-radius: 12px; background: ${bgGradient}; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; padding-bottom: 1rem; text-align: center; transition: transform 0.2s; ${filterStyle} ${cursorStyle}" ${isCollected ? 'onmouseover="this.style.transform=\\\'scale(1.05)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'"' : ''}>
-                <div style="background-color: ${posColor}; height: 40px; width: 100%; position: absolute; top: 0; left: 0; z-index: 0; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 100%);"></div>
-                
-                <div style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff;">
-                    ${Math.round(player.overall)}
-                </div>
-                
-                <div style="position: relative; z-index: 1; margin-top: 1.5rem;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid #334155; background-color: #000;">
-                </div>
-                
-                <div style="position: relative; z-index: 1; margin-top: 0.5rem; padding: 0 0.5rem;">
-                    <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${player.name}</h3>
-                    <p style="color: ${posColor}; font-family: 'Blockletter', sans-serif; font-size: 1rem; margin: 0;">${player.position}</p>
-                </div>
-                
+            <div ${clickHandler} style="position: relative; width: 100%; aspect-ratio: 1; border: 3px solid ${bColor}; padding: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; transition: transform 0.2s; ${filterStyle} ${cursorStyle}" ${hoverEffect}>
+                <img src="${logoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; clip-path: circle(50%); display: block; margin: 0; padding: 0;">
+                <div style="position: absolute; top: 0px; right: 0px; background: ${bColor}; color: #000; font-size: 1rem; font-weight: bold; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #0f172a; font-family: 'Blockletter', sans-serif;">${Math.round(player.overall)}</div>
+                <div style="position: absolute; bottom: -5px; background: #0f172a; color: #fff; font-size: 0.9rem; padding: 2px 10px; border-radius: 6px; white-space: nowrap; border: 2px solid ${bColor}; font-weight: 600; line-height: 1; text-transform: uppercase;">${shortName}</div>
                 ${!isCollected ? `
                     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;">
-                        <i data-lucide="lock" style="width: 40px; height: 40px; color: #fff; opacity: 0.5;"></i>
+                        <i data-lucide="lock" style="width: 32px; height: 32px; color: #fff; opacity: 0.8;"></i>
                     </div>
                 ` : ''}
             </div>
@@ -2908,15 +2924,27 @@ window.renderCollectionPage = function(container) {
     }).join('');
     
     html += `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
-            <div style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
-                ${collectedCount} / ${originalRoster.length} Collected
+            <div style="grid-column: span 9; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
+                <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0;">
+                    
+                    <!-- ALBUM HEADER -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <img src="assets/logos/ohl/${selectedTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="height: 40px; object-fit: contain;">
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
+                        </div>
+                        <div style="background-color: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; color: var(--text-color);">
+                            ${collectedCount} / ${originalRoster.length} COLLECTED
+                        </div>
+                    </div>
+                    
+                    <!-- ALBUM GRID (6 cols) -->
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2rem 1.5rem; padding: 1rem;">
+                        ${cardsHtml}
+                    </div>
+                    
+                </div>
             </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem;">
-            ${cardsHtml}
         </div>
     `;
 

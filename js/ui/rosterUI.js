@@ -142,11 +142,14 @@ export function renderRoster(container, gameState) {
             <div style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
                 
                 <!-- BENTO 1: HEADER -->
-                <div class="bento-card" style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-direction: row; flex-shrink: 0;">
-                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: #fff;">ACTIVE ROSTER</h2>
+                <div class="bento-card" style="display: flex; justify-content: space-between; flex-direction: row; align-items: center; flex-shrink: 0; padding: 1rem 2rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Lineup</span>
+                        <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">ACTIVE ROSTER</h2>
+                    </div>
                     
-                    <div style="background: var(--team-primary); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 0.5rem; height: fit-content;">
-                        <span style="font-size: 0.75rem; color: rgba(255,255,255,0.9); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">TEAM OVR</span>
+                    <div style="background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 0.6rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">TEAM OVR</span>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff; line-height: 1;">${teamOvr}</span>
                     </div>
                 </div>
