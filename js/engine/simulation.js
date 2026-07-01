@@ -507,7 +507,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                 } else {
                     state.possession = def;
                     state.zone = 'defensive'; 
-                    addEvent(state.clock, 'giveaway', def, `${atkTeam.name} turns the puck over in the zone.`);
+                    addEvent(state.clock, 'giveaway', atk, `${atkTeam.name} turns the puck over in the zone.`);
                 }
             } else if (state.zone === 'defensive') {
                 if (Math.random() > 0.3) {
@@ -516,7 +516,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                 } else {
                     state.possession = def;
                     state.zone = 'offensive';
-                    addEvent(state.clock, 'dangerous_turnover', def, `Dangerous turnover by ${atkTeam.name} in their own end!`);
+                    addEvent(state.clock, 'dangerous_turnover', atk, `Dangerous turnover by ${atkTeam.name} in their own end!`);
                 }
             }
             

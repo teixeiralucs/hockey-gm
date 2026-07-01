@@ -1216,7 +1216,7 @@ function renderMatchPage(container) {
             
             <h1 class="title-main" style="text-align: center; font-size: 2.5rem; letter-spacing: 2px; flex-shrink: 0; margin-bottom: 1rem;">MATCH SIMULATION</h1>
             
-            <div style="display: flex; flex-direction: row; width: 100%; max-width: 1400px; flex: 1; min-height: 0; gap: 2rem;">
+            <div style="display: flex; flex-direction: row; width: 100%; max-width: 1600px; flex: 1; min-height: 0; gap: 2rem;">
                 
                 <!-- MAIN SCOREBOARD CONTAINER (70%) -->
                 <div style="position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; width: 100%; flex: 7; min-height: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 2rem 4rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);">
@@ -1260,7 +1260,7 @@ function renderMatchPage(container) {
                         <img src="assets/logos/ohl/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${homeCity}</span>
-                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${homeMascot}</h2>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${homeMascot}</h2>
                         </div>
                         <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); margin-top: 0.5rem;">
                             OVR: <span style="color: ${homeColor}; text-shadow: 0 0 10px ${homeColor};">${isHome ? myOvr : oppOvr}</span>
@@ -1283,12 +1283,12 @@ function renderMatchPage(container) {
                         <div id="match-period" style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; letter-spacing: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">1ST PERIOD</div>
                         
                         <div style="display: flex; align-items: center; gap: 1.5rem;">
-                            <div id="home-score" style="font-family: 'Blockletter', sans-serif; font-size: 6rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
-                            <div style="font-family: 'Roboto', sans-serif; font-size: 2.5rem; color: rgba(255,255,255,0.3); font-weight: 700;">-</div>
-                            <div id="away-score" style="font-family: 'Blockletter', sans-serif; font-size: 6rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
+                            <div id="home-score" style="font-family: 'Blockletter', sans-serif; font-size: 8rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
+                            <div style="font-family: 'Roboto', sans-serif; font-size: 3rem; color: rgba(255,255,255,0.3); font-weight: 700;">-</div>
+                            <div id="away-score" style="font-family: 'Blockletter', sans-serif; font-size: 8rem; color: #fff; line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.5);">0</div>
                         </div>
                         
-                        <div id="match-clock" style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fff; background-color: rgba(0,0,0,0.6); padding: 0.5rem 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">20:00</div>
+                        <div id="match-clock" style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; background-color: rgba(0,0,0,0.6); padding: 0.5rem 2.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">20:00</div>
                     </div>
                     
                     <!-- AWAY TEAM -->
@@ -1296,7 +1296,7 @@ function renderMatchPage(container) {
                         <img src="assets/logos/ohl/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${awayCity}</span>
-                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${awayMascot}</h2>
+                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${awayMascot}</h2>
                         </div>
                         <div style="background-color: rgba(0,0,0,0.4); padding: 0.5rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); margin-top: 0.5rem;">
                             OVR: <span style="color: ${awayColor}; text-shadow: 0 0 10px ${awayColor};">${!isHome ? myOvr : oppOvr}</span>
@@ -1309,8 +1309,8 @@ function renderMatchPage(container) {
                 <div style="flex: 3; min-width: 0; display: flex; flex-direction: column; gap: 1rem;">
                     
                     <!-- EVENT LOG -->
-                    <div id="event-log" style="width: 100%; flex: 1; min-height: 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; overflow-y: auto; padding: 1.5rem; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; color: #fff; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth;">
-                        <div style="text-align: center; color: var(--text-muted); font-family: 'Roboto', sans-serif; font-style: italic; font-size: 1rem;">20:00 - Puck drop! The match is underway...</div>
+                    <div id="event-log" style="width: 100%; flex: 1; min-height: 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; overflow-y: auto; padding: 1.5rem; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: #fff; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth;">
+                        <div style="text-align: center; color: var(--text-muted); font-family: 'Roboto', sans-serif; font-style: italic; font-size: 1.2rem;">20:00 - Puck drop! The match is underway...</div>
                     </div>
                     
                     <!-- CONTROLS -->
@@ -1399,10 +1399,10 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         const p = document.createElement('div');
         p.innerText = text;
         p.style.color = color;
-        p.style.marginBottom = '5px';
-        p.style.padding = '4px 8px';
+        p.style.marginBottom = '8px';
+        p.style.padding = '8px 12px';
         p.style.borderRadius = '4px';
-        p.style.fontSize = highlight ? '1rem' : '0.9rem';
+        p.style.fontSize = highlight ? '1.25rem' : '1.15rem';
         if (highlight) {
             p.style.fontWeight = 'bold';
             p.style.backgroundColor = 'rgba(255,255,255,0.1)';
