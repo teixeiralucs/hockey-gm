@@ -287,394 +287,332 @@ function sortStandingsArray(arr, metric, desc) {
 function renderStandings() {
     const container = document.getElementById('standings-container');
     if (!container) return;
-    
-    const renderTable = (teamsData, isCompact = false, groupId = 'league') => {
-        let rowsHTML = '';
-        teamsData.forEach((s) => {
-            const teamInfo = ohlTeams.find(t => t.id === s.teamId);
-            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-            const isActiveTeam = teamInfo.id === localCurrentTeam.id;
-            
-            rowsHTML += `
-                <tr class="${isActiveTeam ? 'team-row-active' : ''}">
-                    <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
-                    <td class="team-cell" style="text-align: left;">
-                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
-                        <span style="font-weight: 500; font-size: 0.95rem;">${teamInfo.name}</span>
-                    </td>
-                    <td>${s.gp}</td>
-                    <td style="font-weight: bold; color: #fff;">${s.pts}</td>
-                    ${isCompact ? '' : `<td>${s.w}</td><td>${s.l}</td><td>${s.otl}</td>`}
-                    <td style="color: ${(s.gf - s.ga) > 0 ? '#10b981' : (s.gf - s.ga) < 0 ? '#ef4444' : 'var(--text-muted)'}">${(s.gf - s.ga) > 0 ? '+' : ''}${s.gf - s.ga}</td>
-                </tr>
-            `;
-        });
-        
-        return `
-            <table class="standings-table" data-group="${groupId}">
-                <thead>
-                    <tr>
-                        <th style="width: 30px; cursor: pointer;" data-sort="rank" title="Sort by Rank">#</th>
-                        <th style="text-align: left; cursor: pointer;" data-sort="teamName">Team</th>
-                        <th data-sort="gp" style="cursor: pointer;">P</th>
-                        <th data-sort="pts" style="cursor: pointer;">Pts</th>
-                        ${isCompact ? '' : `<th data-sort="w" style="cursor: pointer;">W</th><th data-sort="l" style="cursor: pointer;">L</th><th data-sort="otl" style="cursor: pointer;">OTL</th>`}
-                        <th data-sort="gd" style="cursor: pointer;">GD</th>
+    try {
+        const renderTable = (teamsData, isCompact = false, groupId = 'league') => {
+            let rowsHTML = '';
+            teamsData.forEach((s) => {
+                const teamInfo = ohlTeams.find(t => t.id === s.teamId);
+                const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+                const isActiveTeam = teamInfo.id === localCurrentTeam.id;
+                
+                let streakText = '-';
+                if (typeof s.streak === 'string') {
+                    streakText = s.streak;
+                } else if (typeof s.streak === 'object' && s.streak !== null) {
+                    streakText = (s.streak.type === 'W' || s.streak.type === 'L') ? s.streak.type + s.streak.count : '-';
+                } else if (typeof s.streak === 'number') {
+                    streakText = s.streak > 0 ? 'W' + s.streak : (s.streak < 0 ? 'L' + Math.abs(s.streak) : '-');
+                }
+                
+                rowsHTML += `
+                    <tr class="${isActiveTeam ? 'team-row-active' : ''}">
+                        <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
+                        <td class="team-cell" style="text-align: left;">
+                            <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
+                            <span style="font-weight: 500; font-size: 0.95rem;">${teamInfo.name}</span>
+                        </td>
+                        <td>${s.gp || 0}</td>
+                        <td style="font-weight: bold; color: #fff;">${s.pts || 0}</td>
+                        ${isCompact ? '' : `<td>${s.w || 0}</td><td>${s.l || 0}</td><td>${s.otl || 0}</td><td>${s.gf || 0}</td><td>${s.ga || 0}</td>`}
+                        <td style="color: ${((s.gf || 0) - (s.ga || 0)) > 0 ? '#10b981' : ((s.gf || 0) - (s.ga || 0)) < 0 ? '#ef4444' : 'var(--text-muted)'}">${((s.gf || 0) - (s.ga || 0)) > 0 ? '+' : ''}${((s.gf || 0) - (s.ga || 0))}</td>
+                        <td><span style="font-size: 0.85rem; padding: 2px 6px; border-radius: 4px; background: ${streakText.startsWith('W') ? 'rgba(16,185,129,0.2)' : streakText.startsWith('L') ? 'rgba(239,68,68,0.2)' : 'transparent'}; color: ${streakText.startsWith('W') ? '#10b981' : streakText.startsWith('L') ? '#ef4444' : '#a1a1aa'}">${streakText}</span></td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${rowsHTML}
-                </tbody>
-            </table>
-        `;
-    };
+                `;
+            });
+            
+            return `
+                <table class="standings-table" data-group="${groupId}">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px; cursor: pointer;" data-sort="rank" title="Sort by Rank">#</th>
+                            <th style="text-align: left; cursor: pointer;" data-sort="teamName">Team</th>
+                            <th data-sort="gp" style="cursor: pointer;">P</th>
+                            <th data-sort="pts" style="cursor: pointer;">Pts</th>
+                            ${isCompact ? '' : `<th data-sort="w" style="cursor: pointer;">W</th><th data-sort="l" style="cursor: pointer;">L</th><th data-sort="otl" style="cursor: pointer;">OTL</th><th data-sort="gf" style="cursor: pointer;">GF</th><th data-sort="ga" style="cursor: pointer;">GA</th>`}
+                            <th data-sort="gd" style="cursor: pointer;">GD</th>
+                            <th style="cursor: default;">STRK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHTML}
+                    </tbody>
+                </table>
+            `;
+        };
 
-    let contentHTML = '';
-    
-    const sortAndRankGroup = (teamsData, groupId) => {
-        teamsData.forEach(s => {
-            s.pts = (s.w * 2) + s.otl;
-            s.gd = s.gf - s.ga;
-            s.teamName = ohlTeams.find(t => t.id === s.teamId).name;
-        });
+        let contentHTML = '';
         
-        // Calculate true rank first
-        const trueRankArray = [...teamsData].sort((a, b) => {
-            if (a.pts !== b.pts) return b.pts - a.pts;
-            if (a.w !== b.w) return b.w - a.w;
-            if (a.otl !== b.otl) return b.otl - a.otl;
-            if (a.gd !== b.gd) return b.gd - a.gd;
-            return 0;
-        });
-        trueRankArray.forEach((s, idx) => s.rank = idx + 1);
-        
-        // Fetch group-specific sort state
-        let sortState = standingsGroupSortStates[groupId] || { metric: 'pts', desc: true };
-        
-        // Apply user sort if any, else trueRankArray order applies
-        let sorted = sortStandingsArray(teamsData, sortState.metric, sortState.desc);
-        
-        // Exception: if sorting by rank, we actually want the true rank order we just calculated
-        if (sortState.metric === 'rank') {
-            sorted = [...teamsData].sort((a, b) => sortState.desc ? b.rank - a.rank : a.rank - b.rank);
+        const sortAndRankGroup = (teamsData, groupId) => {
+            teamsData.forEach(s => {
+                s.pts = ((s.w || 0) * 2) + (s.otl || 0);
+                s.gd = (s.gf || 0) - (s.ga || 0);
+                let tInfo = ohlTeams.find(t => t.id === s.teamId);
+                s.teamName = tInfo ? tInfo.name : 'Unknown';
+            });
+            
+            const trueRankArray = [...teamsData].sort((a, b) => {
+                if (a.pts !== b.pts) return b.pts - a.pts;
+                if (a.w !== b.w) return b.w - a.w;
+                if (a.otl !== b.otl) return b.otl - a.otl;
+                if (a.gd !== b.gd) return b.gd - a.gd;
+                return 0;
+            });
+            trueRankArray.forEach((s, idx) => s.rank = idx + 1);
+            
+            let sortState = standingsGroupSortStates[groupId] || { metric: 'pts', desc: true };
+            let sorted = sortStandingsArray(teamsData, sortState.metric, sortState.desc);
+            
+            if (sortState.metric === 'rank') {
+                sorted = [...teamsData].sort((a, b) => sortState.desc ? b.rank - a.rank : a.rank - b.rank);
+            }
+            return sorted;
+        };
+
+        if (currentStandingsTab === 'league') {
+            let sorted = sortAndRankGroup(localGameState.standings, 'league');
+            contentHTML = `
+                <div class="standings-grid-1">
+                    <div class="standings-group-card">
+                        <div class="standings-group-header">League Standings</div>
+                        ${renderTable(sorted, false, 'league')}
+                    </div>
+                </div>
+            `;
+        } else if (currentStandingsTab === 'conference') {
+            let eastTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.conference === 'East'; });
+            let westTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.conference === 'West'; });
+            
+            contentHTML = `
+                <div class="standings-grid-2">
+                    <div class="standings-group-card">
+                        <div class="standings-group-header">East Conference</div>
+                        ${renderTable(sortAndRankGroup(eastTeams, 'conf_east'), true, 'conf_east')}
+                    </div>
+                    <div class="standings-group-card">
+                        <div class="standings-group-header">West Conference</div>
+                        ${renderTable(sortAndRankGroup(westTeams, 'conf_west'), true, 'conf_west')}
+                    </div>
+                </div>
+            `;
+        } else {
+            let divisions = ['East', 'Central', 'Midwest', 'West'];
+            let gridCards = divisions.map(div => {
+                let divTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.division === div; });
+                let groupId = `div_${div.toLowerCase()}`;
+                return `
+                    <div class="standings-group-card">
+                        <div class="standings-group-header">${div} Division</div>
+                        ${renderTable(sortAndRankGroup(divTeams, groupId), true, groupId)}
+                    </div>
+                `;
+            }).join('');
+            contentHTML = `<div class="standings-grid-4">${gridCards}</div>`;
         }
         
-        return sorted;
-    };
-
-    if (currentStandingsTab === 'league') {
-        let sorted = sortAndRankGroup(localGameState.standings, 'league');
-        contentHTML = `
-            <div class="standings-grid-1">
-                <div class="standings-group-card">
-                    <div class="standings-group-header">League Standings</div>
-                    ${renderTable(sorted, false, 'league')}
+        container.innerHTML = `
+            <div class="standings-header" style="padding-left: 1.5rem; padding-right: 1.5rem;">
+                <h2 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px;">Standings</h2>
+                <div class="standings-tabs">
+                    <button class="tab-btn ${currentStandingsTab === 'division' ? 'active' : ''}" data-tab="division">Division</button>
+                    <button class="tab-btn ${currentStandingsTab === 'conference' ? 'active' : ''}" data-tab="conference">Conference</button>
+                    <button class="tab-btn ${currentStandingsTab === 'league' ? 'active' : ''}" data-tab="league">League</button>
                 </div>
             </div>
+            ${contentHTML}
         `;
-    } else if (currentStandingsTab === 'conference') {
-        let eastTeams = localGameState.standings.filter(s => ohlTeams.find(t => t.id === s.teamId).conference === 'East');
-        let westTeams = localGameState.standings.filter(s => ohlTeams.find(t => t.id === s.teamId).conference === 'West');
         
-        contentHTML = `
-            <div class="standings-grid-2">
-                <div class="standings-group-card">
-                    <div class="standings-group-header">East Conference</div>
-                    ${renderTable(sortAndRankGroup(eastTeams, 'conf_east'), true, 'conf_east')}
-                </div>
-                <div class="standings-group-card">
-                    <div class="standings-group-header">West Conference</div>
-                    ${renderTable(sortAndRankGroup(westTeams, 'conf_west'), true, 'conf_west')}
-                </div>
-            </div>
-        `;
-    } else {
-        let divisions = ['East', 'Central', 'Midwest', 'West'];
-        let gridCards = divisions.map(div => {
-            let divTeams = localGameState.standings.filter(s => ohlTeams.find(t => t.id === s.teamId).division === div);
-            let groupId = `div_${div.toLowerCase()}`;
-            return `
-                <div class="standings-group-card">
-                    <div class="standings-group-header">${div} Division</div>
-                    ${renderTable(sortAndRankGroup(divTeams, groupId), true, groupId)}
-                </div>
-            `;
-        }).join('');
-        contentHTML = `<div class="standings-grid-4">${gridCards}</div>`;
+        container.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                currentStandingsTab = e.target.getAttribute('data-tab');
+                renderStandings();
+            });
+        });
+        
+        container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', (e) => {
+                const metric = e.target.getAttribute('data-sort');
+                const groupId = e.target.closest('table').getAttribute('data-group');
+                if (!standingsGroupSortStates[groupId]) standingsGroupSortStates[groupId] = { metric: 'pts', desc: true };
+                let currentState = standingsGroupSortStates[groupId];
+                if (currentState.metric === metric) currentState.desc = !currentState.desc;
+                else { currentState.metric = metric; currentState.desc = true; }
+                renderStandings();
+            });
+        });
+    } catch (e) {
+        container.innerHTML = `<div style="color:red; padding:1rem;">Error rendering standings: ${e.message}</div>`;
     }
-    
-    container.innerHTML = `
-        <div class="standings-header" style="padding-left: 1.5rem; padding-right: 1.5rem;">
-            <h2 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px;">Standings</h2>
-            <div class="standings-tabs">
-                <button class="tab-btn ${currentStandingsTab === 'division' ? 'active' : ''}" data-tab="division">Division</button>
-                <button class="tab-btn ${currentStandingsTab === 'conference' ? 'active' : ''}" data-tab="conference">Conference</button>
-                <button class="tab-btn ${currentStandingsTab === 'league' ? 'active' : ''}" data-tab="league">League</button>
-            </div>
-        </div>
-        ${contentHTML}
-    `;
-    
-    container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentStandingsTab = e.target.getAttribute('data-tab');
-            renderStandings();
-        });
-    });
-    
-    // Bind Sort Events
-    container.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', (e) => {
-            const metric = e.target.getAttribute('data-sort');
-            const groupId = e.target.closest('table').getAttribute('data-group');
-            
-            if (!standingsGroupSortStates[groupId]) {
-                standingsGroupSortStates[groupId] = { metric: 'pts', desc: true };
-            }
-            
-            let currentState = standingsGroupSortStates[groupId];
-            if (currentState.metric === metric) {
-                currentState.desc = !currentState.desc;
-            } else {
-                currentState.metric = metric;
-                currentState.desc = true;
-            }
-            renderStandings();
-        });
-    });
 }
 
 function updateLeagueLeadersData() {
     if (!localGameState) return;
-    
-    let playerMap = new Map();
-    if (window.globalDraftPool) {
-        window.globalDraftPool.forEach(p => playerMap.set(p.id, p));
+    try {
+        let playerMap = new Map();
+        if (window.globalDraftPool) window.globalDraftPool.forEach(p => playerMap.set(p.id, p));
+        if (localGameState.players) localGameState.players.forEach(p => playerMap.set(p.id, p));
+        
+        let allPlayers = Array.from(playerMap.values()).filter(p => p.stats && p.stats.games > 0);
+        
+        let topPts = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => (b.stats.points||0) - (a.stats.points||0)).slice(0, 15).map((p, i) => ({
+            rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.points||0
+        }));
+        
+        let topG = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => (b.stats.goals||0) - (a.stats.goals||0)).slice(0, 15).map((p, i) => ({
+            rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.goals||0
+        }));
+        
+        let topA = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => (b.stats.assists||0) - (a.stats.assists||0)).slice(0, 15).map((p, i) => ({
+            rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.assists||0
+        }));
+        
+        let goalies = [...allPlayers].filter(p => p.position === 'G' && (p.stats.shotsAgainst||0) > 0);
+        let topSvp = goalies.sort((a, b) => {
+            let svpA = (a.stats.saves||0) / (a.stats.shotsAgainst||1);
+            let svpB = (b.stats.saves||0) / (b.stats.shotsAgainst||1);
+            return svpB - svpA;
+        }).slice(0, 15).map((p, i) => {
+            let svp = ((p.stats.saves||0) / (p.stats.shotsAgainst||1)).toFixed(3).replace('0.', '.');
+            return { rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: svp };
+        });
+        
+        localGameState.leagueLeaders = { pts: topPts, g: topG, a: topA, svp: topSvp };
+    } catch(e) {
+        console.error(e);
+        localGameState.leagueLeaders = { pts: [], g: [], a: [], svp: [] };
     }
-    if (localGameState.players) {
-        localGameState.players.forEach(p => playerMap.set(p.id, p));
-    }
-    
-    let allPlayers = Array.from(playerMap.values()).filter(p => p.stats && p.stats.games > 0);
-    
-    // Calculate Pts
-    let topPts = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.points - a.stats.points).slice(0, 15).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.points
-    }));
-    
-    // Calculate Goals
-    let topG = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.goals - a.stats.goals).slice(0, 15).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.goals
-    }));
-    
-    // Calculate Assists
-    let topA = [...allPlayers].filter(p => p.position !== 'G').sort((a, b) => b.stats.assists - a.stats.assists).slice(0, 15).map((p, i) => ({
-        rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: p.stats.assists
-    }));
-    
-    // Calculate Save Percentage
-    let goalies = [...allPlayers].filter(p => p.position === 'G' && p.stats.shotsAgainst > 0);
-    let topSvp = goalies.sort((a, b) => {
-        let svpA = a.stats.saves / a.stats.shotsAgainst;
-        let svpB = b.stats.saves / b.stats.shotsAgainst;
-        return svpB - svpA;
-    }).slice(0, 15).map((p, i) => {
-        let svp = (p.stats.saves / p.stats.shotsAgainst).toFixed(3).replace('0.', '.');
-        return {
-            rank: i + 1, name: p.name, teamId: p.teamId || p.originalTeamId, stat: svp
-        };
-    });
-    
-    localGameState.leagueLeaders = {
-        pts: topPts,
-        g: topG,
-        a: topA,
-        svp: topSvp
-    };
 }
 
 function renderLeagueLeaders() {
     const container = document.getElementById('league-leaders-container');
     if (!container) return;
-    
-    updateLeagueLeadersData();
-    
-    const leaders = localGameState.leagueLeaders[currentLeaderTab] || [];
-    
-    let listHTML = `<div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">`;
-    
-    if (leaders.length === 0) {
-        listHTML += `<p style="text-align: center; color: var(--text-muted); padding: 1rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see leaders.</p>`;
-    } else {
-        leaders.forEach(l => {
-            const teamInfo = ohlTeams.find(t => t.id === l.teamId);
-            const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
-            const logoHtml = logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
-            const tColor = teamInfo ? teamInfo.colors.primary : '#3b82f6';
-            
-            listHTML += `
-                <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1.1rem; background: linear-gradient(135deg, color-mix(in srgb, ${tColor} 25%, transparent) 0%, rgba(255,255,255,0.03) 100%); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(8px);">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: rgba(255,255,255,0.7); width: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">#${l.rank}</span>
-                        ${logoHtml}
-                        <span style="font-weight: 600; color: #fff; letter-spacing: 0.5px; font-size: 1.1rem;">${l.name}</span>
+    try {
+        updateLeagueLeadersData();
+        const leaders = localGameState.leagueLeaders[currentLeaderTab] || [];
+        let listHTML = `<div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">`;
+        if (leaders.length === 0) {
+            listHTML += `<p style="text-align: center; color: var(--text-muted); padding: 1rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see leaders.</p>`;
+        } else {
+            leaders.forEach(l => {
+                const teamInfo = ohlTeams.find(t => t.id === l.teamId);
+                const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
+                const logoHtml = logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
+                const tColor = teamInfo ? teamInfo.colors.primary : '#3b82f6';
+                listHTML += `
+                    <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1.1rem; background: linear-gradient(135deg, color-mix(in srgb, ${tColor} 25%, transparent) 0%, rgba(255,255,255,0.03) 100%); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(8px);">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: rgba(255,255,255,0.7); width: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">#${l.rank}</span>
+                            ${logoHtml}
+                            <span style="font-weight: 600; color: #fff; letter-spacing: 0.5px; font-size: 1.1rem;">${l.name}</span>
+                        </div>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.4);">${l.stat}</span>
                     </div>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.4);">${l.stat}</span>
-                </div>
-            `;
+                `;
+            });
+        }
+        listHTML += `</div>`;
+        container.innerHTML = `
+            <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; color: var(--text-color);">League Leaders</h3>
+            <div class="standings-tabs" style="justify-content: flex-start; gap: 0.5rem;">
+                <button class="tab-btn ${currentLeaderTab === 'pts' ? 'active' : ''}" data-leadertab="pts" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">PTS</button>
+                <button class="tab-btn ${currentLeaderTab === 'g' ? 'active' : ''}" data-leadertab="g" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">G</button>
+                <button class="tab-btn ${currentLeaderTab === 'a' ? 'active' : ''}" data-leadertab="a" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">A</button>
+                <button class="tab-btn ${currentLeaderTab === 'svp' ? 'active' : ''}" data-leadertab="svp" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">SV%</button>
+            </div>
+            ${listHTML}
+        `;
+        container.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { currentLeaderTab = e.target.getAttribute('data-leadertab'); renderLeagueLeaders(); });
         });
+    } catch(e) {
+        container.innerHTML = `<div style="color:red; padding:1rem;">Error rendering leaders: ${e.message}</div>`;
     }
-    
-    listHTML += `</div>`;
-    
-    container.innerHTML = `
-        <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; color: var(--text-color);">League Leaders</h3>
-        
-        <div class="standings-tabs" style="justify-content: flex-start; gap: 0.5rem;">
-            <button class="tab-btn ${currentLeaderTab === 'pts' ? 'active' : ''}" data-leadertab="pts" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">PTS</button>
-            <button class="tab-btn ${currentLeaderTab === 'g' ? 'active' : ''}" data-leadertab="g" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">G</button>
-            <button class="tab-btn ${currentLeaderTab === 'a' ? 'active' : ''}" data-leadertab="a" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">A</button>
-            <button class="tab-btn ${currentLeaderTab === 'svp' ? 'active' : ''}" data-leadertab="svp" style="padding: 0.3rem 0.6rem; font-size: 0.9rem;">SV%</button>
-        </div>
-        
-        ${listHTML}
-    `;
-    
-    // Bind Tab Events
-    container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentLeaderTab = e.target.getAttribute('data-leadertab');
-            renderLeagueLeaders();
-        });
-    });
 }
 
 function renderTeamStars() {
     const container = document.getElementById('team-stars-container');
     if (!container) return;
-    
-    // We can use the already populated playerMap from updateLeagueLeadersData if it exists,
-    // or just fetch from localGameState.players
-    let allPlayersMap = new Map();
-    if (window.globalDraftPool) {
-        window.globalDraftPool.forEach(p => allPlayersMap.set(p.id, p));
-    }
-    if (localGameState.players) {
-        localGameState.players.forEach(p => allPlayersMap.set(p.id, p));
-    }
-    
-    let myPlayers = Array.from(allPlayersMap.values()).filter(p => p.teamId === localCurrentTeam.id && p.stats && p.stats.games > 0);
-    
-    let starPlayer = null;
-    let statValue = '';
-    let statLabel = '';
-    
-    if (myPlayers.length > 0) {
-        if (currentTeamStarTab === 'pts') {
-            let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => b.stats.points - a.stats.points);
-            if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.points; statLabel = 'Points'; }
-        } else if (currentTeamStarTab === 'g') {
-            let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => b.stats.goals - a.stats.goals);
-            if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.goals; statLabel = 'Goals'; }
-        } else if (currentTeamStarTab === 'a') {
-            let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => b.stats.assists - a.stats.assists);
-            if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.assists; statLabel = 'Assists'; }
-        } else if (currentTeamStarTab === 'svp') {
-            let goalies = myPlayers.filter(p => p.position === 'G' && p.stats.shotsAgainst > 0).sort((a, b) => (b.stats.saves / b.stats.shotsAgainst) - (a.stats.saves / a.stats.shotsAgainst));
-            if (goalies.length > 0) { 
-                starPlayer = goalies[0]; 
-                statValue = (starPlayer.stats.saves / starPlayer.stats.shotsAgainst).toFixed(3).replace('0.', '.'); 
-                statLabel = 'SV%'; 
+    try {
+        let allPlayersMap = new Map();
+        if (window.globalDraftPool) window.globalDraftPool.forEach(p => allPlayersMap.set(p.id, p));
+        if (localGameState.players) localGameState.players.forEach(p => allPlayersMap.set(p.id, p));
+        let myPlayers = Array.from(allPlayersMap.values()).filter(p => p.teamId === localCurrentTeam.id && p.stats && p.stats.games > 0);
+        let starPlayer = null, statValue = '', statLabel = '';
+        if (myPlayers.length > 0) {
+            if (currentTeamStarTab === 'pts') {
+                let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => (b.stats.points||0) - (a.stats.points||0));
+                if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.points||0; statLabel = 'Points'; }
+            } else if (currentTeamStarTab === 'g') {
+                let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => (b.stats.goals||0) - (a.stats.goals||0));
+                if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.goals||0; statLabel = 'Goals'; }
+            } else if (currentTeamStarTab === 'a') {
+                let skaters = myPlayers.filter(p => p.position !== 'G').sort((a, b) => (b.stats.assists||0) - (a.stats.assists||0));
+                if (skaters.length > 0) { starPlayer = skaters[0]; statValue = starPlayer.stats.assists||0; statLabel = 'Assists'; }
+            } else if (currentTeamStarTab === 'svp') {
+                let goalies = myPlayers.filter(p => p.position === 'G' && (p.stats.shotsAgainst||0) > 0).sort((a, b) => ((b.stats.saves||0)/(b.stats.shotsAgainst||1)) - ((a.stats.saves||0)/(a.stats.shotsAgainst||1)));
+                if (goalies.length > 0) { starPlayer = goalies[0]; statValue = ((starPlayer.stats.saves||0)/(starPlayer.stats.shotsAgainst||1)).toFixed(3).replace('0.', '.'); statLabel = 'SV%'; }
             }
         }
-    }
-    
-    let contentHTML = '';
-    let logoFile = localCurrentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-    
-    if (starPlayer) {
-        let numericStat = parseFloat(statValue);
-        if (numericStat === 0 || isNaN(numericStat)) {
-            starPlayer = null;
+        
+        let contentHTML = '';
+        let logoFile = localCurrentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+        if (starPlayer) {
+            let numericStat = parseFloat(statValue);
+            if (numericStat === 0 || isNaN(numericStat)) starPlayer = null;
         }
-    }
-    
-    if (starPlayer) {
-        let pId = starPlayer.id.includes('_') ? starPlayer.id.split('_')[1] : starPlayer.id;
-        let firstName = starPlayer.name.split(' ')[0] || '';
-        let lastName = starPlayer.name.split(' ').slice(1).join(' ') || '';
-        let fullPos = '';
-        if (starPlayer.position === 'C') fullPos = 'center';
-        else if (starPlayer.position === 'LW') fullPos = 'left wing';
-        else if (starPlayer.position === 'RW') fullPos = 'right wing';
-        else if (starPlayer.position === 'LD' || starPlayer.position === 'RD' || starPlayer.position === 'D') fullPos = 'defense';
-        else fullPos = 'goalie';
-        
-        container.style.background = 'linear-gradient(135deg, var(--team-primary) 0%, color-mix(in srgb, var(--team-secondary) 80%, black) 100%)';
-        container.style.border = '1px solid rgba(255,255,255,0.2)';
-        container.style.position = 'relative';
-        container.style.overflow = 'hidden';
-        // Removed align-self to allow it to stretch horizontally to fill the column
-        container.style.height = '260px'; // Fixed height to keep image crisp
-        
-        contentHTML = `
-            <!-- Texture Overlay -->
-            <div style="position: absolute; inset: 0; opacity: 0.15; background-image: repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 4px); z-index: 1; pointer-events: none;"></div>
-            
-            <!-- Right Image (Circular Portrait) -->
-            <div style="position: absolute; right: 1.5rem; top: 50%; transform: translateY(-40%); width: 140px; height: 140px; z-index: 2; border-radius: 50%; border: 4px solid var(--team-primary); box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px var(--team-primary); overflow: hidden; background: #fff;">
-                <img src="https://assets.leaguestat.com/ohl/240x240/${pId}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top;">
-            </div>
-            
-            <!-- Left Content (Names and Stats) -->
-            <div style="position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; flex: 1; margin-top: auto; padding-top: 1rem;">
-                <div style="display: flex; flex-direction: column; line-height: 0.9;">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: rgba(255,255,255,0.8); text-transform: uppercase; font-style: italic; letter-spacing: 1px;">${firstName}</span>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fff; text-transform: uppercase; font-style: italic; letter-spacing: 1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5);">${lastName}</span>
+        if (starPlayer) {
+            let pId = starPlayer.id.includes('_') ? starPlayer.id.split('_')[1] : starPlayer.id;
+            let firstName = starPlayer.name.split(' ')[0] || '';
+            let lastName = starPlayer.name.split(' ').slice(1).join(' ') || '';
+            let fullPos = starPlayer.position === 'C' ? 'center' : (starPlayer.position === 'LW' ? 'left wing' : (starPlayer.position === 'RW' ? 'right wing' : (starPlayer.position === 'G' ? 'goalie' : 'defense')));
+            container.style.background = 'linear-gradient(135deg, var(--team-primary) 0%, color-mix(in srgb, var(--team-secondary) 80%, black) 100%)';
+            container.style.border = '1px solid rgba(255,255,255,0.2)';
+            container.style.position = 'relative';
+            container.style.overflow = 'hidden';
+            container.style.height = '260px';
+            contentHTML = `
+                <div style="position: absolute; inset: 0; opacity: 0.15; background-image: repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 4px); z-index: 1; pointer-events: none;"></div>
+                <div style="position: absolute; right: 1.5rem; top: 50%; transform: translateY(-40%); width: 140px; height: 140px; z-index: 2; border-radius: 50%; border: 4px solid var(--team-primary); box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px var(--team-primary); overflow: hidden; background: #fff;">
+                    <img src="https://assets.leaguestat.com/ohl/240x240/${pId}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top;">
                 </div>
-                
-                <div style="margin-top: 1rem; font-family: 'Roboto', sans-serif; font-size: 0.95rem; color: rgba(255,255,255,0.9); display: flex; align-items: center; gap: 0.6rem;">
-                    <span style="text-transform: lowercase;">${fullPos}</span>
-                    <span style="width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.5);"></span>
-                    <span style="font-weight: 900; color: #fbbf24; font-size: 1.3rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${statValue} <span style="font-size: 0.8rem; color: rgba(255,255,255,0.8); font-weight: normal;">${statLabel.toUpperCase()}</span></span>
+                <div style="position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; flex: 1; margin-top: auto; padding-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; line-height: 0.9;">
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: rgba(255,255,255,0.8); text-transform: uppercase; font-style: italic; letter-spacing: 1px;">${firstName}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fff; text-transform: uppercase; font-style: italic; letter-spacing: 1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5);">${lastName}</span>
+                    </div>
+                    <div style="margin-top: 1rem; font-family: 'Roboto', sans-serif; font-size: 0.95rem; color: rgba(255,255,255,0.9); display: flex; align-items: center; gap: 0.6rem;">
+                        <span style="text-transform: lowercase;">${fullPos}</span>
+                        <span style="width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.5);"></span>
+                        <span style="font-weight: 900; color: #fbbf24; font-size: 1.3rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${statValue} <span style="font-size: 0.8rem; color: rgba(255,255,255,0.8); font-weight: normal;">${statLabel.toUpperCase()}</span></span>
+                    </div>
                 </div>
+            `;
+        } else {
+            container.style.background = '';
+            container.style.border = '';
+            container.style.position = 'relative';
+            contentHTML = `<p style="position: relative; z-index: 3; text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see highlights.</p>`;
+        }
+        container.innerHTML = `
+            <div style="position: relative; z-index: 3; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    <img src="assets/logos/ohl/${logoFile}.png" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    ${localCurrentTeam.name.substring(0,3).toUpperCase()} HIGHLIGHTS
+                </h3>
             </div>
+            <div class="standings-tabs" style="position: relative; z-index: 3; justify-content: flex-start; gap: 0.4rem; margin-top: 0.8rem;">
+                <button class="tab-btn ${currentTeamStarTab === 'pts' ? 'active' : ''}" data-startab="pts" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">PTS</button>
+                <button class="tab-btn ${currentTeamStarTab === 'g' ? 'active' : ''}" data-startab="g" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">G</button>
+                <button class="tab-btn ${currentTeamStarTab === 'a' ? 'active' : ''}" data-startab="a" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">A</button>
+                <button class="tab-btn ${currentTeamStarTab === 'svp' ? 'active' : ''}" data-startab="svp" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">SV%</button>
+            </div>
+            ${contentHTML}
         `;
-    } else {
-        container.style.background = ''; // reset to CSS default
-        container.style.border = '';
-        container.style.position = 'relative';
-        contentHTML = `<p style="position: relative; z-index: 3; text-align: center; color: var(--text-muted); padding: 2rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see highlights.</p>`;
-    }
-    
-    container.innerHTML = `
-        <div style="position: relative; z-index: 3; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
-            <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                <img src="assets/logos/ohl/${logoFile}.png" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                ${localCurrentTeam.name.substring(0,3).toUpperCase()} HIGHLIGHTS
-            </h3>
-        </div>
-        
-        <div class="standings-tabs" style="position: relative; z-index: 3; justify-content: flex-start; gap: 0.4rem; margin-top: 0.8rem;">
-            <button class="tab-btn ${currentTeamStarTab === 'pts' ? 'active' : ''}" data-startab="pts" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">PTS</button>
-            <button class="tab-btn ${currentTeamStarTab === 'g' ? 'active' : ''}" data-startab="g" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">G</button>
-            <button class="tab-btn ${currentTeamStarTab === 'a' ? 'active' : ''}" data-startab="a" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">A</button>
-            <button class="tab-btn ${currentTeamStarTab === 'svp' ? 'active' : ''}" data-startab="svp" style="padding: 0.2rem 0.5rem; font-size: 0.9rem; border-radius: 6px;">SV%</button>
-        </div>
-        
-        ${contentHTML}
-    `;
-    
-    // Bind Tab Events
-    container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentTeamStarTab = e.target.getAttribute('data-startab');
-            renderTeamStars();
+        container.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { currentTeamStarTab = e.target.getAttribute('data-startab'); renderTeamStars(); });
         });
-    });
-    
-    if (window.lucide) {
-        window.lucide.createIcons();
+        if (window.lucide) window.lucide.createIcons();
+    } catch(e) {
+        container.innerHTML = `<div style="color:red; padding:1rem;">Error rendering stars: ${e.message}</div>`;
     }
 }
 
