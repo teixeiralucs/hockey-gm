@@ -1,4 +1,4 @@
-import { ohlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams } from '../../data/teams.js';
 
 export function transitionTo(nextFunc) {
     const container = document.querySelector('#app > div');
@@ -105,12 +105,12 @@ export function initLeagueSelection() {
             
             <div style="display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; z-index: 10; max-width: 1000px;">
                 
-                <!-- WHL (Locked) -->
-                <div class="linear-card" style="--card-color-light: #fbbf24; --card-color-dark: #d97706; width: 260px; height: 360px; opacity: 0.7; cursor: not-allowed;">
-                    <i data-lucide="lock" style="position: absolute; top: 1rem; right: 1rem; width: 20px; height: 20px; color: rgba(255,255,255,0.5);"></i>
+                <!-- WHL (Playable) -->
+                <div class="linear-card" id="league-whl" style="--card-color-light: #e2373f; --card-color-dark: #000000; width: 260px; height: 360px;">
                     <div class="linear-card-glow"></div>
+                    <img src="assets/whl-logo.svg" alt="WHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">WHL</h3>
-                    <p style="color: var(--text-muted); position: relative; z-index: 2;">Coming Soon</p>
+                    <p style="color: var(--text-muted); position: relative; z-index: 2;">Western Hockey League</p>
                 </div>
                 
                 <!-- OHL (Playable) -->
@@ -138,7 +138,11 @@ export function initLeagueSelection() {
     });
     
     document.getElementById('league-ohl').addEventListener('click', () => {
-        transitionTo(initFranchiseSelection);
+        transitionTo(() => initFranchiseSelection('ohl'));
+    });
+    
+    document.getElementById('league-whl').addEventListener('click', () => {
+        transitionTo(() => initFranchiseSelection('whl'));
     });
     
     if (window.lucide) window.lucide.createIcons();
@@ -149,22 +153,28 @@ export function getRandomTeams(teams, count) {
     return shuffled.slice(0, count);
 }
 
-export function initFranchiseSelection() {
+export function initFranchiseSelection(league = 'ohl') {
     const app = document.getElementById('app');
     
-    // Select 6 random teams
-    const selectedTeams = getRandomTeams(ohlTeams, 6);
+    // Select 6 random teams from the chosen league
+    const leagueTeams = league === 'whl' ? whlTeams : ohlTeams;
+    const selectedTeams = getRandomTeams(leagueTeams, 6);
+    
+    const bgGradient = league === 'whl' 
+        ? 'linear-gradient(135deg, rgba(226, 55, 63, 0.15) 0%, rgba(0, 0, 0, 0.25) 100%)'
+        : 'linear-gradient(135deg, rgba(4, 122, 196, 0.15) 0%, rgba(170, 170, 170, 0.25) 100%)';
     
     const teamsHTML = selectedTeams.map(team => {
         const parts = team.name.split(' ');
         const mascot = parts.pop();
         const city = parts.join(' ');
         const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+        const logoPath = league === 'whl' ? `assets/logos/whl/${logoFile}.png` : `assets/logos/ohl/${logoFile}.png`;
         
         return `
         <div class="linear-card" data-team-id="${team.id}" style="--card-color-light: ${team.colors.secondary}; --card-color-dark: ${team.colors.primary}; width: 220px; height: 280px; padding: 1.5rem;">
             <div class="linear-card-glow"></div>
-            <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" style="width: 90px; height: 90px; margin-bottom: 1rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+            <img src="${logoPath}" alt="${team.name} Logo" style="width: 90px; height: 90px; margin-bottom: 1rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
             <h3 class="linear-card-title" style="line-height: 1.1; margin-top: 0.5rem; text-align: center;">
                 <span style="display: block; font-size: 0.55em; opacity: 0.7; letter-spacing: 2px;">${city}</span>
                 <span style="display: block;">${mascot}</span>
@@ -175,7 +185,7 @@ export function initFranchiseSelection() {
     }).join('');
 
     app.innerHTML = `
-        <div class="page-enter" style="min-height: 100vh; background: linear-gradient(135deg, rgba(4, 122, 196, 0.15) 0%, rgba(170, 170, 170, 0.25) 100%); padding: 2rem 0; position: relative; display: flex;">
+        <div class="page-enter" style="min-height: 100vh; background: ${bgGradient}; padding: 2rem 0; position: relative; display: flex;">
             
             <button id="btn-back-league" class="btn btn-sm" style="position: absolute; top: 2rem; left: 2rem; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; z-index: 50;">
                 <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i> Back
@@ -208,8 +218,8 @@ export function initFranchiseSelection() {
     teamCards.forEach(card => {
         card.addEventListener('click', () => {
             const teamId = card.getAttribute('data-team-id');
-            const team = ohlTeams.find(t => t.id === teamId);
-            window.openConfirmationModal(team);
+            const team = leagueTeams.find(t => t.id === teamId);
+            window.openConfirmationModal(team, league);
         });
     });
 }

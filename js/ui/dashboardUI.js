@@ -1,4 +1,6 @@
-import { ohlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams } from '../../data/teams.js';
+function getActiveTeams() { return (localGameState && localGameState.league === 'whl') ? whlTeams : ohlTeams; }
+function getLeagueFolder() { return (localGameState && localGameState.league === 'whl') ? 'whl' : 'ohl'; }
 
 let currentStandingsTab = 'division';
 let standingsGroupSortStates = {}; // Stores { metric, desc } per group ID
@@ -65,8 +67,8 @@ export function renderDashboard(container, gameState, currentTeam) {
     let matchHTML = '';
     
     if (nextMatchObj) {
-        const awayTeam = ohlTeams.find(t => t.id === nextMatchObj.awayId);
-        const homeTeam = ohlTeams.find(t => t.id === nextMatchObj.homeId);
+        const awayTeam = getActiveTeams().find(t => t.id === nextMatchObj.awayId);
+        const homeTeam = getActiveTeams().find(t => t.id === nextMatchObj.homeId);
         const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
         const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
         const awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id) || {w:0, l:0, otl:0};
@@ -117,7 +119,7 @@ export function renderDashboard(container, gameState, currentTeam) {
             <div style="display: flex; justify-content: space-around; align-items: center; flex: 1; margin-bottom: 2rem; margin-top: 1rem;">
                 <!-- Away Team -->
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 0.8rem; width: 35%;">
-                    <img src="assets/logos/ohl/${awayLogo}.png" alt="Away Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
+                    <img src="assets/logos/${getLeagueFolder()}/${awayLogo}.png" alt="Away Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
                     <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                         <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${awayTeam.name.split(' ').slice(0, -1).join(' ')}</span>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${awayTeam.name.split(' ').slice(-1).join(' ')}</span>
@@ -137,7 +139,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                 
                 <!-- Home Team -->
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 0.8rem; width: 35%;">
-                    <img src="assets/logos/ohl/${homeLogo}.png" alt="Home Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
+                    <img src="assets/logos/${getLeagueFolder()}/${homeLogo}.png" alt="Home Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
                     <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                         <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${homeTeam.name.split(' ').slice(0, -1).join(' ')}</span>
                         <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${homeTeam.name.split(' ').slice(-1).join(' ')}</span>
@@ -245,7 +247,7 @@ export function renderDashboard(container, gameState, currentTeam) {
             <div style="grid-column: span 4; display: flex; flex-direction: column; gap: 1.5rem;">
                 <!-- Team Identity -->
                 <div class="bento-card bento-identity" style="flex-direction: row; align-items: center; justify-content: center; text-align: left; gap: 1.2rem; padding: 1rem;">
-                    <img src="assets/logos/ohl/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));">
+                    <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));">
                     <div style="display: flex; flex-direction: column; justify-content: center;">
                         <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.4rem; line-height: 1.1;">${currentTeam.name}</h3>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem;">
@@ -315,8 +317,8 @@ function renderStandings() {
 
             function renderBentoMatchup(s) {
                 if (!s) return `<div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; height: 72px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.2); font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">TBD</div>`;
-                const t1 = ohlTeams.find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
-                const t2 = ohlTeams.find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
+                const t1 = getActiveTeams().find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
+                const t2 = getActiveTeams().find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
                 
                 const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
                 const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
@@ -327,14 +329,14 @@ function renderStandings() {
                     <div onclick="openSeriesModal('${s.id}')" style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 0.6rem 0.8rem; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 0.5rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(10px);" onmouseover="this.style.transform='translateY(-3px) scale(1.02)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)'; this.style.borderColor='rgba(255,255,255,0.2)';" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)'; this.style.borderColor='rgba(255,255,255,0.08)';">
                         <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t1.id ? '0.3' : '1'}; transition: opacity 0.3s;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                ${t1.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
+                                ${t1.id !== 'tbd' ? `<img src="assets/logos/${getLeagueFolder()}/${logo1}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
                                 <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t1.name.split(' ').pop()}</span>
                             </div>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t1.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.highSeedWins}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t2.id ? '0.3' : '1'}; transition: opacity 0.3s;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                ${t2.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
+                                ${t2.id !== 'tbd' ? `<img src="assets/logos/${getLeagueFolder()}/${logo2}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
                                 <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t2.name.split(' ').pop()}</span>
                             </div>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t2.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.lowSeedWins}</span>
@@ -419,7 +421,7 @@ function renderStandings() {
         const renderTable = (teamsData, isCompact = false, groupId = 'league') => {
             let rowsHTML = '';
             teamsData.forEach((s) => {
-                const teamInfo = ohlTeams.find(t => t.id === s.teamId);
+                const teamInfo = getActiveTeams().find(t => t.id === s.teamId);
                 const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
                 const isActiveTeam = teamInfo.id === localCurrentTeam.id;
                 
@@ -436,7 +438,7 @@ function renderStandings() {
                     <tr class="${isActiveTeam ? 'team-row-active' : ''}">
                         <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
                         <td class="team-cell" style="text-align: left;">
-                            <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
+                            <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
                             ${s.clinch ? `<span style="font-family: 'Blockletter', sans-serif; font-size: 0.9rem; color: #fbbf24; margin-right: 4px; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">${s.clinch}</span>` : ''}
                             <span style="font-weight: 500; font-size: 0.95rem;">${teamInfo.name}</span>
                         </td>
@@ -475,7 +477,7 @@ function renderStandings() {
             teamsData.forEach(s => {
                 s.pts = ((s.w || 0) * 2) + (s.otl || 0);
                 s.gd = (s.gf || 0) - (s.ga || 0);
-                let tInfo = ohlTeams.find(t => t.id === s.teamId);
+                let tInfo = getActiveTeams().find(t => t.id === s.teamId);
                 s.teamName = tInfo ? tInfo.name : 'Unknown';
             });
             
@@ -508,8 +510,8 @@ function renderStandings() {
                 </div>
             `;
         } else if (currentStandingsTab === 'conference') {
-            let eastTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.conference === 'East'; });
-            let westTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.conference === 'West'; });
+            let eastTeams = localGameState.standings.filter(s => { let t = getActiveTeams().find(x => x.id === s.teamId); return t && t.conference === 'East'; });
+            let westTeams = localGameState.standings.filter(s => { let t = getActiveTeams().find(x => x.id === s.teamId); return t && t.conference === 'West'; });
             
             contentHTML = `
                 <div class="standings-grid-2">
@@ -524,9 +526,9 @@ function renderStandings() {
                 </div>
             `;
         } else {
-            let divisions = ['East', 'Central', 'Midwest', 'West'];
+            let divisions = localGameState.league === 'whl' ? ['East', 'Central', 'BC', 'US'] : ['East', 'Central', 'Midwest', 'West'];
             let gridCards = divisions.map(div => {
-                let divTeams = localGameState.standings.filter(s => { let t = ohlTeams.find(x => x.id === s.teamId); return t && t.division === div; });
+                let divTeams = localGameState.standings.filter(s => { let t = getActiveTeams().find(x => x.id === s.teamId); return t && t.division === div; });
                 let groupId = `div_${div.toLowerCase()}`;
                 return `
                     <div class="standings-group-card">
@@ -622,9 +624,9 @@ function renderLeagueLeaders() {
             listHTML += `<p style="text-align: center; color: var(--text-muted); padding: 1rem 0; font-size: 0.95rem;">No stats available yet. Play matches to see leaders.</p>`;
         } else {
             leaders.forEach(l => {
-                const teamInfo = ohlTeams.find(t => t.id === l.teamId);
+                const teamInfo = getActiveTeams().find(t => t.id === l.teamId);
                 const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
-                const logoHtml = logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
+                const logoHtml = logoFile ? `<img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
                 const tColor = teamInfo ? teamInfo.colors.primary : '#3b82f6';
                 listHTML += `
                     <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1.1rem; background: linear-gradient(135deg, color-mix(in srgb, ${tColor} 25%, transparent) 0%, rgba(255,255,255,0.03) 100%); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(8px);">
@@ -724,7 +726,7 @@ function renderTeamStars() {
         container.innerHTML = `
             <div style="position: relative; z-index: 3; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                 <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                    <img src="assets/logos/ohl/${logoFile}.png" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     ${localCurrentTeam.name.substring(0,3).toUpperCase()} HIGHLIGHTS
                 </h3>
             </div>

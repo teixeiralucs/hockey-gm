@@ -212,7 +212,7 @@ Durante o jogo podem ocorrer diversos eventos, como gols, assistências, faltas,
 
 Quando a equipe adversária comete uma penalidade (como um tropeço ou uso indevido do taco), um jogador deles é enviado para a "caixa de penalidade" por, geralmente, 2 minutos. Durante esse tempo, sua equipe fica com um jogador a mais no gelo (5 contra 4). O objetivo do Power Play é sufocar o adversário na zona ofensiva, circulando o disco rapidamente para desposicionar a defesa e criar a chance perfeita de gol.
 
-#### 11.1.7 Pentalty Kill
+#### 11.1.7 Penalty Kill
 
 É o cenário inverso. Se um jogador da sua equipe cometer uma penalidade, seu time precisará se defender com um homem a menos. O foco do Penalty Kill não é atacar, mas sim sobreviver. A estratégia envolve fechar os espaços no centro do gelo, bloquear chutes com o corpo e "limpar" o disco (jogá-lo para o outro lado da quadra) para gastar o tempo do relógio até que o jogador penalizado retorne.
 

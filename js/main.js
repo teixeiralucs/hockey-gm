@@ -1,4 +1,4 @@
-import { ohlTeams } from '../data/teams.js';
+import { ohlTeams, whlTeams } from '../data/teams.js';
 import { generateSeasonSchedule } from './schedule.js';
 import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
 import { initMainMenu } from './ui/setupUI.js';
@@ -37,8 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 let currentTeam = null;
 let gameState = null;
 
-async function initNewGame(teamIdOverride = null) {
-    const targetTeam = teamIdOverride ? ohlTeams.find(t => t.id === teamIdOverride) : currentTeam;
+async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
+    const activeTeams = leagueOverride === 'whl' ? whlTeams : ohlTeams;
+    const targetTeam = teamIdOverride ? activeTeams.find(t => t.id === teamIdOverride) : currentTeam;
     const currentYear = new Date().getFullYear();
     
     // Calcula a 3ª quinta-feira de Setembro do ano atual
@@ -47,11 +48,12 @@ async function initNewGame(teamIdOverride = null) {
         date.setDate(date.getDate() + 1);
     }
     
-    const otherTeams = ohlTeams.filter(t => t.id !== targetTeam.id);
+    const otherTeams = activeTeams.filter(t => t.id !== targetTeam.id);
     const randomOpponent = otherTeams[Math.floor(Math.random() * otherTeams.length)];
     const isHome = Math.random() > 0.5;
 
     gameState = {
+        league: leagueOverride,
         seasonYear: currentYear,
         currentDate: date,
         currentScheduleDayIndex: 0,
@@ -65,7 +67,7 @@ async function initNewGame(teamIdOverride = null) {
             losses: 0,
             otl: 0
         },
-        standings: ohlTeams.map(team => ({
+        standings: activeTeams.map(team => ({
             teamId: team.id,
             gp: 0,
             w: 0,
@@ -81,7 +83,7 @@ async function initNewGame(teamIdOverride = null) {
     };
     
     // Generate Schedule
-    gameState.schedule = generateSeasonSchedule(ohlTeams, date);
+    gameState.schedule = generateSeasonSchedule(activeTeams, date);
     
     // RF03: Generate initial roster
     try {
@@ -119,8 +121,8 @@ async function initNewGame(teamIdOverride = null) {
             });
         });
         
-        // As 19 equipes controladas pela CPU mantêm os elencos reais
-        ohlTeams.forEach(team => {
+        // As 19/21 equipes controladas pela CPU mantêm os elencos reais
+        activeTeams.forEach(team => {
             if (team.id === targetTeam.id) return; // Seu time já tem os 20 randômicos
             
             const teamRoster = allRosters[team.id];
@@ -141,7 +143,7 @@ async function initNewGame(teamIdOverride = null) {
 
     } catch (error) {
         console.error('Error loading complete rosters:', error);
-        alert('Falha ao carregar elencos da OHL. Verifique data/rosters.json');
+        alert('Falha ao carregar elencos. Verifique data/rosters.json');
     }
 
     gameState.leagueLeaders = {
@@ -154,12 +156,13 @@ async function initNewGame(teamIdOverride = null) {
     // (O array de gameState.players já foi populado com sucesso via JSON acima)
 }
 
-window.openConfirmationModal = function(team) {
+window.openConfirmationModal = function(team, league = 'ohl') {
     const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+    const logoPath = league === 'whl' ? `assets/logos/whl/${logoFile}.png` : `assets/logos/ohl/${logoFile}.png`;
     const modalHTML = `
         <div id="confirm-modal" class="modal-overlay">
             <div class="modal-content">
-                <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name} Logo" class="modal-logo">
+                <img src="${logoPath}" alt="${team.name} Logo" class="modal-logo">
                 <h2 style="color: var(--text-color); font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem;">Are you sure?</h2>
                 <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5; font-size: 1.1rem;">Do you want to select the <strong style="color: ${team.colors.primary};">${team.name}</strong> as your franchise? You won't be able to change this later.</p>
                 <div class="modal-actions">
@@ -177,13 +180,13 @@ window.openConfirmationModal = function(team) {
     
     document.getElementById('btn-confirm-select').addEventListener('click', () => {
         document.getElementById('confirm-modal').remove();
-        handleTeamSelection(team);
+        handleTeamSelection(team, league);
     });
 }
 
-async function handleTeamSelection(team) {
+async function handleTeamSelection(team, league) {
     currentTeam = team;
-    await initNewGame();
+    await initNewGame(null, league);
     initHomeScreen();
 }
 
@@ -530,7 +533,15 @@ function getPlayerCardHTML(player) {
         'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4',
         'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899'
     };
-    const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    let teamInfo = null;
+    let leagueFolder = 'ohl';
+    if (player.originalTeamId) {
+        teamInfo = ohlTeams.find(t => t.id === player.originalTeamId);
+        if (!teamInfo) {
+            teamInfo = whlTeams.find(t => t.id === player.originalTeamId);
+            leagueFolder = 'whl';
+        }
+    }
     const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
     
     // Determine overall color based on tier
@@ -556,7 +567,7 @@ function getPlayerCardHTML(player) {
              style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-family: 'Blockletter', sans-serif; color: ${posColors[player.position]}; font-size: 1.1rem; width: 24px;">${player.position}</span>
-                ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 18px; object-fit: contain;">` : ''}
+                ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 18px; object-fit: contain;">` : ''}
                 <span style="font-weight: 500; color: var(--text-color); font-size: 0.95rem;">${player.name}</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -586,7 +597,15 @@ window.getTradingCardHTML = function(player, options = {}) {
         metallicGradient = 'var(--metallic-silver, linear-gradient(135deg, #8e9eab, #eef2f3, #757f9a, #d7dde8, #606b80))';
     }
 
-    const teamInfo = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    let teamInfo = null;
+    let leagueFolder = 'ohl';
+    if (player.originalTeamId) {
+        teamInfo = ohlTeams.find(t => t.id === player.originalTeamId);
+        if (!teamInfo) {
+            teamInfo = whlTeams.find(t => t.id === player.originalTeamId);
+            leagueFolder = 'whl';
+        }
+    }
     const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
 
     const fullPositions = {
@@ -598,7 +617,7 @@ window.getTradingCardHTML = function(player, options = {}) {
     const mod = getPlayerModifiers(player);
     const finalOVR = Math.round(player.overall * (1 + mod));
 
-    const photoUrl = player.id && player.id.includes('_') ? `https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg` : 'assets/default-player.svg';
+    const photoUrl = player.photo || 'assets/default-player.svg';
 
     const scale = options.scale || 1.0;
     const transformStyle = scale !== 1.0 ? `transform: scale(${scale}); transform-origin: center;` : '';
@@ -613,7 +632,7 @@ window.getTradingCardHTML = function(player, options = {}) {
                     <div class="trading-card-overlay">
                         <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.7rem; color: #fff; margin: 0; line-height: 0.9; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${player.name}</h2>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                            ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 28px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));">` : ''}
+                            ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 28px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));">` : ''}
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${posFullName}</span>
                         </div>
                     </div>
@@ -689,7 +708,11 @@ window.openPlayerCardModal = function(playerId) {
         </div>
     `;
 
-    const teamInfoModal = player.originalTeamId ? ohlTeams.find(t => t.id === player.originalTeamId) : null;
+    let teamInfoModal = null;
+    if (player.originalTeamId) {
+        teamInfoModal = ohlTeams.find(t => t.id === player.originalTeamId);
+        if (!teamInfoModal) teamInfoModal = whlTeams.find(t => t.id === player.originalTeamId);
+    }
     const teamName = teamInfoModal ? teamInfoModal.name : 'Unknown Team';
     const teamColor = teamInfoModal ? teamInfoModal.primaryColor : '#0f172a';
 
@@ -1210,7 +1233,8 @@ function renderMatchPage(container) {
     const opponentId = isHome ? nextMatchObj.awayId : nextMatchObj.homeId;
     
     const myTeamInfo = currentTeam;
-    const oppTeamInfo = ohlTeams.find(t => t.id === opponentId);
+    const activeLeagueTeams = (gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+    const oppTeamInfo = activeLeagueTeams.find(t => t.id === opponentId);
     
     // Mocking currentMatch for the simulation loop logic
     const currentMatch = nextMatchObj;
@@ -2446,7 +2470,8 @@ function renderFullStandings(container) {
         `;
         
         standingsArr.forEach((s, idx) => {
-            const teamInfo = ohlTeams.find(t => t.id === s.teamId);
+            const activeLeagueTeams = (typeof localGameState !== 'undefined' && localGameState && localGameState.league === 'whl' || typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+            const teamInfo = activeLeagueTeams.find(t => t.id === s.teamId);
             const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
             const isActiveTeam = teamInfo.id === currentTeam.id;
             
@@ -2458,7 +2483,7 @@ function renderFullStandings(container) {
                 <tr class="${isActiveTeam ? 'team-row-active' : ''}">
                     <td>${idx + 1}</td>
                     <td class="team-cell">
-                        <img src="assets/logos/ohl/${logoFile}.png" alt="logo" style="width: 32px; height: 32px;">
+                        <img src="assets/logos/${leagueFolder}/${logoFile}.png" alt="logo" style="width: 32px; height: 32px;">
                         <span>${seedLabel ? `<span style="color: var(--text-muted); font-family: monospace; font-size: 0.8rem; margin-right: 0.3rem;">${seedLabel} -</span>` : ''}${teamInfo.name.toUpperCase()}</span>
                     </td>
                     <td>${s.gp}</td>
@@ -3047,7 +3072,7 @@ window.renderCollectionPage = function(container) {
                         <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
                              style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
                              onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
-                            <img src="assets/logos/ohl/${logoFile}.png" alt="${team.name}" style="width: 70%; height: 70%; object-fit: contain;">
+                            <img src="assets/logos/${leagueFolder}/${logoFile}.png" alt="${team.name}" style="width: 70%; height: 70%; object-fit: contain;">
                             ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>` : ''}
                         </div>
         `;
@@ -3461,7 +3486,11 @@ window.renderHallOfFame = function(container) {
     const renderAward = (title, subtitle, playerId) => {
         const p = getPlayer(playerId);
         if (!p) return '';
-        const teamInfo = p.originalTeamId ? ohlTeams.find(t => t.id === p.originalTeamId) : null;
+        let teamInfo = null;
+        if (p.originalTeamId) {
+            teamInfo = ohlTeams.find(t => t.id === p.originalTeamId);
+            if (!teamInfo) teamInfo = whlTeams.find(t => t.id === p.originalTeamId);
+        }
         const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
         return `
             <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 1rem;">
@@ -3470,7 +3499,7 @@ window.renderHallOfFame = function(container) {
                     <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; margin-bottom: 0.2rem;">${title}</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        ${logoFile ? `<img src="assets/logos/ohl/${logoFile}.png" style="height: 16px; object-fit: contain;">` : ''}
+                        ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 16px; object-fit: contain;">` : ''}
                         <span style="color: #fff; font-weight: bold; font-size: 1rem;">${p.name}</span>
                     </div>
                 </div>
@@ -3484,7 +3513,7 @@ window.renderHallOfFame = function(container) {
         const logoFile = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
         return `
             <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.5); display: flex; align-items: center; gap: 1rem; flex: 1;">
-                <img src="assets/logos/ohl/${logoFile}.png" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));">
+                <img src="assets/logos/${leagueFolder}/${logoFile}.png" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));">
                 <div>
                     <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; margin-bottom: 0.2rem;">${title}</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>

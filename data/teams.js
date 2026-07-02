@@ -20,3 +20,29 @@ export const ohlTeams = [
     { id: 'erie', name: 'Erie Otters', conference: 'West', division: 'Midwest', colors: { primary: '#fcc611', secondary: '#001e43' } },
     { id: 'owen-sound', name: 'Owen Sound Attack', conference: 'West', division: 'Midwest', colors: { primary: '#d53b36', secondary: '#010101' } }
 ];
+
+export const whlTeams = [
+    { id: 'prince-albert', name: 'Prince Albert Raiders', conference: 'East', division: 'East', colors: { primary: '#11833e', secondary: '#010101' } },
+    { id: 'medicine-hat', name: 'Medicine Hat Tigers', conference: 'East', division: 'Central', colors: { primary: '#e46a1c', secondary: '#010101' } },
+    { id: 'edmonton', name: 'Edmonton Oil Kings', conference: 'East', division: 'Central', colors: { primary: '#00549b', secondary: '#000000' } },
+    { id: 'calgary', name: 'Calgary Hitmen', conference: 'East', division: 'Central', colors: { primary: '#e0393c', secondary: '#010101' } },
+    { id: 'brandon', name: 'Brandon Wheat Kings', conference: 'East', division: 'East', colors: { primary: '#dcca54', secondary: '#010101' } },
+    { id: 'saskatoon', name: 'Saskatoon Blades', conference: 'East', division: 'East', colors: { primary: '#ffc72c', secondary: '#0504aa' } },
+    { id: 'regina', name: 'Regina Pats', conference: 'East', division: 'East', colors: { primary: '#1b3668', secondary: '#000000' } },
+    { id: 'red-deer', name: 'Red Deer Rebels', conference: 'East', division: 'Central', colors: { primary: '#8f192c', secondary: '#010101' } },
+    { id: 'moose-jaw', name: 'Moose Jaw Warriors', conference: 'East', division: 'East', colors: { primary: '#cc0105', secondary: '#010101' } },
+    { id: 'swift-current', name: 'Swift Current Broncos', conference: 'East', division: 'East', colors: { primary: '#0c6934', secondary: '#192857' } },
+    { id: 'lethbridge', name: 'Lethbridge Hurricanes', conference: 'East', division: 'Central', colors: { primary: '#c62035', secondary: '#000000' } },
+    { id: 'everett', name: 'Everett Silvertips', conference: 'West', division: 'US', colors: { primary: '#005a39', secondary: '#000000' } },
+    { id: 'penticton', name: 'Penticton Vees', conference: 'West', division: 'BC', colors: { primary: '#8bc0e8', secondary: '#0c1e42' } },
+    { id: 'prince-george', name: 'Prince George Cougars', conference: 'West', division: 'BC', colors: { primary: '#d3212c', secondary: '#010101' } },
+    { id: 'kelowna', name: 'Kelowna Rockets', conference: 'West', division: 'BC', colors: { primary: '#048294', secondary: '#010101' } },
+    { id: 'kamloops', name: 'Kamloops Blazers', conference: 'West', division: 'BC', colors: { primary: '#002d62', secondary: '#000000' } },
+    { id: 'spokane', name: 'Spokane Chiefs', conference: 'West', division: 'US', colors: { primary: '#bb0708', secondary: '#000000' } },
+    { id: 'seattle', name: 'Seattle Thunderbirds', conference: 'West', division: 'US', colors: { primary: '#043674', secondary: '#000000' } },
+    { id: 'portland', name: 'Portland Winterhawks', conference: 'West', division: 'US', colors: { primary: '#cc0204', secondary: '#000000' } },
+    { id: 'victoria', name: 'Victoria Royals', conference: 'West', division: 'BC', colors: { primary: '#023e82', secondary: '#010101' } },
+    { id: 'tri-city', name: 'Tri-City Americans', conference: 'West', division: 'US', colors: { primary: '#002d62', secondary: '#c4122d' } },
+    { id: 'wenatchee', name: 'Wenatchee Wild', conference: 'West', division: 'US', colors: { primary: '#002f8e', secondary: '#000000' } },
+    { id: 'vancouver', name: 'Vancouver Giants', conference: 'West', division: 'BC', colors: { primary: '#b80305', secondary: '#010101' } }
+];

@@ -1,4 +1,4 @@
-import { ohlTeams } from '../data/teams.js';
+import { ohlTeams, whlTeams } from '../data/teams.js';
 
 export function generatePlayoffs(gameState) {
     if (!gameState.standings) return;
@@ -6,9 +6,11 @@ export function generatePlayoffs(gameState) {
     let eastTeams = [];
     let westTeams = [];
 
+    const activeTeams = gameState.league === 'whl' ? whlTeams : ohlTeams;
+
     // Group teams by conference and compute points
     gameState.standings.forEach(record => {
-        let team = ohlTeams.find(t => t.id === record.teamId);
+        let team = activeTeams.find(t => t.id === record.teamId);
         if (team) {
             let pts = (record.w * 2) + record.otl;
             if (team.conference === 'East') {

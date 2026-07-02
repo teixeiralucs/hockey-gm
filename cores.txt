@@ -1,4 +1,5 @@
 ohl:                    #047ac4  #aaaaaa
+whl:                    #e2373f  #000000
 
 barrie-colts:           #ec2634  #001c63
 brampton-steelheads:    #a7aaac  #002868
@@ -21,3 +22,26 @@ soo-greyhounds:         #cf2128  #a4aaac
 sudbury-wolves:         #9fa8ab  #045ea4
 windsor-spitfires:      #e51e25  #10284b
 
+brandon-wheat-kings:    #dcca54  #010101
+calgary-hitmen:         #e0393c  #010101
+edmonton-oil-kings:     #00549b  #000000
+everett-silvertips:     #005a39  #000000
+kamloops-blazers:       #002d62  #000000
+kelowna-rockets:        #048294  #010101
+lethbridge-hurricanes:  #c62035  #000000
+medicine-hat-tigers:    #e46a1c  #010101
+moose-jaw-warriors:     #cc0105  #010101
+penticton-vees:         #8bc0e8  #0c1e42
+portland-winterhawks:   #cc0204  #000000
+prince-albert-raiders:  #11833e  #010101
+prince-george-cougars:  #d3212c  #010101
+red-deer-rebels:        #8f192c  #010101
+regina-pats:            #1b3668  #000000
+saskatoon-blades:       #ffc72c  #0504aa
+seattle-thunderbirds:   #043674  #000000
+spokane-chiefs:         #bb0708  #000000
+swift-current-broncos:  #0c6934  #192857
+tri-city-americans:     #002d62  #c4122d
+vancouver-giants:       #b80305  #010101
+victoria-royals:        #023e82  #010101
+wenatchee-wild:         #002f8e  #000000

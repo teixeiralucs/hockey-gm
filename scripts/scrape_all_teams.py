@@ -115,7 +115,8 @@ for api_team in api_teams:
                 except: pass
 
             person_id = p.get('person_id', '')
-            photo = f"https://assets.leaguestat.com/ohl/240x240/{person_id}.jpg"
+            pid = str(p.get('player_id', ''))
+            photo = f"https://assets.leaguestat.com/ohl/240x240/{pid}.jpg"
             pos = p.get('position', 'C')
             if pos == 'D': pos = random.choice(['LD', 'RD'])
             

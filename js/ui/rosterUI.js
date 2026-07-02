@@ -33,10 +33,7 @@ function renderRinkSlot(slotId, label, gameState) {
 }
 
 function getPlayerMinicardHTML(player) {
-    let logoUrl = 'assets/default-player.svg';
-    if (player.id && player.id.includes('_')) {
-        logoUrl = `https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg`;
-    }
+    let logoUrl = player.photo || 'assets/default-player.svg';
     const mod = window.getPlayerModifiers(player);
     const finalOVR = Math.round(player.overall * (1 + mod));
     let ovrBgColor = 'var(--team-primary, #3b82f6)';
