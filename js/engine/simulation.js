@@ -1,5 +1,5 @@
 import { ohlTeams } from '../../data/teams.js';
-import { processPlayoffMatchResult } from '../playoffs.js';
+import { processPlayoffMatchResult, advancePlayoffRound } from '../playoffs.js';
 
 export function simulateBackgroundDays(gameState, daysCount, callbacks = {}) {
     if (!gameState.schedule) return;
@@ -30,11 +30,7 @@ export function simulateBackgroundDays(gameState, daysCount, callbacks = {}) {
         
         let advancedPlayoffs = false;
         if (gameState.playoffs && gameState.playoffs.isActive) {
-            import('../playoffs.js').then(module => {
-                if(module.advancePlayoffRound(gameState)) {
-                    // Do nothing or handle if needed
-                }
-            });
+            advancePlayoffRound(gameState);
         }
     }
     
@@ -372,7 +368,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
     
     let maxPeriods = 3;
     for (state.period = 1; state.period <= maxPeriods; state.period++) {
-        state.clock = state.period > 3 ? 300 : 1200; // 5 min OT, 20 min regular
+        state.clock = 1200; // 20 min regular and OT
         state.zone = 'neutral';
         state.emptyNet = false;
         
@@ -579,9 +575,12 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             let hShooter = hForwards[round % hForwards.length];
             let aShooter = aForwards[round % aForwards.length];
             
+            // Add pressure after round 10 to force a conclusion
+            let pressure = round > 10 ? (round - 10) * 5 : 0;
+            
             // Home shoots
-            let hShotOvr = parseFloat(hShooter.overall) + Math.random() * 20;
-            let aSaveOvr = parseFloat(aGoalie.overall) + Math.random() * 20;
+            let hShotOvr = parseFloat(hShooter.overall) + pressure + Math.random() * 40;
+            let aSaveOvr = parseFloat(aGoalie.overall) + Math.random() * 30;
             state.period = soPeriod;
             if (hShotOvr > aSaveOvr) {
                 soHomeScore++;
@@ -590,18 +589,23 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                 addEvent(1200, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
             }
             
-            // Check early win after home shoots
-            if (round < 3) {
-                let remainingAway = 3 - round;
-                if (soHomeScore > soAwayScore + remainingAway) {
-                    winner = 'home';
-                    break;
-                }
+            // Check win after Home shoots
+            let guaranteedShots = Math.max(3, round + 1);
+            let hRem = guaranteedShots - (round + 1);
+            let aRem = guaranteedShots - round;
+            
+            if (soHomeScore > soAwayScore + aRem) {
+                winner = 'home';
+                break;
+            }
+            if (soAwayScore > soHomeScore + hRem) {
+                winner = 'away';
+                break;
             }
             
             // Away shoots
-            let aShotOvr = parseFloat(aShooter.overall) + Math.random() * 20;
-            let hSaveOvr = parseFloat(hGoalie.overall) + Math.random() * 20;
+            let aShotOvr = parseFloat(aShooter.overall) + pressure + Math.random() * 40;
+            let hSaveOvr = parseFloat(hGoalie.overall) + Math.random() * 30;
             state.period = soPeriod;
             if (aShotOvr > hSaveOvr) {
                 soAwayScore++;
@@ -610,24 +614,28 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                 addEvent(1200, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
             }
             
-            // Check win after away shoots
-            if (round < 3) {
-                let remainingHome = 3 - (round + 1);
-                if (soAwayScore > soHomeScore + remainingHome) {
-                    winner = 'away';
-                    break;
-                }
-            } else {
-                if (soHomeScore !== soAwayScore) {
-                    winner = soHomeScore > soAwayScore ? 'home' : 'away';
-                    break;
-                }
+            // Check win after Away shoots
+            hRem = guaranteedShots - (round + 1);
+            aRem = guaranteedShots - (round + 1);
+            
+            if (soHomeScore > soAwayScore + aRem) {
+                winner = 'home';
+                break;
+            }
+            if (soAwayScore > soHomeScore + hRem) {
+                winner = 'away';
+                break;
             }
             
             round++;
-            if (round > 20) {
-                // Failsafe
-                winner = Math.random() > 0.5 ? 'home' : 'away';
+            
+            // Extreme failsafe to prevent infinite loops, but still allowing a proper log ending
+            if (round > 50) {
+                if (soHomeScore === soAwayScore) {
+                    soHomeScore++;
+                    addEvent(1200, 'shootout_goal', 'home', `Round ${round+1}: ${hForwards[0].name} finally ends the marathon shootout!`, true);
+                }
+                winner = soHomeScore > soAwayScore ? 'home' : 'away';
                 break;
             }
         }

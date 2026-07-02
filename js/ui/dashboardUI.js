@@ -180,7 +180,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">CHAMPION CROWNED</h3>
                     <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">The playoffs have concluded.</p>
-                    <button class="btn" onclick="advanceSeason()" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                    <button class="btn" onclick="startAwardsCeremony()" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
                         ENTER OFFSEASON
                     </button>
                 </div>
@@ -192,6 +192,21 @@ export function renderDashboard(container, gameState, currentTeam) {
     let myStand = gameState.standings.find(s => s.teamId === currentTeam.id) || {gp: 0};
     let playedGames = myStand.gp;
     
+    let topBarSubtitle = `Match ${playedGames + 1} of ${gameState.totalMatches || 68}`;
+    
+    if (gameState.playoffs) {
+        if (gameState.playoffs.isActive) {
+            let r = gameState.playoffs.round;
+            if (r === 1) topBarSubtitle = "Conference Quarterfinals";
+            else if (r === 2) topBarSubtitle = "Conference Semifinals";
+            else if (r === 3) topBarSubtitle = "Conference Finals";
+            else if (r === 4) topBarSubtitle = "Championship Finals";
+            else topBarSubtitle = `Playoff Round ${r}`;
+        } else {
+            topBarSubtitle = "Offseason";
+        }
+    }
+    
     container.innerHTML = `
         <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; padding-bottom: 3rem;">
             
@@ -200,7 +215,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                 <!-- Context Header -->
                 <div class="bento-card bento-header" style="justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
                     <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Match ${playedGames + 1} of ${gameState.totalMatches || 68}</span>
+                        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">${topBarSubtitle}</span>
                         <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">${dateStr}</h2>
                     </div>
                     <div style="display: flex; gap: 1rem; align-items: center;">
@@ -208,7 +223,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                             <i data-lucide="coins" style="width: 20px; height: 20px;"></i>
                             <span id="user-coins" class="coins-amount">${localGameState.coins || 0}</span>
                         </div>
-                        <div id="notification-bell" style="position: relative; cursor: pointer; color: #fff; transition: all 0.2s ease; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px;">
+                        <div id="notification-bell" onclick="openNotificationsModal()" style="position: relative; cursor: pointer; color: #fff; transition: all 0.2s ease; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px;">
                             <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
                             <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.8rem; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">0</span>
                         </div>
@@ -286,6 +301,121 @@ function renderStandings() {
     const container = document.getElementById('standings-container');
     if (!container) return;
     try {
+        if (localGameState.playoffs && localGameState.playoffs.isActive) {
+            let p = localGameState.playoffs;
+            let roundName = p.round === 1 ? 'Quarterfinals' : (p.round === 2 ? 'Semifinals' : (p.round === 3 ? 'Conference Finals' : 'Championship'));
+            
+            const wR1 = p.series.filter(s => s.round === 1 && s.conference === 'West');
+            const wR2 = p.series.filter(s => s.round === 2 && s.conference === 'West');
+            const wR3 = p.series.filter(s => s.round === 3 && s.conference === 'West');
+            const eR1 = p.series.filter(s => s.round === 1 && s.conference === 'East');
+            const eR2 = p.series.filter(s => s.round === 2 && s.conference === 'East');
+            const eR3 = p.series.filter(s => s.round === 3 && s.conference === 'East');
+            const fR = p.series.filter(s => s.round === 4);
+
+            function renderBentoMatchup(s) {
+                if (!s) return `<div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; height: 72px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.2); font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">TBD</div>`;
+                const t1 = ohlTeams.find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
+                const t2 = ohlTeams.find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
+                
+                const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+                const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+                
+                const winner = s.winner;
+                
+                return `
+                    <div onclick="openSeriesModal('${s.id}')" style="background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 0.6rem 0.8rem; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 0.5rem; box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.3); backdrop-filter: blur(10px);" onmouseover="this.style.transform='translateY(-3px) scale(1.02)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)'; this.style.borderColor='rgba(255,255,255,0.2)';" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)'; this.style.borderColor='rgba(255,255,255,0.08)';">
+                        <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t1.id ? '0.3' : '1'}; transition: opacity 0.3s;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                ${t1.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
+                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t1.name.split(' ').pop()}</span>
+                            </div>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t1.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.highSeedWins}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t2.id ? '0.3' : '1'}; transition: opacity 0.3s;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                ${t2.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
+                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t2.name.split(' ').pop()}</span>
+                            </div>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t2.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.lowSeedWins}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="standings-header" style="padding-left: 1.5rem; padding-right: 1.5rem; padding-bottom: 1.5rem; padding-top: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2rem; letter-spacing: 1px; color: #fcc82d; text-shadow: 0 0 15px rgba(252, 200, 45, 0.3); display: flex; align-items: center; gap: 0.8rem;">
+                        <i data-lucide="git-commit" style="width: 28px; height: 28px;"></i> PLAYOFF BRACKET
+                    </h2>
+                    <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #e4e4e7; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">ROUND ${p.round}: ${roundName.toUpperCase()}</span>
+                </div>
+                <div style="padding: 1rem 1.5rem; overflow-x: auto; overflow-y: auto; background: radial-gradient(circle at center, rgba(255,255,255,0.02) 0%, transparent 70%);">
+                    <div class="playoff-bracket" style="display: flex; flex-direction: column; align-items: center; min-width: 800px; padding-bottom: 1rem; gap: 1.5rem;">
+                        
+                        <!-- EAST R1 (TOP) -->
+                        <div style="width: 100%; text-align: center;">
+                            <span style="font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1.1rem; letter-spacing: 3px;">EASTERN CONFERENCE</span>
+                        </div>
+                        <div style="display: flex; flex-direction: row; justify-content: center; gap: 1rem; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(eR1[0])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(eR1[3])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(eR1[1])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(eR1[2])}</div>
+                        </div>
+                        
+                        <!-- EAST R2 -->
+                        <div style="display: flex; flex-direction: row; justify-content: center; gap: 13rem; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(eR2[0])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(eR2[1])}</div>
+                        </div>
+                        
+                        <!-- EAST R3 -->
+                        <div style="display: flex; flex-direction: row; justify-content: center; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(eR3[0])}</div>
+                        </div>
+                        
+                        <!-- CHAMPIONSHIP (CENTER) -->
+                        <div style="display: flex; flex-direction: column; align-items: center; width: 100%; margin: 1rem 0;">
+                            <div style="text-align: center; margin-bottom: 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                                <i data-lucide="trophy" style="width: 48px; height: 48px; color: #fcc82d; filter: drop-shadow(0 0 15px rgba(252, 200, 45, 0.6));"></i>
+                                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                                    <span style="font-family: 'Blockletter', sans-serif; color: #fff; font-size: 0.85rem; letter-spacing: 2px; opacity: 0.8;">OHL CHAMPIONSHIP</span>
+                                    <span style="font-family: 'Blockletter', sans-serif; color: #fcc82d; font-size: 1.3rem; letter-spacing: 1px; text-shadow: 0 0 10px rgba(252, 200, 45, 0.5);">J. ROSS ROBERTSON CUP</span>
+                                </div>
+                            </div>
+                            <div style="width: 220px; transform: scale(1.05);">${renderBentoMatchup(fR[0])}</div>
+                        </div>
+
+                        <!-- WEST R3 -->
+                        <div style="display: flex; flex-direction: row; justify-content: center; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(wR3[0])}</div>
+                        </div>
+                        
+                        <!-- WEST R2 -->
+                        <div style="display: flex; flex-direction: row; justify-content: center; gap: 13rem; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(wR2[0])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(wR2[1])}</div>
+                        </div>
+                        
+                        <!-- WEST R1 (BOTTOM) -->
+                        <div style="display: flex; flex-direction: row; justify-content: center; gap: 1rem; width: 100%;">
+                            <div style="width: 180px;">${renderBentoMatchup(wR1[0])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(wR1[3])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(wR1[1])}</div>
+                            <div style="width: 180px;">${renderBentoMatchup(wR1[2])}</div>
+                        </div>
+                        <div style="width: 100%; text-align: center;">
+                            <span style="font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1.1rem; letter-spacing: 3px;">WESTERN CONFERENCE</span>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
+
         const renderTable = (teamsData, isCompact = false, groupId = 'league') => {
             let rowsHTML = '';
             teamsData.forEach((s) => {

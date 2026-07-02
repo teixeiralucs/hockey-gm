@@ -235,9 +235,7 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-halloffame">
                         <i data-lucide="star" style="margin-right: 8px; width: 20px; height: 20px;"></i> Hall of Fame
                     </button>
-                    <button class="nav-btn" id="nav-playoffs" style="display: none; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white;">
-                        <i data-lucide="trophy" style="margin-right: 8px; width: 20px; height: 20px;"></i> Playoffs
-                    </button>
+
                 </nav>
                 
                 <div class="sidebar-bottom">
@@ -265,7 +263,6 @@ function initHomeScreen() {
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
     document.getElementById('nav-halloffame').addEventListener('click', () => switchView('halloffame'));
-    document.getElementById('nav-playoffs').addEventListener('click', () => switchView('playoffs'));
     
     // Bind Save Game
     const btnSaveGame = document.getElementById('btn-save-game');
@@ -297,16 +294,7 @@ function switchView(viewName) {
         }
     }
     
-    // Toggle Playoffs Nav visibility
-    const playoffsBtn = document.getElementById('nav-playoffs');
-    if (playoffsBtn) {
-        if (gameState.playoffs) {
-            playoffsBtn.style.display = 'flex';
-        } else {
-            playoffsBtn.style.display = 'none';
-        }
-    }
-    
+
     // Update Sidebar Brand based on view
     const sidebarBrand = document.querySelector('.sidebar-brand');
     if (sidebarBrand && gameState) {
@@ -322,11 +310,6 @@ function switchView(viewName) {
         window.lucide.createIcons();
     }
     
-    // Restore notification badge state
-    if (window.updateNotificationBadge) {
-        window.updateNotificationBadge();
-    }
-    
     const mainContent = document.getElementById('main-content');
     
     if (viewName === 'dashboard') {
@@ -337,8 +320,6 @@ function switchView(viewName) {
         renderStandingsPage(mainContent);
     } else if (viewName === 'shop') {
         renderShopPage(mainContent);
-    } else if (viewName === 'playoffs') {
-        renderPlayoffsPage(mainContent);
     } else if (viewName === 'calendar') {
         renderCalendarPage(mainContent);
     } else if (viewName === 'collection') {
@@ -347,6 +328,11 @@ function switchView(viewName) {
         renderHallOfFame(mainContent);
     } else if (viewName === 'match') {
         renderMatchPage(mainContent);
+    }
+    
+    // Restore notification badge state after the new view is generated
+    if (window.updateNotificationBadge) {
+        window.updateNotificationBadge();
     }
 }
 
@@ -365,9 +351,47 @@ function renderDashboard(container) {
 }
 
 window.startPlayoffs = function() {
+    // 1. Generate playoffs FIRST so the engine can use regular season standings for seeding
     generatePlayoffs(gameState);
+    
+    // 2. Snapshot the season history (Regular Season Stats)
+    gameState.seasonHistory = {
+        standings: JSON.parse(JSON.stringify(gameState.standings)),
+        players: JSON.parse(JSON.stringify(gameState.players || [])),
+        leagueLeaders: JSON.parse(JSON.stringify(gameState.leagueLeaders || {}))
+    };
+    
+    // 3. Wipe current standings for the Playoffs
+    if (gameState.standings) {
+        gameState.standings.forEach(s => {
+            s.w = 0;
+            s.l = 0;
+            s.otl = 0;
+            s.pts = 0;
+            s.gf = 0;
+            s.ga = 0;
+            s.gp = 0;
+            s.streak = 0;
+        });
+    }
+    
+    // 4. Wipe current player stats for the Playoffs
+    if (gameState.players) {
+        gameState.players.forEach(p => {
+            if (p.stats) {
+                p.stats.goals = 0;
+                p.stats.assists = 0;
+                p.stats.points = 0;
+                p.stats.games = 0;
+                p.stats.shotsAgainst = 0;
+                p.stats.saves = 0;
+                p.stats.goalsAgainst = 0;
+            }
+        });
+    }
+
     if (window.saveGame) window.saveGame();
-    switchView('dashboard');
+    switchView('halloffame');
 };
 
 window.simulateBackgroundDays = function(daysCount) {
@@ -1292,6 +1316,15 @@ function renderMatchPage(container) {
                         </div>
                         
                         <div id="match-clock" style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; background-color: rgba(0,0,0,0.6); padding: 0.5rem 2.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">20:00</div>
+                        
+                        <!-- SHOOTOUT TRACKER -->
+                        <div id="shootout-tracker" style="display: none; flex-direction: column; gap: 0.5rem; margin-top: 1rem; width: 100%;">
+                            <div style="font-family: 'Blockletter', sans-serif; color: #fff; text-align: center; font-size: 1.2rem; letter-spacing: 2px; text-shadow: 0 0 5px rgba(255,255,255,0.5);">SHOOTOUT</div>
+                            <div style="display: flex; justify-content: space-between; width: 100%; gap: 2rem;">
+                                <div id="so-home-tracker" style="display: flex; gap: 0.5rem; justify-content: center; flex: 1;"></div>
+                                <div id="so-away-tracker" style="display: flex; gap: 0.5rem; justify-content: center; flex: 1;"></div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- AWAY TEAM -->
@@ -1432,8 +1465,13 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     }
     
     // Process event by event
-    for (let event of timeline) {
-        if (isSkipped) break; // If skipped, jump out of visual playback
+    let timelineIndex = 0;
+    for (let i = 0; i < timeline.length; i++) {
+        let event = timeline[i];
+        if (isSkipped) {
+            timelineIndex = i;
+            break; // If skipped, jump out of visual playback
+        }
         
         while (isPaused && !isSkipped) {
             await wait(100);
@@ -1477,21 +1515,39 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         // Brief pause to create suspense before showing the event
         await wait(1000);
         
-        if (isSkipped) break;
+        if (isSkipped) {
+            timelineIndex = i;
+            break;
+        }
         
         if (event.type === 'end_period') {
-            if (currentPeriod < 4 && !event.text.includes('GAME OVER')) {
+            if (!event.text.includes('GAME OVER')) {
                 logEvent(`--- End of ${periodEl.innerText} ---`);
                 await wait(1500);
                 
-                // If the next event exists and is period 4, we are going to OT
                 let nextEvent = timeline.find(e => e.period > currentPeriod);
                 if (nextEvent) {
                     currentPeriod = nextEvent.period;
-                    currentSecond = 1200;
-                    periodEl.innerText = currentPeriod === 2 ? "2ND PERIOD" : currentPeriod === 3 ? "3RD PERIOD" : "OVERTIME";
-                    clockEl.innerText = "20:00";
-                    logEvent(`--- Start of ${periodEl.innerText} ---`);
+                    currentSecond = currentPeriod === 6 ? 0 : 1200;
+                    
+                    let pName = "";
+                    if (currentPeriod === 2) pName = "2ND PERIOD";
+                    else if (currentPeriod === 3) pName = "3RD PERIOD";
+                    else if (currentPeriod === 4) pName = "OVERTIME 1";
+                    else if (currentPeriod === 5) pName = "OVERTIME 2";
+                    else if (currentPeriod === 6) pName = "SHOOTOUT";
+                    
+                    periodEl.innerText = pName;
+                    
+                    if (currentPeriod === 6) {
+                        document.getElementById('match-clock').style.display = 'none';
+                        document.getElementById('shootout-tracker').style.display = 'flex';
+                        clockEl.innerText = "SO";
+                    } else {
+                        clockEl.innerText = "20:00";
+                    }
+                    
+                    logEvent(`--- Start of ${pName} ---`);
                     await wait(1500);
                 }
             }
@@ -1501,7 +1557,64 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         // Trigger Goal Event
         logEvent(`${clockEl.innerText} - ${event.text}`, event.color, event.highlight);
         
-        if (event.type === 'goal' || event.type === 'shootout_winner') {
+        if (event.type === 'goal' || event.type === 'shootout_goal') {
+            if (event.type === 'goal') {
+                if (event.team === 'home') {
+                    currentMatch.homeScore++;
+                    homeScoreEl.innerText = currentMatch.homeScore;
+                } else {
+                    currentMatch.awayScore++;
+                    awayScoreEl.innerText = currentMatch.awayScore;
+                }
+            }
+            
+            // Show Goal Animation
+            let teamData = event.team === 'home' ? (isHome ? myTeam : oppTeam) : (!isHome ? myTeam : oppTeam);
+            let teamNameStr = event.teamName || teamData.name;
+            let teamColor = event.color || teamData.colors.primary;
+            
+            goalTeamName.innerText = teamNameStr.toUpperCase();
+            goalTeamName.style.color = teamColor;
+            goalAnim.style.borderColor = teamColor;
+            goalAnim.style.boxShadow = `0 0 50px ${teamColor}`;
+            goalAnim.querySelector('h1').style.color = teamColor;
+            goalAnim.querySelector('h1').style.textShadow = `0 0 30px ${teamColor}`;
+            
+            // Show Animation
+            goalAnim.style.opacity = '1';
+            goalAnim.style.transform = 'translate(-50%, -50%) scale(1)';
+            
+            if (event.type === 'shootout_goal') {
+                let trackerId = event.team === 'home' ? 'so-home-tracker' : 'so-away-tracker';
+                let tracker = document.getElementById(trackerId);
+                if (tracker) {
+                    let mark = document.createElement('div');
+                    mark.style = `width: 24px; height: 24px; border-radius: 50%; background-color: ${teamColor}; box-shadow: 0 0 10px ${teamColor}; transition: all 0.3s;`;
+                    tracker.appendChild(mark);
+                }
+            }
+            
+            await wait(event.type === 'shootout_goal' ? 1500 : 2500); // Shorter pause for shootout
+            
+            // Hide Animation
+            goalAnim.style.opacity = '0';
+            goalAnim.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            await wait(500);
+        }
+        
+        if (event.type === 'shootout_save') {
+            let trackerId = event.team === 'home' ? 'so-home-tracker' : 'so-away-tracker';
+            let tracker = document.getElementById(trackerId);
+            if (tracker) {
+                let mark = document.createElement('div');
+                mark.style = `width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 14px; color: rgba(255,255,255,0.5); font-weight: bold;`;
+                mark.innerHTML = "X";
+                tracker.appendChild(mark);
+            }
+            await wait(1000); // Wait for suspense on save
+        }
+        
+        if (event.type === 'shootout_winner') {
             if (event.team === 'home') {
                 currentMatch.homeScore++;
                 homeScoreEl.innerText = currentMatch.homeScore;
@@ -1509,38 +1622,16 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
                 currentMatch.awayScore++;
                 awayScoreEl.innerText = currentMatch.awayScore;
             }
-            
-            // Show Goal Animation only for regular goals
-            if (event.type === 'goal') {
-                goalTeamName.innerText = event.teamName.toUpperCase();
-                goalTeamName.style.color = event.color;
-                goalAnim.style.borderColor = event.color;
-                goalAnim.style.boxShadow = `0 0 50px ${event.color}`;
-                goalAnim.querySelector('h1').style.color = event.color;
-                goalAnim.querySelector('h1').style.textShadow = `0 0 30px ${event.color}`;
-                
-                // Show Animation
-                goalAnim.style.opacity = '1';
-                goalAnim.style.transform = 'translate(-50%, -50%) scale(1)';
-                
-                await wait(2500); // Pause for celebration
-                
-                // Hide Animation
-                goalAnim.style.opacity = '0';
-                goalAnim.style.transform = 'translate(-50%, -50%) scale(0.5)';
-                await wait(500);
-            } else {
-                await wait(2000); // Just wait a bit for shootout winner
-            }
+            await wait(2000);
         }
     }
     
     // Fast forward to end of game if skipped or no more events
     if (isSkipped) {
         // Process remaining goals mathematically without UI delays
-        for (let event of timeline) {
-            let isFuture = event.period > currentPeriod || (event.period === currentPeriod && (event.minute * 60 + event.second) <= currentSecond);
-            if (isFuture && (event.type === 'goal' || event.type === 'shootout_winner')) {
+        for (let i = timelineIndex; i < timeline.length; i++) {
+            let event = timeline[i];
+            if (event.type === 'goal' || event.type === 'shootout_winner') {
                 if (event.team === 'home') currentMatch.homeScore++;
                 else currentMatch.awayScore++;
             }
@@ -2077,7 +2168,6 @@ function renderCalendarPage(container) {
         window.calendarSelectedDateStr = formatDateObj(gameState.currentDate);
     }
     
-    // Group schedule by month for the left pane navigation
     let months = {};
     gameState.schedule.forEach(day => {
         let dateObj = new Date(day.date);
@@ -2086,12 +2176,26 @@ function renderCalendarPage(container) {
         months[monthKey].push(day);
     });
     
-    let leftPaneHtml = `<div style="display: flex; flex-direction: column; gap: 2rem; overflow-y: auto; padding-right: 1rem; max-height: 75vh;" class="custom-scrollbar">`;
+    // If we are in playoffs, filter out any months that don't contain any playoff games
+    if (gameState.playoffs && gameState.playoffs.isActive) {
+        let playoffMonths = {};
+        Object.keys(months).forEach(monthKey => {
+            let hasPlayoffGames = months[monthKey].some(day => 
+                day.matches.some(m => m.seriesId !== undefined)
+            );
+            if (hasPlayoffGames) {
+                playoffMonths[monthKey] = months[monthKey];
+            }
+        });
+        months = playoffMonths;
+    }
+    
+    let leftPaneHtml = `<div style="display: flex; flex-direction: column; gap: 2rem;">`;
     
     Object.keys(months).forEach(monthKey => {
         leftPaneHtml += `
             <div>
-                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: var(--team-secondary); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">${monthKey}</h3>
+                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">${monthKey}</h3>
                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; text-align: center; margin-bottom: 0.5rem;">
                     <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold;">Sun</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold;">Mon</div>
@@ -2126,6 +2230,7 @@ function renderCalendarPage(container) {
             let cursor = 'default';
             let border = '1px solid transparent';
             let onclick = '';
+            let domId = '';
             
             if (hasMatches) {
                 color = 'var(--text-color)';
@@ -2139,16 +2244,18 @@ function renderCalendarPage(container) {
                 bg = 'var(--team-primary)';
                 color = '#fff';
                 border = '1px solid var(--team-primary)';
+                domId = 'id="selected-calendar-date"';
             }
             
             // Highlight current simulation date
             let currentSimDateStr = formatDateObj(gameState.currentDate);
             if (loopDateStr === currentSimDateStr) {
                 border = '1px dashed #fbbf24';
+                if (!domId) domId = 'id="current-sim-date"';
             }
             
             leftPaneHtml += `
-                <div ${onclick} style="padding: 0.5rem; border-radius: 6px; background: ${bg}; color: ${color}; border: ${border}; cursor: ${cursor}; font-size: 0.9rem; transition: all 0.2s ease;" onmouseover="if('${cursor}' === 'pointer') this.style.filter='brightness(1.2)';" onmouseout="this.style.filter='none';">
+                <div ${domId} ${onclick} style="padding: 0.5rem; border-radius: 6px; background: ${bg}; color: ${color}; border: ${border}; cursor: ${cursor}; font-size: 0.9rem; transition: all 0.2s ease;" onmouseover="if('${cursor}' === 'pointer') this.style.filter='brightness(1.2)';" onmouseout="this.style.filter='none';">
                     ${i}
                 </div>
             `;
@@ -2160,7 +2267,7 @@ function renderCalendarPage(container) {
     leftPaneHtml += `</div>`;
     
     // Right pane: Matches for the selected date
-    let rightPaneHtml = `<div style="display: flex; flex-direction: column; gap: 1rem; padding-bottom: 2rem;">`;
+    let rightPaneHtml = `<div style="display: flex; flex-direction: column; gap: 1rem;">`;
     
     let selectedDayObj = gameState.schedule.find(d => formatDateObj(d.date) === window.calendarSelectedDateStr);
     
@@ -2171,9 +2278,9 @@ function renderCalendarPage(container) {
         displayDate.setMinutes(displayDate.getMinutes() + displayDate.getTimezoneOffset()); // Fix timezone offset for display
         
         rightPaneHtml += `
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
-                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin: 0; color: var(--text-color);">${displayDate.toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</h2>
-                <span style="color: var(--text-muted); font-size: 1rem; font-family: monospace;">${selectedDayObj.matches.length} MATCHES</span>
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; margin: 0; color: var(--text-color);">${displayDate.toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}).toUpperCase()}</h2>
+                <span style="color: var(--team-primary); font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">${selectedDayObj.matches.length} Matches Scheduled</span>
             </div>
         `;
         
@@ -2225,34 +2332,53 @@ function renderCalendarPage(container) {
     rightPaneHtml += `</div>`;
     
     let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1 class="title-main" style="margin: 0; font-size: 2.5rem; letter-spacing: 1px;">League Calendar</h1>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 16px; height: 16px; background: var(--team-primary); border-radius: 4px;"></div>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Selected</span>
+        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: auto 1fr; gap: 1.5rem; height: 100%; padding-bottom: 0; overflow: hidden;">
+            
+            <!-- Header (Span 12) -->
+            <div class="bento-card" style="grid-column: span 12; display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 1rem 2rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem; text-align: left;">
+                    <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Schedule</span>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">LEAGUE CALENDAR</h2>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 16px; height: 16px; border: 1px dashed #fbbf24; border-radius: 4px; background: transparent;"></div>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Today</span>
+                
+                <div style="background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="width: 14px; height: 14px; background: var(--team-primary); border-radius: 4px;"></div>
+                        <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Selected</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="width: 14px; height: 14px; border: 1px dashed #fbbf24; border-radius: 4px; background: transparent;"></div>
+                        <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Today</span>
+                    </div>
                 </div>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 2rem; height: calc(100vh - 200px);">
-            <!-- Left Pane: Mini Calendars -->
-            <div style="flex: 0 0 350px; background: var(--card-bg); border-radius: 16px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
-                ${leftPaneHtml}
             </div>
             
-            <!-- Right Pane: Match List -->
-            <div style="flex: 1; overflow-y: auto; padding-right: 1rem;" class="custom-scrollbar">
-                ${rightPaneHtml}
+            <!-- Left Pane: Mini Calendars (Span 3) -->
+            <div class="bento-card" style="grid-column: span 3; padding: 0; overflow: hidden; height: 100%; min-height: 0;">
+                <div class="custom-scrollbar" style="overflow-y: auto; height: 100%; padding: 1.5rem;">
+                    ${leftPaneHtml}
+                </div>
+            </div>
+            
+            <!-- Right Pane: Match List (Span 9) -->
+            <div class="bento-card" style="grid-column: span 9; padding: 0; overflow: hidden; height: 100%; min-height: 0;">
+                <div class="custom-scrollbar" style="overflow-y: auto; height: 100%; padding: 1.5rem;">
+                    ${rightPaneHtml}
+                </div>
             </div>
         </div>
     `;
     
     container.innerHTML = html;
+    
+    // Auto-scroll left pane to selected date
+    setTimeout(() => {
+        let el = document.getElementById('selected-calendar-date');
+        if (!el) el = document.getElementById('current-sim-date');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 10);
 }
 
 
@@ -2496,13 +2622,13 @@ function computeSeasonAwards() {
     let lowestGaTeam = [...gameState.standings].sort((a, b) => a.ga - b.ga)[0];
     awards.lowestGaTeamId = lowestGaTeam ? lowestGaTeam.teamId : null;
     
-    let topScorer = [...allPlayers].sort((a, b) => (b.stats.points) - (a.stats.points))[0];
+    let topScorer = [...allPlayers].sort((a, b) => (b.stats.goals) - (a.stats.goals))[0];
     awards.topScorerId = topScorer ? topScorer.id : null;
     
     let mop = [...allPlayers].sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
     awards.mopId = mop ? mop.id : null;
     
-    let topRw = [...allPlayers].filter(p => p.position === 'RW').sort((a, b) => (b.stats.points) - (a.stats.points))[0];
+    let topRw = [...allPlayers].filter(p => p.position === 'RW').sort((a, b) => (b.stats.goals) - (a.stats.goals))[0];
     awards.topRwId = topRw ? topRw.id : null;
     
     let topD = [...allPlayers].filter(p => p.position === 'LD' || p.position === 'RD').sort((a, b) => (b.stats.points) - (a.stats.points) || b.overall - a.overall)[0];
@@ -2530,11 +2656,133 @@ function computeSeasonAwards() {
     return awards;
 }
 
-window.advanceSeason = function() {
+window.startAwardsCeremony = function() {
+    if (!gameState) return;
+    const awards = computeSeasonAwards();
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'ceremony-overlay';
+    
+    // Helper for Player Cards
+    const createPlayerCard = (id, title, subtitle, statLabel, statKey, color, awardKey) => {
+        let p = null;
+        if (gameState.players) p = gameState.players.find(x => x.id === awards[awardKey]);
+        if (!p && window.globalDraftPool) p = window.globalDraftPool.find(x => x.id === awards[awardKey]);
+        if (!p) return '';
+        let statValue = p.stats ? p.stats[statKey] : 0;
+        
+        let faceUrl = 'assets/default-player.svg';
+        if (p.id && p.id.includes('_')) {
+            faceUrl = `https://assets.leaguestat.com/ohl/240x240/${p.id.split('_')[1]}.jpg`;
+        }
+        
+        return `
+        <div class="award-card" id="award-${id}">
+            <h2 style="color: ${color}; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 2px;">${title}</h2>
+            <p style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 2rem;">${subtitle}</p>
+            <div class="player-card" style="width: 250px; margin: 0 auto; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); padding: 1.5rem; border-radius: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.5);">
+                <img src="${faceUrl}" onerror="this.src='assets/default-player.svg'" style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: 3px solid ${color};">
+                <h3 style="color: #fff; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin-top: 1rem;">${p.name}</h3>
+                <p style="color: ${color}; font-weight: bold; font-size: 1.2rem;">${statValue} ${statLabel}</p>
+            </div>
+        </div>`;
+    };
+
+    // Helper for Team Cards
+    const createTeamCard = (id, title, subtitle, color, awardKey, isFinal) => {
+        const t = ohlTeams.find(x => x.id === awards[awardKey]);
+        if (!t) return '';
+        const logo = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+        
+        let extraBtn = isFinal ? `
+            <button class="btn" id="ceremony-finish-btn" style="margin-top: 3rem; padding: 1.2rem 3rem; font-size: 1.5rem; font-family: 'Blockletter', sans-serif; background: #fbbf24; color: #000; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 10px 25px rgba(251,191,36,0.5); transition: transform 0.2s ease;">
+                PROCEED TO HALL OF FAME
+            </button>
+        ` : '';
+        
+        // Use a generic shadow color string by parsing the hex or just using color
+        return `
+        <div class="award-card ${isFinal ? 'champion-reveal' : ''}" id="award-${id}">
+            <h2 style="color: ${color}; font-family: 'Blockletter', sans-serif; font-size: 3rem; letter-spacing: 3px;">${title}</h2>
+            <p style="color: var(--text-muted); font-size: 1.5rem; margin-bottom: 2.5rem;">${subtitle}</p>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); padding: 3rem; border-radius: 50%; width: 300px; height: 300px; border: 4px solid ${color}; box-shadow: inset 0 0 50px ${color};">
+                <img src="assets/logos/ohl/${logo}.png" onerror="this.src='assets/logos/hockey_gm_logo.png'" style="width: 200px; height: 200px; object-fit: contain;">
+            </div>
+            <h1 style="color: #fff; font-family: 'Blockletter', sans-serif; font-size: 3.5rem; margin-top: 2rem; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${t.name.toUpperCase()}</h1>
+            ${extraBtn}
+        </div>`;
+    };
+
+    let html = '';
+    html += createPlayerCard('def', 'Max Kaminsky Trophy', 'Defenceman of the Year', 'PTS', 'points', '#93c5fd', 'topDefencemanId');
+    html += createPlayerCard('goal', 'Jim Rutherford Trophy', 'Goaltender of the Year', 'SVs', 'saves', '#ef4444', 'topGoalieId');
+    html += createPlayerCard('rw', 'Jim Mahon Trophy', 'Top Scoring Right Winger', 'Gols', 'goals', '#a855f7', 'topRwId');
+    html += createPlayerCard('scorer', 'Eddie Powers Trophy', 'Top Scorer', 'Gols', 'goals', '#3b82f6', 'topScorerId');
+    html += createPlayerCard('mvp', 'Red Tilson Trophy', 'Most Outstanding Player', 'PTS', 'points', '#fbbf24', 'mopId');
+    html += createPlayerCard('pmvp', 'Wayne Gretzky 99 Award', 'Playoffs MVP', 'PTS', 'points', '#f59e0b', 'playoffMvpId');
+    
+    html += createTeamCard('ga', 'Dave Pinkney Trophy', 'Lowest Goals-Against', '#ef4444', 'lowestGaTeamId', false);
+    html += createTeamCard('reg', 'Hamilton Spectator Trophy', 'Regular Season Winner', '#3b82f6', 'regularSeasonWinnerId', false);
+    html += createTeamCard('champ', 'J. Ross Robertson Cup', 'OHL Champions', '#fbbf24', 'playoffsWinnerId', true);
+    
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    
+    // Animation Sequence
+    const cards = Array.from(overlay.querySelectorAll('.award-card'));
+    let currentIndex = 0;
+    
+    function showNextCard() {
+        if (currentIndex > 0 && currentIndex <= cards.length) {
+            let prevCard = cards[currentIndex - 1];
+            if (prevCard) {
+                prevCard.classList.remove('show');
+                prevCard.classList.add('fade-out');
+            }
+        }
+        
+        if (currentIndex < cards.length) {
+            let currentCard = cards[currentIndex];
+            setTimeout(() => {
+                currentCard.classList.add('show');
+            }, 600); // Wait for previous to fade out
+            
+            if (currentIndex < cards.length - 1) {
+                // Not the last card, auto-advance after 3.5s
+                setTimeout(() => {
+                    currentIndex++;
+                    showNextCard();
+                }, 4000);
+            } else {
+                // Last card (Champion). Bind click to finish button.
+                setTimeout(() => {
+                    let btn = document.getElementById('ceremony-finish-btn');
+                    if (btn) {
+                        btn.addEventListener('click', () => {
+                            overlay.style.opacity = '0';
+                            setTimeout(() => {
+                                overlay.remove();
+                                advanceSeason(awards);
+                            }, 500);
+                        });
+                    }
+                }, 1000);
+            }
+        }
+    }
+    
+    // Start sequence after initial modal fade in
+    setTimeout(() => {
+        showNextCard();
+    }, 1000);
+}
+
+window.advanceSeason = function(precomputedAwards) {
     if (!gameState) return;
     
     // Compute Awards and save history
-    let awards = computeSeasonAwards();
+    let awards = precomputedAwards || computeSeasonAwards();
     gameState.history = gameState.history || [];
     gameState.history.push({
         year: gameState.seasonYear || new Date().getFullYear(),
@@ -2592,9 +2840,9 @@ window.advanceSeason = function() {
         });
         
         updateNotificationBadge();
-    } else {
-        alert("Season advanced! Everyone is 1 year older.");
     }
+    
+    // Switch to Hall of Fame immediately without annoying alert
     
     // Reset Season and Generate New Schedule
     gameState.seasonYear = (gameState.seasonYear || new Date().getFullYear()) + 1;
@@ -2650,19 +2898,26 @@ window.updateNotificationBadge = function() {
     if (!gameState) return;
     gameState.notifications = gameState.notifications || [];
     const unreadCount = gameState.notifications.filter(n => !n.read).length;
-    const badge = document.getElementById('notification-badge');
-    if (badge) {
+    
+    // Select all badges since we have them in the sidebar and multiple topbars
+    const badges = document.querySelectorAll('#notification-badge');
+    badges.forEach(badge => {
         if (unreadCount > 0) {
             badge.style.display = 'block';
             badge.innerText = unreadCount;
         } else {
             badge.style.display = 'none';
         }
-    }
+    });
 }
 
 window.openNotificationsModal = function() {
     if (!gameState) return;
+    
+    // Remove existing modal to prevent duplicate IDs breaking the close button
+    const existingModal = document.getElementById('notifications-modal');
+    if (existingModal) existingModal.remove();
+    
     gameState.notifications = gameState.notifications || [];
     
     let notificationsHtml = '';
@@ -3082,21 +3337,56 @@ window.openSeriesModal = function(seriesId) {
     let series = gameState.playoffs.series.find(s => s.id === seriesId);
     if (!series) return;
     
-    let matches = gameState.schedule.flatMap(day => day.matches).filter(m => m.seriesId === seriesId);
+    let matches = [];
+    if (gameState.schedule) {
+        gameState.schedule.forEach(day => {
+            if (!day.matches) return;
+            day.matches.forEach(m => {
+                if (m.seriesId === seriesId) {
+                    matches.push({ ...m, gameDate: day.date });
+                }
+            });
+        });
+    }
     
     let matchesHtml = matches.map((m, idx) => {
-        let home = ohlTeams.find(t => t.id === m.homeId) || { name: 'TBD' };
-        let away = ohlTeams.find(t => t.id === m.awayId) || { name: 'TBD' };
+        let home = ohlTeams.find(t => t.id === m.homeId) || { name: 'TBD', id: 'tbd' };
+        let away = ohlTeams.find(t => t.id === m.awayId) || { name: 'TBD', id: 'tbd' };
         
-        let scoreText = m.played ? `${m.homeScore} - ${m.awayScore}${m.isOT ? ' (OT)' : ''}` : 'Scheduled';
-        let colorText = m.played ? 'color: var(--text-color); font-weight: bold;' : 'color: var(--text-muted);';
+        let homeLogo = home.id !== 'tbd' ? home.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+        let awayLogo = away.id !== 'tbd' ? away.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+        
+        let dateObj = m.gameDate ? new Date(m.gameDate) : null;
+        let dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() : 'TBA';
+        let statusText = m.played ? (m.isOT ? 'FINAL (OT)' : 'FINAL') : dateStr;
+        
+        let awayOpacity = (m.played && m.awayScore < m.homeScore) ? '0.4' : '1';
+        let homeOpacity = (m.played && m.homeScore < m.awayScore) ? '0.4' : '1';
+        
+        let awayColor = away.colors ? away.colors.primary : '#333';
+        let homeColor = home.colors ? home.colors.primary : '#333';
         
         return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.1));">
-                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; width: 60px;">Game ${m.gameNum || (idx + 1)}</span>
-                <span style="flex: 1; text-align: right; ${colorText}">${away.name}</span>
-                <span style="margin: 0 1rem; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; ${colorText}">${scoreText}</span>
-                <span style="flex: 1; text-align: left; ${colorText}">${home.name}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 0.8rem; background: linear-gradient(90deg, ${awayColor}40 0%, rgba(40,40,45,0.7) 50%, ${homeColor}40 100%); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; backdrop-filter: blur(10px); position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                
+                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; width: 70px; color: #fff; padding-left: 0.5rem;">GAME ${m.gameNum || (idx + 1)}</span>
+                
+                <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 0.8rem; opacity: ${awayOpacity};">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${away.name.split(' ').pop()}</span>
+                    <img src="assets/logos/ohl/${awayLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-left: 0.5rem;">${m.played ? m.awayScore : '-'}</span>
+                </div>
+
+                <div style="background: rgba(0,0,0,0.4); padding: 0.3rem 0.6rem; border-radius: 6px; margin: 0 1.5rem; min-width: 90px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 0.95rem; color: #a1a1aa; letter-spacing: 1px;">${statusText}</span>
+                </div>
+
+                <div style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 0.8rem; opacity: ${homeOpacity};">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-right: 0.5rem;">${m.played ? m.homeScore : '-'}</span>
+                    <img src="assets/logos/ohl/${homeLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${home.name.split(' ').pop()}</span>
+                </div>
+                
             </div>
         `;
     }).join('');
@@ -3109,12 +3399,14 @@ window.openSeriesModal = function(seriesId) {
     const low = ohlTeams.find(t => t.id === series.lowSeedId) || { name: 'TBD' };
 
     let modalHTML = `
-        <div id="series-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-            <div class="dashboard-card" style="width: 500px; max-width: 90vw; background-color: var(--surface-color); border-radius: 12px; border: 1px solid var(--border-color, rgba(0,0,0,0.1)); padding: 2rem; position: relative;" onclick="event.stopPropagation()">
-                <button onclick="document.getElementById('series-modal').remove()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); cursor: pointer;"><i data-lucide="x"></i></button>
-                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin-top: 0; margin-bottom: 0.5rem; text-align: center;">Series Matchups</h2>
-                <h3 style="text-align: center; color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem;">${high.name} vs ${low.name}</h3>
-                <div style="display: flex; flex-direction: column; max-height: 400px; overflow-y: auto;">
+        <div id="series-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);" onclick="this.remove()">
+            <div class="dashboard-card" style="width: 650px; max-width: 95vw; background: rgba(20, 25, 35, 0.85); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); padding: 2.5rem; position: relative;" onclick="event.stopPropagation()">
+                <button onclick="document.getElementById('series-modal').remove()" style="position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; transition: all 0.2s;"><i data-lucide="x" style="width: 18px; height: 18px;"></i></button>
+                
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.2rem; margin-top: 0; margin-bottom: 0.2rem; text-align: center; letter-spacing: 2px;">SERIES MATCHUPS</h2>
+                <h3 style="text-align: center; color: var(--text-muted); font-size: 1.2rem; font-family: 'Blockletter', sans-serif; letter-spacing: 2px; margin-bottom: 2.5rem; text-transform: uppercase;">${high.name} <span style="opacity: 0.5;">VS</span> ${low.name}</h3>
+                
+                <div style="display: flex; flex-direction: column; max-height: 500px; overflow-y: auto; padding-right: 10px;">
                     ${matchesHtml}
                 </div>
             </div>
@@ -3130,17 +3422,29 @@ window.renderHallOfFame = function(container) {
     
     let html = `
         <div style="padding: 2rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; background: linear-gradient(90deg, rgba(251, 191, 36, 0.1) 0%, transparent 100%); padding: 1rem 1.5rem; border-radius: 12px; border-left: 4px solid #fbbf24;">
-                <i data-lucide="star" style="width: 48px; height: 48px; color: #fbbf24;"></i>
-                <div>
-                    <h1 class="title-main" style="text-align: left; margin: 0 0 0.2rem 0; font-size: 2.5rem; line-height: 1; text-shadow: 0 0 15px rgba(251, 191, 36, 0.5);">HALL OF FAME</h1>
-                    <div style="color: var(--text-muted); font-size: 1.1rem;">Official History & OHL Awards</div>
+            <div class="bento-card bento-header" style="justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem; margin-bottom: 2rem; display: flex;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Official History & OHL Awards</span>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">HALL OF FAME</h2>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div id="notification-bell" onclick="openNotificationsModal()" style="position: relative; cursor: pointer; color: #fff; transition: all 0.2s ease; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 12px;">
+                        <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
+                        <span id="notification-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.8rem; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">0</span>
+                    </div>
                 </div>
             </div>
     `;
     
     if (!gameState.history || gameState.history.length === 0) {
-        html += `<div style="text-align: center; color: var(--text-muted); font-size: 1.2rem; padding: 4rem;">No seasons have been completed yet. Win championships to fill the Hall of Fame!</div></div>`;
+        html += `
+            <div class="bento-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6rem 2rem; text-align: center; margin-top: 1rem;">
+                <i data-lucide="history" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1.5rem; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));"></i>
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24; letter-spacing: 2px; margin: 0 0 0.5rem 0; text-transform: uppercase;">AWAITING LEGENDS</h2>
+                <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 500px; margin: 0 0 2.5rem 0; line-height: 1.5;">No seasons have been completed yet.<br>Play through the regular season and conquer the playoffs to etch your name in the Hall of Fame!</p>
+                <div style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #111827; background: #fbbf24; padding: 0.8rem 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3); text-transform: uppercase; letter-spacing: 1px;">WIN CHAMPIONSHIPS TO UNLOCK</div>
+            </div>
+        </div>`;
         container.innerHTML = html;
         if (window.lucide) window.lucide.createIcons();
         return;
