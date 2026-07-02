@@ -4,6 +4,7 @@ import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from
 import { initMainMenu } from './ui/setupUI.js';
 import { renderDashboard as renderDashboardUI } from './ui/dashboardUI.js';
 import { renderRoster, autoFillRoster } from './ui/rosterUI.js';
+import { renderFreeAgencyPage } from './ui/freeAgencyUI.js';
 import * as SimEngine from './engine/simulation.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -79,7 +80,12 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
             streak: { type: 'None', count: 0 },
             clinch: ''
         })),
-        playoffs: null
+        playoffs: null,
+        freeAgencyMarket: {
+            players: [],
+            nextRefreshGames: 5,
+            soldSlots: []
+        }
     };
     
     // Generate Schedule
@@ -235,6 +241,7 @@ function initHomeScreen() {
                     <button class="nav-btn" id="nav-shop">
                         <i data-lucide="shopping-cart" style="margin-right: 8px; width: 20px; height: 20px;"></i> Shop
                     </button>
+
                     <button class="nav-btn" id="nav-halloffame">
                         <i data-lucide="star" style="margin-right: 8px; width: 20px; height: 20px;"></i> Hall of Fame
                     </button>
@@ -265,6 +272,7 @@ function initHomeScreen() {
     document.getElementById('nav-calendar').addEventListener('click', () => switchView('calendar'));
     document.getElementById('nav-collection').addEventListener('click', () => switchView('collection'));
     document.getElementById('nav-shop').addEventListener('click', () => switchView('shop'));
+
     document.getElementById('nav-halloffame').addEventListener('click', () => switchView('halloffame'));
     
     // Bind Save Game
@@ -323,6 +331,12 @@ function switchView(viewName) {
         renderStandingsPage(mainContent);
     } else if (viewName === 'shop') {
         renderShopPage(mainContent);
+    } else if (viewName === 'freeagency') {
+        if (typeof renderFreeAgencyPage === 'function') {
+            renderFreeAgencyPage(mainContent);
+        } else {
+            mainContent.innerHTML = `<h2 style="color:white; text-align:center; margin-top:2rem;">Free Agency module not loaded.</h2>`;
+        }
     } else if (viewName === 'calendar') {
         renderCalendarPage(mainContent);
     } else if (viewName === 'collection') {
@@ -395,6 +409,39 @@ window.startPlayoffs = function() {
 
     if (window.saveGame) window.saveGame();
     switchView('halloffame');
+};
+
+window.refreshFreeAgencyMarket = function() {
+    if (!gameState || !window.globalDraftPool || !gameState.freeAgencyMarket) return;
+    
+    const activePlayerIds = new Set(gameState.players.map(p => p.id));
+    const available = window.globalDraftPool.filter(p => !activePlayerIds.has(p.id));
+    
+    const bronze = available.filter(p => p.tier === 'bronze');
+    const silver = available.filter(p => p.tier === 'silver');
+    const gold = available.filter(p => p.tier === 'gold');
+    
+    const shuffle = (array) => array.sort(() => Math.random() - 0.5);
+    shuffle(bronze);
+    shuffle(silver);
+    shuffle(gold);
+    
+    let marketPlayers = [];
+    marketPlayers = marketPlayers.concat(bronze.splice(0, 3));
+    marketPlayers = marketPlayers.concat(silver.splice(0, 2));
+    marketPlayers = marketPlayers.concat(gold.splice(0, 1));
+    
+    let remaining = shuffle([...bronze, ...silver, ...gold]);
+    while (marketPlayers.length < 6 && remaining.length > 0) {
+        marketPlayers.push(remaining.shift());
+    }
+    
+    gameState.freeAgencyMarket.players = marketPlayers.map(p => p.id);
+    gameState.freeAgencyMarket.soldSlots = [];
+    
+    if (window.logEvent) {
+        window.logEvent("New Free Agents available in the Free Shopping market!", "#10b981");
+    }
 };
 
 window.simulateBackgroundDays = function(daysCount) {
@@ -917,27 +964,52 @@ window.openPackRevealModal = function(playerIdsArray) {
 
 
 // --- SHOP ENGINE ---
-function renderShopPage(container) {
+window.renderShopPage = function(container) {
+    window.currentShopTab = window.currentShopTab || 'packs';
+
     container.innerHTML = `
-        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; padding-bottom: 3rem;">
+        <div class="dashboard-bento-grid" style="display: flex; flex-direction: column; gap: 1.5rem; padding-bottom: 3rem;">
             
             <!-- HEADER -->
-            <div class="bento-card" style="grid-column: span 12; display: flex; justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
+            <div class="bento-card" style="display: flex; justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
                 <div style="display: flex; flex-direction: column; gap: 0.2rem;">
                     <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Store</span>
                     <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">HOCKEY SHOP</h2>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.8rem; background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                     <i data-lucide="coins" style="color: #fbbf24; width: 20px; height: 20px;"></i>
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fbbf24; line-height: 1;">${gameState.coins || 0}</span>
+                    <span id="shop-coins-header-display" style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fbbf24; line-height: 1;">${gameState.coins || 0}</span>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 0.5rem;">
+                <div class="bento-card" style="padding: 0.6rem 1.5rem; align-self: center; display: flex; justify-content: center; align-items: center; flex-direction: row; flex-shrink: 0;">
+                    <div class="standings-tabs" style="display: flex; gap: 0.5rem;">
+                        <button onclick="window.currentShopTab='packs'; renderShopPage(document.getElementById('main-content'))" class="tab-btn ${window.currentShopTab === 'packs' ? 'active' : ''}" style="text-transform: uppercase;">
+                            PACKS
+                        </button>
+                        <button onclick="window.currentShopTab='freeagency'; renderShopPage(document.getElementById('main-content'))" class="tab-btn ${window.currentShopTab === 'freeagency' ? 'active' : ''}" style="text-transform: uppercase;">
+                            FREE AGENCY
+                        </button>
+                    </div>
                 </div>
             </div>
             
-            <!-- CATEGORY TITLE -->
-            <div style="grid-column: span 12; margin-top: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
-                <h3 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #94a3b8; margin: 0;">JUNIOR TIER PACKS</h3>
-            </div>
-            
+            <div id="shop-content-area" style="display: flex; flex-direction: column; width: 100%;"></div>
+        </div>
+    `;
+
+    const contentArea = container.querySelector('#shop-content-area');
+    
+    if (window.currentShopTab === 'freeagency') {
+        if (typeof renderFreeAgencyPage === 'function') {
+            renderFreeAgencyPage(contentArea);
+        } else {
+            contentArea.innerHTML = `<h2 style="color:white; text-align:center; margin-top:2rem;">Free Agency module not loaded.</h2>`;
+        }
+    } else {
+        contentArea.innerHTML = `
             <style>
                 .booster-pack {
                     position: relative;
@@ -1013,7 +1085,7 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="package" class="pack-icon" style="color: #cbd5e1;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">200</span>
+                        <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">200</span>
                     </button>
                 </div>
 
@@ -1026,7 +1098,7 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="layers" class="pack-icon" style="color: #ddd6fe;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">700</span>
+                        <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">700</span>
                     </button>
                 </div>
 
@@ -1039,7 +1111,7 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="swords" class="pack-icon" style="color: #fca5a5;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
+                        <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
 
@@ -1052,7 +1124,7 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="shield-half" class="pack-icon" style="color: #93c5fd;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
+                        <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
 
@@ -1065,13 +1137,12 @@ function renderShopPage(container) {
                     </div>
                     <i data-lucide="hand-grab" class="pack-icon" style="color: #fcd34d;"></i>
                     <button class="pack-btn">
-                        <span>🪙</span> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
+                        <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.7rem; letter-spacing: 1px;">350</span>
                     </button>
                 </div>
             </div>
-
-        </div>
-    `;
+        `;
+    }
     
     if (window.lucide) {
         window.lucide.createIcons();
@@ -1730,6 +1801,17 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     let isOT = timeline.some(e => e.period > 3);
     currentMatch.played = true;
     
+    // Free Agency Refresh Hook (User matches are played here)
+    if (gameState.freeAgencyMarket) {
+        gameState.freeAgencyMarket.nextRefreshGames--;
+        if (gameState.freeAgencyMarket.nextRefreshGames <= 0) {
+            if (window.refreshFreeAgencyMarket) {
+                window.refreshFreeAgencyMarket();
+            }
+            gameState.freeAgencyMarket.nextRefreshGames = 10;
+        }
+    }
+    
     if (currentMatch.isPlayoff) {
         processPlayoffMatchResult(currentMatch, gameState);
     } else {
@@ -2085,6 +2167,16 @@ window.loadGame = async function(slotId = 'auto') {
     if (gameState.currentDate) {
         gameState.currentDate = new Date(gameState.currentDate);
     }
+    
+    // Polyfill for old saves missing freeAgencyMarket
+    if (!gameState.freeAgencyMarket) {
+        gameState.freeAgencyMarket = {
+            players: [],
+            nextRefreshGames: 5,
+            soldSlots: []
+        };
+    }
+    
     // Use the unified layout function instead of duplicating HTML
     initHomeScreen();
     return true;

@@ -98,6 +98,18 @@ export function simulateBackgroundMatch(gameState, match) {
     } else {
         updateStandings(gameState, match.homeId, match.awayId, homeScore, awayScore, isOT);
     }
+    // Free Agency Refresh Hook
+    if (gameState.team && (match.homeId === gameState.team.id || match.awayId === gameState.team.id)) {
+        if (gameState.freeAgencyMarket) {
+            gameState.freeAgencyMarket.nextRefreshGames--;
+            if (gameState.freeAgencyMarket.nextRefreshGames <= 0) {
+                if (window.refreshFreeAgencyMarket) {
+                    window.refreshFreeAgencyMarket();
+                }
+                gameState.freeAgencyMarket.nextRefreshGames = 10;
+            }
+        }
+    }
     
     // Simulate player stats for CPU teams
     if (gameState.players) {

@@ -67,9 +67,9 @@ Na semi final da conferencia o boost é de x1.7 aumentando para x2 para caso o j
 
 Na final da Conferencia o boost será de x2.3 podendo aumentar para x2.6 caso ele se torne vencedor da sua conferencia
 
-### 3.4 Final da WHL
+### 3.4 Final da Liga Junior
 
-Cada partida das finais da WHL garantem o jogador um boost de x3 em relação ao valor base. Caso ganeh a Liga na ultima rodada ela valerá x5 mais do que o valor base calculado
+Cada partida das finais da liga Junior garantem o jogador um boost de x3 em relação ao valor base. Caso ganeh a Liga na ultima rodada ela valerá x5 mais do que o valor base calculado
 
 Os valores de bônus também serão aplicados a outras ligas criadas anteriormente ou não.
 
@@ -77,3 +77,7 @@ Os valores de bônus também serão aplicados a outras ligas criadas anteriormen
 
 Com o envelhecimento dos jogadores no fim de cada ano, os jogadores que não foram aposentados ainda recebem um boost de 5% no overall.
 
+
+## 5. Bug Fixes e Outras Correções
+
+1. Erro na atribuição de Assists, por gol deve haver pelo menos uma atribuição de Assist.
