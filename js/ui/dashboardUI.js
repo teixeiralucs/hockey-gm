@@ -82,7 +82,7 @@ export function renderDashboard(container, gameState, currentTeam) {
             buttonHTML = `
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center; width: 100%;">
                     <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 60%; border: none; font-size: 1.1rem; letter-spacing: 1px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 0.8rem; border-radius: 12px;">
-                        <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE WEEK
+                        <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE TO NEXT MATCH
                     </button>
                 </div>
             `;
@@ -172,7 +172,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
                     <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
                     <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
-                        SIMULATE WEEK
+                        SIMULATE TO NEXT MATCH
                     </button>
                 </div>
             `;
@@ -703,7 +703,7 @@ function renderTeamStars() {
             contentHTML = `
                 <div style="position: absolute; inset: 0; opacity: 0.15; background-image: repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 4px); z-index: 1; pointer-events: none;"></div>
                 <div style="position: absolute; right: 1.5rem; top: 50%; transform: translateY(-40%); width: 140px; height: 140px; z-index: 2; border-radius: 50%; border: 4px solid var(--team-primary); box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px var(--team-primary); overflow: hidden; background: #fff;">
-                    <img src="https://assets.leaguestat.com/ohl/240x240/${pId}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top;">
+                    <img src="${starPlayer.photo || `https://assets.leaguestat.com/${getLeagueFolder()}/240x240/${pId}.jpg`}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top;">
                 </div>
                 <div style="position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; flex: 1; margin-top: auto; padding-top: 1rem;">
                     <div style="display: flex; flex-direction: column; line-height: 0.9;">

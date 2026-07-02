@@ -1,5 +1,10 @@
-import { ohlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams } from '../../data/teams.js';
 import { processPlayoffMatchResult, advancePlayoffRound } from '../playoffs.js';
+
+function getActiveTeams(gameState) {
+    return (gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+}
+
 
 export function simulateBackgroundDays(gameState, daysCount, callbacks = {}) {
     if (!gameState.schedule) return;
@@ -66,8 +71,9 @@ export function simulateToPlayoffs(gameState, callbacks = {}) {
 }
 
 export function simulateBackgroundMatch(gameState, match) {
-    let homeTeam = ohlTeams.find(t => t.id === match.homeId);
-    let awayTeam = ohlTeams.find(t => t.id === match.awayId);
+    const activeTeams = getActiveTeams(gameState);
+    let homeTeam = activeTeams.find(t => t.id === match.homeId);
+    let awayTeam = activeTeams.find(t => t.id === match.awayId);
     
     let homeOvr = window.getTeamOverall ? window.getTeamOverall(homeTeam.id, false) : 60;
     let awayOvr = window.getTeamOverall ? window.getTeamOverall(awayTeam.id, false) : 60;
@@ -657,12 +663,14 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
 export function updateClinchStatuses(gameState) {
     if (!gameState || !gameState.standings) return;
     
-    gameState.standings.forEach(s => {
+    try {
+        const activeTeams = getActiveTeams(gameState);
+        gameState.standings.forEach(s => {
         s.pts = (s.w * 2) + s.otl;
         s.maxPts = s.pts + ((68 - s.gp) * 2);
-        const info = ohlTeams.find(t => t.id === s.teamId);
-        s.conf = info.conference;
-        s.div = info.division;
+        const info = activeTeams.find(t => t.id === s.teamId);
+        s.conf = info ? info.conference : 'Unknown';
+        s.div = info ? info.division : 'Unknown';
         s.clinch = ''; // reset
     });
 
@@ -697,4 +705,7 @@ export function updateClinchStatuses(gameState) {
             s.clinch = 'x';
         }
     });
+    } catch(e) {
+        console.error("Error in updateClinchStatuses:", e);
+    }
 }

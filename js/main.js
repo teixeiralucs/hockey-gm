@@ -158,7 +158,7 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
 
 window.openConfirmationModal = function(team, league = 'ohl') {
     const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-    const logoPath = league === 'whl' ? `assets/logos/whl/${logoFile}.png` : `assets/logos/ohl/${logoFile}.png`;
+    const logoPath = league === 'whl' ? `assets/logos/whl/${logoFile}.png` : `assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logoFile}.png`;
     const modalHTML = `
         <div id="confirm-modal" class="modal-overlay">
             <div class="modal-content">
@@ -398,33 +398,55 @@ window.startPlayoffs = function() {
 };
 
 window.simulateBackgroundDays = function(daysCount) {
-    SimEngine.simulateBackgroundDays(gameState, daysCount, {
-        onComplete: () => {
-            if (window.saveGame) window.saveGame();
-            let container = document.getElementById('main-content');
-            if (container) {
-                const activeNav = document.querySelector('.sidebar-nav .nav-btn.active');
-                if (activeNav && activeNav.id === 'nav-dashboard') {
-                    renderDashboard(container);
+    const btn = event && event.target ? event.target.closest('button') : null;
+    if (btn) {
+        btn.innerHTML = `<i data-lucide="loader-2" class="lucide-spin" style="width: 20px; height: 20px;"></i> SIMULATING...`;
+        btn.disabled = true;
+        if (window.lucide) window.lucide.createIcons();
+    }
+    
+    // Use setTimeout to allow the browser to paint the loading state
+    setTimeout(() => {
+        try {
+            SimEngine.simulateBackgroundDays(gameState, daysCount, {
+                onComplete: () => {
+                    if (window.saveGame) window.saveGame();
+                    switchView('dashboard');
                 }
+            });
+        } catch(e) {
+            console.error("Simulation error:", e);
+            if (btn) {
+                btn.innerHTML = `ERR: ${e.message}`;
+                btn.style.background = 'red';
             }
+            if (window.saveGame) window.saveGame();
         }
-    });
+    }, 50);
 }
 
 window.simulateToPlayoffs = function() {
-    SimEngine.simulateToPlayoffs(gameState, {
-        onComplete: () => {
-            if (window.saveGame) window.saveGame();
-            let container = document.getElementById('main-content');
-            if (container) {
-                const activeNav = document.querySelector('.sidebar-nav .nav-btn.active');
-                if (activeNav && activeNav.id === 'nav-dashboard') {
-                    renderDashboard(container);
+    const btn = event && event.target ? event.target.closest('button') : null;
+    if (btn) {
+        btn.innerHTML = `<i data-lucide="loader-2" class="lucide-spin" style="width: 20px; height: 20px;"></i> SIMULATING...`;
+        btn.disabled = true;
+        if (window.lucide) window.lucide.createIcons();
+    }
+    
+    setTimeout(() => {
+        try {
+            SimEngine.simulateToPlayoffs(gameState, {
+                onComplete: () => {
+                    if (window.saveGame) window.saveGame();
+                    switchView('dashboard');
                 }
-            }
+            });
+        } catch (e) {
+            console.error("Playoffs simulation error:", e);
+            if (window.saveGame) window.saveGame();
+            switchView('dashboard');
         }
-    });
+    }, 50);
 }
 
 // Render Standings and League Leaders moved to dashboardUI.js
@@ -1308,7 +1330,7 @@ function renderMatchPage(container) {
                     
                     <!-- HOME TEAM -->
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/ohl/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
+                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${homeCity}</span>
                             <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${homeMascot}</h2>
@@ -1353,7 +1375,7 @@ function renderMatchPage(container) {
                     
                     <!-- AWAY TEAM -->
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/ohl/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
+                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${awayCity}</span>
                             <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${awayMascot}</h2>
@@ -1528,7 +1550,7 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
             let teamData = isHomeNet ? (isHome ? myTeam : oppTeam) : (!isHome ? myTeam : oppTeam);
             let logoFile = teamData.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
             
-            enLogo.src = `assets/logos/ohl/${logoFile}.png`;
+            enLogo.src = `assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logoFile}.png`;
             enIndicator.style.backgroundColor = teamData.colors.primary;
             enIndicator.style.boxShadow = `0 0 10px ${teamData.colors.primary}`;
             enIndicator.style.opacity = '1';
@@ -1969,15 +1991,31 @@ window.importSaveFile = function(event) {
 
 window.saveGame = function(slotId = 'auto') {
     if (!gameState || !currentTeam) return;
+    
+    // Create a lean copy of gameState to avoid QuotaExceededError
+    // globalDraftPool is loaded directly from rosters.json anyway
+    const gameStateCopy = { ...gameState };
+    delete gameStateCopy.globalDraftPool;
+    
     const saveData = {
-        gameState: gameState,
+        gameState: gameStateCopy,
         currentTeam: currentTeam
     };
-    localStorage.setItem(`hockeyGmSave_${slotId}`, JSON.stringify(saveData));
     
-    // Also update legacy slot just in case
-    if (slotId === 'auto') {
-        localStorage.setItem('hockeyGmSave', JSON.stringify(saveData));
+    try {
+        localStorage.setItem(`hockeyGmSave_${slotId}`, JSON.stringify(saveData));
+        if (slotId === 'auto') {
+            localStorage.setItem('hockeyGmSave', JSON.stringify(saveData));
+        }
+    } catch (e) {
+        console.error("Storage limit reached:", e);
+        const toast = document.createElement('div');
+        toast.style.cssText = "position: fixed; bottom: 2rem; right: 2rem; background: #ef4444; color: #fff; padding: 1rem 2rem; border-radius: 8px; font-family: 'Blockletter', sans-serif; font-size: 1.5rem; letter-spacing: 1px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3);";
+        toast.innerHTML = `<i data-lucide="alert-triangle" style="margin-right: 0.5rem; vertical-align: middle;"></i> STORAGE FULL! DATA NOT SAVED.`;
+        document.body.appendChild(toast);
+        if (window.lucide) window.lucide.createIcons();
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+        return; // Exit without showing success toast
     }
     
     if (document.getElementById('save-modal')) document.getElementById('save-modal').remove();
@@ -2030,7 +2068,7 @@ window.loadGame = async function(slotId = 'auto') {
     if (data.currentTeam) {
         currentTeam = data.currentTeam;
     } else if (gameState.team && gameState.team.id) {
-        currentTeam = ohlTeams.find(t => t.id === gameState.team.id);
+        currentTeam = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === gameState.team.id);
     }
     
     // Revive or reset global stats
@@ -2144,7 +2182,7 @@ let standingsCurrentTab = 'regular'; // 'regular' or 'playoffs'
 let standingsGroupBy = 'division'; // 'division', 'conference', 'league'
 
 function saveGameState() {
-    localStorage.setItem('hockeyGmSave', JSON.stringify(gameState));
+    if (window.saveGame) window.saveGame();
 }
 
 
@@ -2309,8 +2347,10 @@ function renderCalendarPage(container) {
         `;
         
         selectedDayObj.matches.forEach(match => {
-            const homeTeam = ohlTeams.find(t => t.id === match.homeId);
-            const awayTeam = ohlTeams.find(t => t.id === match.awayId);
+            const activeLeagueTeams = (typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+            const leagueFolder = (typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl';
+            const homeTeam = activeLeagueTeams.find(t => t.id === match.homeId);
+            const awayTeam = activeLeagueTeams.find(t => t.id === match.awayId);
             const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
             const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
             
@@ -2330,7 +2370,7 @@ function renderCalendarPage(container) {
                 <div style="background: ${cardBg}; ${borderStyle} ${glow} border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; transition: transform 0.2s ease;">
                     
                     <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1;">
-                        <img src="assets/logos/ohl/${homeLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                        <img src="assets/logos/${leagueFolder}/${homeLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                         <div style="display: flex; flex-direction: column;">
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Home</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; ${match.played && match.homeScore > match.awayScore ? 'color: #fff;' : (match.played ? 'color: var(--text-muted);' : 'color: var(--text-color);')}">${homeTeam.name}</span>
@@ -2346,7 +2386,7 @@ function renderCalendarPage(container) {
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Away</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; ${match.played && match.awayScore > match.homeScore ? 'color: #fff;' : (match.played ? 'color: var(--text-muted);' : 'color: var(--text-color);')}">${awayTeam.name}</span>
                         </div>
-                        <img src="assets/logos/ohl/${awayLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                        <img src="assets/logos/${leagueFolder}/${awayLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                     </div>
                 </div>
             `;
@@ -2434,7 +2474,7 @@ function renderFullStandings(container) {
     let allStandings = [...gameState.standings];
     allStandings.forEach(s => {
         s.pts = (s.w * 2) + s.otl;
-        const info = ohlTeams.find(t => t.id === s.teamId);
+        const info = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.teamId);
         s.teamName = info.name;
         s.conference = info.conference;
         s.division = info.division;
@@ -2716,7 +2756,7 @@ window.startAwardsCeremony = function() {
 
     // Helper for Team Cards
     const createTeamCard = (id, title, subtitle, color, awardKey, isFinal) => {
-        const t = ohlTeams.find(x => x.id === awards[awardKey]);
+        const t = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(x => x.id === awards[awardKey]);
         if (!t) return '';
         const logo = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
         
@@ -2732,7 +2772,7 @@ window.startAwardsCeremony = function() {
             <h2 style="color: ${color}; font-family: 'Blockletter', sans-serif; font-size: 3rem; letter-spacing: 3px;">${title}</h2>
             <p style="color: var(--text-muted); font-size: 1.5rem; margin-bottom: 2.5rem;">${subtitle}</p>
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); padding: 3rem; border-radius: 50%; width: 300px; height: 300px; border: 4px solid ${color}; box-shadow: inset 0 0 50px ${color};">
-                <img src="assets/logos/ohl/${logo}.png" onerror="this.src='assets/logos/hockey_gm_logo.png'" style="width: 200px; height: 200px; object-fit: contain;">
+                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo}.png" onerror="this.src='assets/logos/hockey_gm_logo.png'" style="width: 200px; height: 200px; object-fit: contain;">
             </div>
             <h1 style="color: #fff; font-family: 'Blockletter', sans-serif; font-size: 3.5rem; margin-top: 2rem; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${t.name.toUpperCase()}</h1>
             ${extraBtn}
@@ -2881,7 +2921,7 @@ window.advanceSeason = function(precomputedAwards) {
     gameState.matchIndex = 1;
     gameState.record = { wins: 0, losses: 0, otl: 0 };
     
-    gameState.standings = ohlTeams.map(team => ({
+    gameState.standings = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).map(team => ({
         teamId: team.id,
         gp: 0, w: 0, l: 0, otl: 0, pts: 0, gf: 0, ga: 0,
         streak: { type: 'None', count: 0 },
@@ -2907,7 +2947,8 @@ window.advanceSeason = function(precomputedAwards) {
         });
     }
     
-    gameState.schedule = generateSeasonSchedule(ohlTeams, newDate);
+    const currentLeagueTeams = gameState.league === 'whl' ? whlTeams : ohlTeams;
+    gameState.schedule = generateSeasonSchedule(currentLeagueTeams, newDate);
     
     if (window.saveGame) window.saveGame();
     
@@ -3028,7 +3069,7 @@ window.renderCollectionPage = function(container) {
     
     // Header
     let html = `
-        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; height: 100%; padding-bottom: 0;">
+        <div class="dashboard-bento-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: auto 1fr; gap: 1.5rem; height: 100%; padding-bottom: 0;">
             
             <!-- BENTO 1: HEADER -->
             <div class="bento-card" style="grid-column: span 12; display: flex; justify-content: space-between; flex-direction: row; align-items: center; padding: 1rem 2rem;">
@@ -3048,104 +3089,165 @@ window.renderCollectionPage = function(container) {
     html += `
             <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
                 <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
-                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0; color: #fff;">FRANCHISES</h2>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem;">
     `;
     
-    // Set default team if none selected
-    if (!window.currentCollectionTeamId) {
-        window.currentCollectionTeamId = ohlTeams[0].id;
-    }
+    window.collectionState = window.collectionState || 'leagues';
+    
+    const leagues = [
+        { id: 'ohl', name: 'OHL', logo: 'assets/ohl-logo.svg', color: '#047ac4', teams: ohlTeams },
+        { id: 'whl', name: 'WHL', logo: 'assets/whl-logo.svg', color: '#e2373f', teams: whlTeams }
+    ];
 
-    ohlTeams.forEach(team => {
-        const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const isSelected = window.currentCollectionTeamId === team.id;
-        
-        const isCompleted = (gameState.completedCollections || []).includes(team.id);
-        const borderStyle = isSelected ? `2px solid ${team.colors.primary}` : '2px solid rgba(255,255,255,0.05)';
-        const bgStyle = isSelected ? `rgba(255,255,255,0.1)` : 'rgba(0,0,0,0.2)';
-        const opacityStyle = isSelected ? '1' : '0.6';
-        
+    if (window.collectionState === 'leagues') {
         html += `
-                        <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
-                             style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
-                             onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
-                            <img src="assets/logos/${leagueFolder}/${logoFile}.png" alt="${team.name}" style="width: 70%; height: 70%; object-fit: contain;">
-                            ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>` : ''}
-                        </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0; color: #fff;">LEAGUES</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem;">
         `;
-    });
-    html += `
+        leagues.forEach(league => {
+            html += `
+                        <div onclick="window.collectionState='teams'; window.collectionExpandedLeague='${league.id}'; window.currentCollectionTeamId='${league.teams[0].id}'; renderCollectionPage(document.getElementById('main-content'))" 
+                             style="position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: 2px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); opacity: 0.8;"
+                             onmouseover="this.style.opacity='1'; this.style.borderColor='${league.color}'; this.style.background='rgba(255,255,255,0.05)';" 
+                             onmouseout="this.style.opacity='0.8'; this.style.borderColor='rgba(255,255,255,0.05)'; this.style.background='rgba(0,0,0,0.2)';">
+                            <img src="${league.logo}" alt="${league.name}" style="width: 50%; height: 50%; object-fit: contain;">
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">${league.name}</span>
+                        </div>
+            `;
+        });
+        html += `
                     </div>
                 </div>
             </div>
-    `;
-
-    // RIGHT COLUMN: CARDS (Span 9)
-    const selectedTeam = ohlTeams.find(t => t.id === window.currentCollectionTeamId);
-    const originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === selectedTeam.id);
-    
-    let collectedCount = 0;
-    const cardsHtml = originalRoster.map(player => {
-        const isCollected = (gameState.collection || []).some(c => c.id === player.id);
-        if (isCollected) collectedCount++;
+        `;
+    } else {
+        const activeLeague = leagues.find(l => l.id === window.collectionExpandedLeague) || leagues[0];
         
-        let logoUrl = 'assets/default-player.svg';
-        if (player.id && player.id.includes('_')) {
-            logoUrl = `https://assets.leaguestat.com/ohl/240x240/${player.id.split('_')[1]}.jpg`;
+        // Set default team if none selected
+        if (!window.currentCollectionTeamId || !activeLeague.teams.some(t => t.id === window.currentCollectionTeamId)) {
+            window.currentCollectionTeamId = activeLeague.teams[0].id;
         }
-        
-        const tierColors = { 'gold': '#fbbf24', 'silver': '#94a3b8', 'bronze': '#b45309', 'c-tier': '#94a3b8' };
-        const bColor = tierColors[player.tier?.toLowerCase()] || '#3b82f6';
-        
-        const nameParts = player.name.split(' ');
-        const shortName = nameParts.length > 1 ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}` : player.name;
-        
-        const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.4);';
-        const clickHandler = isCollected ? `onclick="openPlayerCardModal('${player.id}')"` : '';
-        const cursorStyle = isCollected ? 'cursor: pointer;' : 'cursor: default;';
-        const hoverEffect = isCollected ? 'onmouseover="this.style.transform=\\\'scale(1.05)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'"' : '';
-        
-        return `
-            <div ${clickHandler} style="position: relative; width: 100%; aspect-ratio: 1; border: 3px solid ${bColor}; padding: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; transition: transform 0.2s; ${filterStyle} ${cursorStyle}" ${hoverEffect}>
-                <img src="${logoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; clip-path: circle(50%); display: block; margin: 0; padding: 0;">
-                <div style="position: absolute; top: 0px; right: 0px; background: ${bColor}; color: #000; font-size: 1rem; font-weight: bold; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #0f172a; font-family: 'Blockletter', sans-serif;">${Math.round(player.overall)}</div>
-                <div style="position: absolute; bottom: -5px; background: #0f172a; color: #fff; font-size: 0.9rem; padding: 2px 10px; border-radius: 6px; white-space: nowrap; border: 2px solid ${bColor}; font-weight: 600; line-height: 1; text-transform: uppercase;">${shortName}</div>
-                ${!isCollected ? `
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;">
-                        <i data-lucide="lock" style="width: 32px; height: 32px; color: #fff; opacity: 0.8;"></i>
+
+        html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; margin: 0; color: #fff;">${activeLeague.name} FRANCHISES</h2>
                     </div>
-                ` : ''}
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; padding-bottom: 1rem;">
+                        
+                        <!-- BACK BUTTON -->
+                        <div onclick="window.collectionState='leagues'; renderCollectionPage(document.getElementById('main-content'))" 
+                             style="position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: 2px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);"
+                             onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                            <i data-lucide="arrow-left" style="color: #fff; width: 24px; height: 24px;"></i>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fff;">VOLTAR</span>
+                        </div>
+        `;
+        
+        activeLeague.teams.forEach(team => {
+            const loopLeagueFolder = activeLeague.id;
+            const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            const isSelected = window.currentCollectionTeamId === team.id;
+            
+            const isCompleted = (gameState.completedCollections || []).includes(team.id);
+            const borderStyle = isSelected ? `2px solid ${team.colors.primary}` : '2px solid rgba(255,255,255,0.05)';
+            const bgStyle = isSelected ? `rgba(255,255,255,0.1)` : 'rgba(0,0,0,0.2)';
+            const opacityStyle = isSelected ? '1' : '0.6';
+            
+            html += `
+                            <div onclick="window.currentCollectionTeamId='${team.id}'; renderCollectionPage(document.getElementById('main-content'))" 
+                                 style="position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; border: ${borderStyle}; background: ${bgStyle}; opacity: ${opacityStyle};"
+                                 onmouseover="this.style.opacity='1'" onmouseout="if(window.currentCollectionTeamId!=='${team.id}') this.style.opacity='0.6'">
+                                <img src="assets/logos/${loopLeagueFolder}/${logoFile}.png" alt="${team.name}" style="width: 70%; height: 70%; object-fit: contain;">
+                                ${isCompleted ? `<div style="position: absolute; top: -5px; right: -5px; background: #fbbf24; color: #000; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" style="width: 12px; height: 12px;"></i></div>` : ''}
+                            </div>
+            `;
+        });
+        
+        html += `
+                    </div>
+                </div>
             </div>
         `;
-    }).join('');
-    
-    html += `
+    }
+
+    // RIGHT COLUMN: CARDS (Span 9)
+    if (window.collectionState === 'leagues') {
+        html += `
             <div style="grid-column: span 9; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
-                <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0;">
-                    
-                    <!-- ALBUM HEADER -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 2rem;">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <img src="assets/logos/ohl/${selectedTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="height: 40px; object-fit: contain;">
-                            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
-                        </div>
-                        <div style="background-color: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; color: var(--text-color);">
-                            ${collectedCount} / ${originalRoster.length} COLLECTED
-                        </div>
-                    </div>
-                    
-                    <!-- ALBUM GRID (6 cols) -->
-                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2rem 1.5rem; padding: 1rem;">
-                        ${cardsHtml}
-                    </div>
-                    
+                <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; min-height: 0;">
+                    <i data-lucide="library" style="color: var(--text-muted); width: 64px; height: 64px; opacity: 0.5; margin-bottom: 1rem;"></i>
+                    <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-muted); margin: 0;">SELECIONE UMA LIGA</h2>
+                    <span style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">Escolha uma das ligas à esquerda para explorar os elencos.</span>
                 </div>
             </div>
         </div>
-    `;
+        `;
+    } else {
+        const allTeamsForRight = [...ohlTeams, ...whlTeams];
+        const selectedTeam = allTeamsForRight.find(t => t.id === window.currentCollectionTeamId);
+        let originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === selectedTeam.id);
+        
+        // Sort roster by overall ascending (lowest to highest)
+        originalRoster.sort((a, b) => a.overall - b.overall);
+        
+        let collectedCount = 0;
+        const cardsHtml = originalRoster.map(player => {
+            const isCollected = (gameState.collection || []).some(c => c.id === player.id);
+            if (isCollected) collectedCount++;
+            
+            let logoUrl = player.photo || 'assets/default-player.svg';
+            
+            const tierColors = { 'gold': '#fbbf24', 'silver': '#94a3b8', 'bronze': '#b45309', 'c-tier': '#94a3b8' };
+            const bColor = tierColors[player.tier?.toLowerCase()] || '#3b82f6';
+            
+            const nameParts = player.name.split(' ');
+            const shortName = nameParts.length > 1 ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}` : player.name;
+            
+            const filterStyle = isCollected ? '' : 'filter: grayscale(100%) opacity(0.4);';
+            const clickHandler = isCollected ? `onclick="openPlayerCardModal('${player.id}')"` : '';
+            const cursorStyle = isCollected ? 'cursor: pointer;' : 'cursor: default;';
+            const hoverEffect = isCollected ? 'onmouseover="this.style.transform=\\\'scale(1.05)\\\'" onmouseout="this.style.transform=\\\'scale(1)\\\'"' : '';
+            
+            return `
+                <div ${clickHandler} style="position: relative; width: 100%; aspect-ratio: 1; border: 3px solid ${bColor}; padding: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 50%; transition: transform 0.2s; ${filterStyle} ${cursorStyle}" ${hoverEffect}>
+                    <img src="${logoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; clip-path: circle(50%); display: block; margin: 0; padding: 0;">
+                    <div style="position: absolute; top: 0px; right: 0px; background: ${bColor}; color: #000; font-size: 1rem; font-weight: bold; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #0f172a; font-family: 'Blockletter', sans-serif;">${Math.round(player.overall)}</div>
+                    <div style="position: absolute; bottom: -5px; background: #0f172a; color: #fff; font-size: 0.9rem; padding: 2px 10px; border-radius: 6px; white-space: nowrap; border: 2px solid ${bColor}; font-weight: 600; line-height: 1; text-transform: uppercase;">${shortName}</div>
+                    ${!isCollected ? `
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3;">
+                            <i data-lucide="lock" style="width: 32px; height: 32px; color: #fff; opacity: 0.8;"></i>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        html += `
+                <div style="grid-column: span 9; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-height: 0;">
+                    <div class="bento-card" style="padding: 1.5rem; display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0;">
+                        
+                        <!-- ALBUM HEADER -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 2rem;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <img src="assets/logos/${whlTeams.some(t => t.id === selectedTeam.id) ? 'whl' : 'ohl'}/${selectedTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="height: 40px; object-fit: contain;">
+                                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
+                            </div>
+                            <div style="background-color: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; color: var(--text-color);">
+                                ${collectedCount} / ${originalRoster.length} COLLECTED
+                            </div>
+                        </div>
+                        
+                        <!-- ALBUM GRID (6 cols) -->
+                        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 2rem 1.5rem; padding: 1rem;">
+                            ${cardsHtml}
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
     container.innerHTML = html;
     if (window.lucide) window.lucide.createIcons();
@@ -3170,7 +3272,7 @@ window.checkTeamCompletion = function(teamId) {
 }
 
 window.awardCompletionPacks = function(teamId) {
-    const team = ohlTeams.find(t => t.id === teamId);
+    const team = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === teamId);
     
     // Simulate FPHL (C-Tier) rewards using random OHL players buffed to Silver
     let availablePlayers = window.globalDraftPool.filter(p => {
@@ -3258,11 +3360,11 @@ window.renderPlayoffsPage = function(container) {
     `;
 
     if (p.champion) {
-        let champTeam = ohlTeams.find(t => t.id === p.champion);
+        let champTeam = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === p.champion);
         html += `
             <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; border-color: #fbbf24; text-align: center;">
                 <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1rem;"></i>
-                <img src="assets/logos/ohl/${champTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 1.5rem;">
+                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${champTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 1.5rem;">
                 <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fbbf24; margin: 0;">${champTeam.name.toUpperCase()}</h2>
                 <h3 style="color: var(--text-color); margin: 0; font-size: 1.5rem; opacity: 0.8;">OHL CHAMPIONS</h3>
             </div>
@@ -3281,8 +3383,8 @@ window.renderPlayoffsPage = function(container) {
 
     function renderMatchup(s) {
         if (!s) return `<div class="matchup-card empty">TBD</div>`;
-        const t1 = ohlTeams.find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
-        const t2 = ohlTeams.find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
+        const t1 = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
+        const t2 = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
         
         const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
         const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
@@ -3293,14 +3395,14 @@ window.renderPlayoffsPage = function(container) {
             <div class="matchup-card" onclick="openSeriesModal('${s.id}')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="matchup-row ${winner === t1.id ? 'winner' : ''}">
                     <div class="matchup-team">
-                        ${t1.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        ${t1.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
                         <span>${t1.name.split(' ').pop()}</span>
                     </div>
                     <span>${s.highSeedWins}</span>
                 </div>
                 <div class="matchup-row ${winner === t2.id ? 'winner' : ''}">
                     <div class="matchup-team">
-                        ${t2.id !== 'tbd' ? `<img src="assets/logos/ohl/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        ${t2.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
                         <span>${t2.name.split(' ').pop()}</span>
                     </div>
                     <span>${s.lowSeedWins}</span>
@@ -3375,8 +3477,8 @@ window.openSeriesModal = function(seriesId) {
     }
     
     let matchesHtml = matches.map((m, idx) => {
-        let home = ohlTeams.find(t => t.id === m.homeId) || { name: 'TBD', id: 'tbd' };
-        let away = ohlTeams.find(t => t.id === m.awayId) || { name: 'TBD', id: 'tbd' };
+        let home = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === m.homeId) || { name: 'TBD', id: 'tbd' };
+        let away = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === m.awayId) || { name: 'TBD', id: 'tbd' };
         
         let homeLogo = home.id !== 'tbd' ? home.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
         let awayLogo = away.id !== 'tbd' ? away.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
@@ -3398,7 +3500,7 @@ window.openSeriesModal = function(seriesId) {
                 
                 <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 0.8rem; opacity: ${awayOpacity};">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${away.name.split(' ').pop()}</span>
-                    <img src="assets/logos/ohl/${awayLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <img src="assets/logos/${leagueFolder}/${awayLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-left: 0.5rem;">${m.played ? m.awayScore : '-'}</span>
                 </div>
 
@@ -3408,7 +3510,7 @@ window.openSeriesModal = function(seriesId) {
 
                 <div style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 0.8rem; opacity: ${homeOpacity};">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-right: 0.5rem;">${m.played ? m.homeScore : '-'}</span>
-                    <img src="assets/logos/ohl/${homeLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <img src="assets/logos/${leagueFolder}/${homeLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${home.name.split(' ').pop()}</span>
                 </div>
                 
@@ -3420,8 +3522,8 @@ window.openSeriesModal = function(seriesId) {
         matchesHtml = `<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No games scheduled yet.</p>`;
     }
     
-    const high = ohlTeams.find(t => t.id === series.highSeedId) || { name: 'TBD' };
-    const low = ohlTeams.find(t => t.id === series.lowSeedId) || { name: 'TBD' };
+    const high = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === series.highSeedId) || { name: 'TBD' };
+    const low = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === series.lowSeedId) || { name: 'TBD' };
 
     let modalHTML = `
         <div id="series-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);" onclick="this.remove()">
@@ -3508,7 +3610,7 @@ window.renderHallOfFame = function(container) {
     };
     
     const renderTeamAward = (title, subtitle, teamId) => {
-        const t = ohlTeams.find(x => x.id === teamId);
+        const t = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(x => x.id === teamId);
         if (!t) return '';
         const logoFile = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
         return `
