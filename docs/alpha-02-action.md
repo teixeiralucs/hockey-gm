@@ -24,3 +24,25 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 ### 3. Melhorias Visuais na Loja de Pacotes
 
 - **Padronização da Moeda (Lucide Icons)**: Todos os botões da sessão de `PACKS` que utilizavam o caractere padrão em emoji de uma moeda (🪙) tiveram sua injeção convertida nativamente para `<i data-lucide="coins"></i>`, colorida com o pantone Dourado `#fbbf24`, combinando uniformemente o sistema de *icons* com a Sidebar e os relatórios financeiros pós-jogo.
+
+### 4. Boost de Recompensas de Playoff (Fase 3)
+
+- **Injeção de Multiplicadores Base**: A engine `finishMatch` foi refatorada para ler de forma invisível se `currentMatch.isPlayoff` é verdadeira. Se sim, o ganho de moedas passa por multiplicadores cumulativos dependendo da rodada ativa no histórico `gameState.playoffs`:
+  - Round 1: `x1.3`
+  - Round 2: `x1.7`
+  - Round 3: `x2.3`
+  - Round 4 (Finais): `x3.0`
+- **Match Point Multiplier (Series Clinching)**: Quando o motor identifica que o jogo atual será a partida que elimina o oponente da série (`series.winner === myTeam.id`), o bônus final daquela partida escala significativamente (`x1.5`, `x2.0`, `x2.6` e impressionantes `x5.0` para o jogo do Campeonato).
+- **Transparência no Event Log**: A injeção econômica notifica detalhadamente a origem do bônus (Ex: `+151 🪙 (WIN - R3 BOOST)` ou `+330 🪙 (WIN - CHAMPIONSHIP BOOST!)`).
+
+### 5. Boost de Idade Dinâmico (Fase 4)
+
+- **Mudança Arquitetural (Stacking Modifier)**: O bônus de desenvolvimento anual (5%) ao fim da temporada (`advanceSeason`) não engole mais os atributos brutos com risco de ser perdido em arredondamentos para overall baixo.
+- **Acúmulo de Buffs**: O jogador (tanto do GM quanto da CPU) agora recebe `p.ageBoosts++`. A engine de `getPlayerModifiers` capta a variável e exibe como um bônus numérico persistente, renderizando por exemplo `OVR 15 (+5%)`.
+- **UI Degradê**: O detalhamento dos buffs (`getPlayerModifiersDetails`) foi enriquecido e exibe textualmente no verso da carta: **Age Growth: +5%** (ou +10%, dependendo do empilhamento), na cor laranja. A tag se mistura fluidamente com buffs de Line Chemistry e Right Position.
+
+### 6. Revamp do Menu de Save/Load (Fase 5)
+
+- **Design Bento Glassmorphism**: O esqueleto antigo e quadrado foi migrado para coincidir com a estética premium do Dashboard (`backdrop-filter: blur(20px)`), possuindo caixas translúcidas, bordas em névoa branca e sombras.
+- **Logos das Franquias**: O painel agora busca do payload `.json` gravado em `localStorage` o ID exato da franquia vinculada ao Save, importando o SVG/PNG real (`assets/logos/`) direto para dentro do Slot na UI, permitindo distinção puramente visual dos saves.
+- **Hover Responsivo**: Como os cards de loja, interagir com um Slot acende a borda no azul primário e realiza a animação `scale(1.02)`, sem quebrar o layout (agora reforçado por um grid largo de `600px`). Os botões também foram substituídos por ícones *Lucide* polidos (Disquete para Overwrite e Play em neon para Load).

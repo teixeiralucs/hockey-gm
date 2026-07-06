@@ -502,13 +502,17 @@ window.simulateToPlayoffs = function() {
 function getPlayerModifiers(player) {
     if (!player) return 0;
     
-    let loc = player.location;
+    let buff = 0;
     
-    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
-        return 0; // No buffs/debuffs outside active roster
+    // Permanent Modifiers
+    if (player.ageBoosts) {
+        buff += player.ageBoosts * 0.05;
     }
     
-    let buff = 0;
+    let loc = player.location;
+    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
+        return buff; // Return permanent buffs even outside active roster
+    }
     
     // 1. Position Check (+15% or -25%)
     let expectedPos = loc.split('_')[2];
@@ -553,12 +557,16 @@ function getPlayerModifiers(player) {
 function getPlayerModifiersDetails(player) {
     if (!player) return [];
     
-    let loc = player.location;
-    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
-        return [];
+    let details = [];
+    
+    if (player.ageBoosts) {
+        details.push({ name: 'Age Growth', value: `+${player.ageBoosts * 5}%`, color: '#f59e0b' });
     }
     
-    let details = [];
+    let loc = player.location;
+    if (!loc || loc === 'bench' || loc === 'sell' || loc === 'collection') {
+        return details;
+    }
     
     let expectedPos = loc.split('_')[2];
     if (expectedPos === 'Starter' || expectedPos === 'Backup') expectedPos = 'G';
@@ -1798,6 +1806,35 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         rewardType = 'OT LOSS';
     }
     
+    // Playoff Economic Boosts
+    if (currentMatch.isPlayoff && gameState.playoffs) {
+        let series = gameState.playoffs.series.find(s => s.id === currentMatch.seriesId);
+        if (series) {
+            let round = series.round;
+            let playoffMultiplier = 1.0;
+            let isClinchingWin = (series.winner === myTeam.id);
+            
+            if (round === 1) {
+                playoffMultiplier = isClinchingWin ? 1.5 : 1.3;
+            } else if (round === 2) {
+                playoffMultiplier = isClinchingWin ? 2.0 : 1.7;
+            } else if (round === 3) {
+                playoffMultiplier = isClinchingWin ? 2.6 : 2.3;
+            } else if (round === 4) {
+                playoffMultiplier = isClinchingWin ? 5.0 : 3.0;
+            }
+            
+            finalReward = Math.floor(finalReward * playoffMultiplier);
+            
+            if (isClinchingWin) {
+                if (round === 4) rewardType += ' - CHAMPIONSHIP BOOST!';
+                else rewardType += ' - SERIES WIN BOOST!';
+            } else {
+                rewardType += ` - R${round} BOOST`;
+            }
+        }
+    }
+    
     let isOT = timeline.some(e => e.period > 3);
     currentMatch.played = true;
     
@@ -1935,24 +1972,34 @@ window.openSaveModal = function() {
                 const data = JSON.parse(saved);
                 const year = data.gameState.seasonYear || new Date().getFullYear();
                 const teamName = data.currentTeam ? data.currentTeam.name : 'Unknown Team';
+                let logoHtml = '';
+                
+                if (data.currentTeam && data.currentTeam.name) {
+                    const logoName = data.currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\\s+/g, '-');
+                    const league = (data.gameState && data.gameState.league === 'whl') ? 'whl' : 'ohl';
+                    logoHtml = `<img src="assets/logos/${league}/${logoName}.png" style="width: 40px; height: 40px; object-fit: contain; margin-right: 1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));" onerror="this.style.display='none'">`;
+                }
                 
                 slotsHTML += `
-                    <div class="save-slot" style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: bold; color: #fff; font-size: 1.1rem; margin-bottom: 0.2rem;">Slot ${slot}: ${teamName}</div>
-                            <div style="color: var(--text-muted); font-size: 0.85rem;">Year: ${year}</div>
+                    <div class="save-slot-card" onclick="saveGame('${slot}')" style="background: rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 16px; margin-bottom: 0.8rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='var(--primary-color)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.transform='scale(1)'">
+                        <div style="display: flex; align-items: center;">
+                            ${logoHtml}
+                            <div>
+                                <div style="font-family: 'Blockletter', sans-serif; color: #fff; font-size: 1.3rem; letter-spacing: 1px;">SLOT ${slot}: ${teamName.toUpperCase()}</div>
+                                <div style="color: var(--accent-color); font-size: 0.85rem; font-weight: bold; text-transform: uppercase;">Year: ${year}</div>
+                            </div>
                         </div>
-                        <button class="btn btn-sm" onclick="saveGame('${slot}')" style="background: #10b981;">Overwrite</button>
+                        <i data-lucide="save" style="width: 24px; height: 24px; color: #f59e0b;"></i>
                     </div>
                 `;
             } catch(e) {
-                slotsHTML += `<div class="save-slot empty">Corrupted Save (${slot})</div>`;
+                slotsHTML += `<div class="save-slot-card empty" style="background: rgba(239,68,68,0.1); padding: 1.2rem; border-radius: 16px; border: 1px solid #ef4444; color: #f87171; margin-bottom: 0.8rem;">Corrupted Save (${slot})</div>`;
             }
         } else {
             slotsHTML += `
-                <div class="save-slot empty" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: var(--text-muted);">Empty Slot ${slot}</span>
-                    <button class="btn btn-sm" onclick="saveGame('${slot}')" style="background: #3b82f6;">Save Here</button>
+                <div class="save-slot-card empty" onclick="saveGame('${slot}')" style="background: rgba(0,0,0,0.2); padding: 1.2rem; border-radius: 16px; margin-bottom: 0.8rem; cursor: pointer; border: 1px dashed rgba(255,255,255,0.2); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(59,130,246,0.1)'; this.style.borderColor='var(--primary-color)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(0,0,0,0.2)'; this.style.borderColor='rgba(255,255,255,0.2)'; this.style.transform='scale(1)'">
+                    <div style="font-family: 'Blockletter', sans-serif; color: var(--text-muted); font-size: 1.3rem; letter-spacing: 1px;">EMPTY SLOT ${slot}</div>
+                    <i data-lucide="plus-circle" style="width: 24px; height: 24px; color: var(--primary-color);"></i>
                 </div>
             `;
         }
@@ -1960,16 +2007,16 @@ window.openSaveModal = function() {
 
     const modalHTML = `
         <div id="save-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #151e32; width: 500px; max-width: 90%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); padding: 2rem;">
-                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center;">SAVE GAME</h2>
+            <div style="background: rgba(255, 255, 255, 0.1); width: 600px; max-width: 95%; border-radius: 24px; border-top: 1px solid rgba(255, 255, 255, 0.12); border-left: 1px solid rgba(255, 255, 255, 0.08); border-right: 1px solid rgba(255, 255, 255, 0.03); border-bottom: 1px solid rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5); padding: 2.5rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center; text-shadow: 0 0 20px rgba(59, 130, 246, 0.5); letter-spacing: 2px;">SAVE GAME</h2>
                 
-                <div style="margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;">
+                <div style="margin-bottom: 2rem; max-height: 450px; overflow-y: auto; overflow-x: hidden; padding: 0.5rem;">
                     ${slotsHTML}
                 </div>
                 
-                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: center;">
-                    <button class="btn btn-primary" onclick="exportSaveFile()" style="width: 100%; margin-bottom: 0.5rem; background: #8b5cf6;"><i data-lucide="download" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Export Save to File</button>
-                    <button class="btn btn-secondary" onclick="document.getElementById('save-modal').remove()" style="width: 100%;">Cancel</button>
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <button class="btn btn-primary" onclick="exportSaveFile()" style="width: 100%; background: linear-gradient(90deg, #8b5cf6, #7c3aed); box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4); border: none;"><i data-lucide="download" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Export Save to File</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('save-modal').remove()" style="width: 100%; border: 1px solid rgba(255,255,255,0.2); color: #fff;">Cancel</button>
                 </div>
             </div>
         </div>
@@ -1990,22 +2037,32 @@ export function openLoadModal() {
                 const teamName = data.currentTeam ? data.currentTeam.name : 'Unknown Team';
                 const dateStr = data.gameState.currentDate ? new Date(data.gameState.currentDate).toLocaleDateString() : 'N/A';
                 
+                let logoHtml = '';
+                if (data.currentTeam && data.currentTeam.name) {
+                    const logoName = data.currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\\s+/g, '-');
+                    const league = (data.gameState && data.gameState.league === 'whl') ? 'whl' : 'ohl';
+                    logoHtml = `<img src="assets/logos/${league}/${logoName}.png" style="width: 40px; height: 40px; object-fit: contain; margin-right: 1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));" onerror="this.style.display='none'">`;
+                }
+                
                 slotsHTML += `
-                    <div class="save-slot" onclick="loadGame('${slot}')" style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                        <div>
-                            <div style="font-weight: bold; color: #fff; font-size: 1.1rem; margin-bottom: 0.2rem;">Slot ${slot.toUpperCase()}: ${teamName}</div>
-                            <div style="color: var(--text-muted); font-size: 0.85rem;">Year: ${year} • Date: ${dateStr}</div>
+                    <div class="save-slot-card" onclick="loadGame('${slot}')" style="background: rgba(255,255,255,0.05); padding: 1.2rem; border-radius: 16px; margin-bottom: 0.8rem; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.borderColor='var(--primary-color)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.transform='scale(1)'">
+                        <div style="display: flex; align-items: center;">
+                            ${logoHtml}
+                            <div>
+                                <div style="font-family: 'Blockletter', sans-serif; color: #fff; font-size: 1.3rem; letter-spacing: 1px;">SLOT ${slot.toUpperCase()}: ${teamName.toUpperCase()}</div>
+                                <div style="color: var(--accent-color); font-size: 0.85rem; font-weight: bold; text-transform: uppercase;">Year: ${year} &bull; ${dateStr}</div>
+                            </div>
                         </div>
-                        <i data-lucide="play" style="width: 20px; height: 20px; color: #10b981;"></i>
+                        <i data-lucide="play" style="width: 24px; height: 24px; color: #10b981; filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.5));"></i>
                     </div>
                 `;
             } catch(e) {
-                slotsHTML += `<div class="save-slot empty" style="color: #ef4444; margin-bottom: 0.5rem;">Corrupted Save (${slot})</div>`;
+                slotsHTML += `<div class="save-slot-card empty" style="background: rgba(239,68,68,0.1); padding: 1.2rem; border-radius: 16px; border: 1px solid #ef4444; color: #f87171; margin-bottom: 0.8rem;">Corrupted Save (${slot})</div>`;
             }
         } else {
             slotsHTML += `
-                <div class="save-slot empty" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px dashed rgba(255,255,255,0.1); color: var(--text-muted); text-align: center;">
-                    Empty Slot ${slot.toUpperCase()}
+                <div class="save-slot-card empty" style="background: rgba(0,0,0,0.2); padding: 1.2rem; border-radius: 16px; margin-bottom: 0.8rem; border: 1px dashed rgba(255,255,255,0.1); color: var(--text-muted); text-align: center; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; letter-spacing: 1px;">
+                    EMPTY SLOT ${slot.toUpperCase()}
                 </div>
             `;
         }
@@ -2013,17 +2070,17 @@ export function openLoadModal() {
 
     const modalHTML = `
         <div id="load-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #151e32; width: 500px; max-width: 90%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); padding: 2rem;">
-                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center;">LOAD FRANCHISE</h2>
+            <div style="background: rgba(255, 255, 255, 0.1); width: 600px; max-width: 95%; border-radius: 24px; border-top: 1px solid rgba(255, 255, 255, 0.12); border-left: 1px solid rgba(255, 255, 255, 0.08); border-right: 1px solid rgba(255, 255, 255, 0.03); border-bottom: 1px solid rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5); padding: 2.5rem;">
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fff; margin: 0 0 1.5rem 0; text-align: center; text-shadow: 0 0 20px rgba(59, 130, 246, 0.5); letter-spacing: 2px;">LOAD FRANCHISE</h2>
                 
-                <div style="margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;">
+                <div style="margin-bottom: 2rem; max-height: 450px; overflow-y: auto; overflow-x: hidden; padding: 0.5rem;">
                     ${slotsHTML}
                 </div>
                 
-                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: center;">
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 0.8rem;">
                     <input type="file" id="import-save-file" accept=".json" style="display: none;" onchange="importSaveFile(event)">
-                    <button class="btn btn-primary" onclick="document.getElementById('import-save-file').click()" style="width: 100%; margin-bottom: 0.5rem; background: #3b82f6;"><i data-lucide="upload" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Import from File</button>
-                    <button class="btn btn-secondary" onclick="document.getElementById('load-modal').remove()" style="width: 100%;">Cancel</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('import-save-file').click()" style="width: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4); border: none;"><i data-lucide="upload" style="margin-right: 0.5rem; width: 18px; height: 18px; vertical-align: middle;"></i> Import from File</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('load-modal').remove()" style="width: 100%; border: 1px solid rgba(255,255,255,0.2); color: #fff;">Cancel</button>
                 </div>
             </div>
         </div>
@@ -2953,6 +3010,9 @@ window.advanceSeason = function(precomputedAwards) {
         p.age = (p.age || 18) + 1;
         if (p.teamId === currentTeam.id && p.age >= 22) {
             retiredPlayers.push(p);
+        } else {
+            // Player stays in the league (User or CPU) -> Gets a 5% development buff stack
+            p.ageBoosts = (p.ageBoosts || 0) + 1;
         }
     });
     
