@@ -15,6 +15,14 @@ export function simulateBackgroundDays(gameState, daysCount, callbacks = {}) {
         let day = gameState.schedule[gameState.currentScheduleDayIndex];
         if (!day) break;
         
+        // Yield control back to player if they have a match today
+        if (gameState.team && gameState.team.id) {
+            let playerMatch = day.matches.find(m => m.homeId === gameState.team.id || m.awayId === gameState.team.id);
+            if (playerMatch && !playerMatch.played) {
+                break;
+            }
+        }
+        
         // Simulate all matches for this day
         day.matches.forEach(match => {
             if (!match.played) {
@@ -141,13 +149,21 @@ function assignRandomStats(players, goalsScored, goalsAllowed, shotsAgainst) {
         scorer.stats.goals++;
         scorer.stats.points++;
         
-        if (Math.random() > 0.3) {
-            let assistIndex = Math.floor(Math.abs(Math.random() - Math.random()) * skaters.length);
-            let assist = skaters[assistIndex] || skaters[1] || skaters[0];
-            if (assist && assist.id !== scorer.id) {
-                assist.stats = assist.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
-                assist.stats.assists++;
-                assist.stats.points++;
+        let otherSkaters = skaters.filter(p => p.id !== scorer.id);
+        if (otherSkaters.length > 0) {
+            let assistIndex = Math.floor(Math.abs(Math.random() - Math.random()) * otherSkaters.length);
+            let assist1 = otherSkaters[assistIndex] || otherSkaters[0];
+            assist1.stats = assist1.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+            assist1.stats.assists++;
+            assist1.stats.points++;
+            
+            if (Math.random() > 0.5 && otherSkaters.length > 1) {
+                let otherSkaters2 = otherSkaters.filter(p => p.id !== assist1.id);
+                let assistIndex2 = Math.floor(Math.abs(Math.random() - Math.random()) * otherSkaters2.length);
+                let assist2 = otherSkaters2[assistIndex2] || otherSkaters2[0];
+                assist2.stats = assist2.stats || { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+                assist2.stats.assists++;
+                assist2.stats.points++;
             }
         }
     }
@@ -346,7 +362,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
         let min = Math.floor(timeSecs / 60);
         let sec = timeSecs % 60;
         
-        let isImportant = ['goal', 'penalty', 'fight', 'faceoff', 'end_period'].includes(type);
+        let isImportant = ['goal', 'penalty', 'fight', 'faceoff', 'end_period', 'shootout', 'shootout_goal', 'shootout_save', 'shootout_winner'].includes(type);
         if (isImportant || Math.random() < 0.12) {
             let t = team === 'home' ? homeTeam : team === 'away' ? awayTeam : null;
             timeline.push({
@@ -490,20 +506,57 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                             gameState.matchStats[goalie.id].goalsAgainst = (gameState.matchStats[goalie.id].goalsAgainst || 0) + 1;
                         }
                         
-                        let assister1 = getPlayer(atk, null);
-                        if (assister1.id !== shooter.id && Math.random() > 0.4) {
+                        let possibleAssisters = getOnIcePlayers(atk).all.filter(p => p.id !== shooter.id);
+                        if (possibleAssisters.length > 0) {
+                            let total = possibleAssisters.reduce((sum, p) => sum + parseFloat(p.overall), 0);
+                            let r = Math.random() * total;
+                            let assister1 = possibleAssisters[0];
+                            for (let p of possibleAssisters) {
+                                r -= parseFloat(p.overall);
+                                if (r <= 0) { assister1 = p; break; }
+                            }
                             if (!gameState.matchStats[assister1.id]) gameState.matchStats[assister1.id] = { goals: 0, assists: 0 };
                             gameState.matchStats[assister1.id].assists++;
                             addEvent(state.clock, 'assist', atk, `Assist credited to ${assister1.name}.`);
+                            
+                            if (Math.random() > 0.5 && possibleAssisters.length > 1) {
+                                let possibleAssisters2 = possibleAssisters.filter(p => p.id !== assister1.id);
+                                let total2 = possibleAssisters2.reduce((sum, p) => sum + parseFloat(p.overall), 0);
+                                let r2 = Math.random() * total2;
+                                let assister2 = possibleAssisters2[0];
+                                for (let p of possibleAssisters2) {
+                                    r2 -= parseFloat(p.overall);
+                                    if (r2 <= 0) { assister2 = p; break; }
+                                }
+                                if (!gameState.matchStats[assister2.id]) gameState.matchStats[assister2.id] = { goals: 0, assists: 0 };
+                                gameState.matchStats[assister2.id].assists++;
+                                addEvent(state.clock, 'assist', atk, `Secondary assist credited to ${assister2.name}.`);
+                            }
+                        }
+                        
+                        // Power Play Goal Logic
+                        if (state.penalties[def].length > state.penalties[atk].length) {
+                            let minorIndex = state.penalties[def].findIndex(p => p.minor === true || (p.minor === undefined && p.time <= 120));
+                            if (minorIndex !== -1) {
+                                let endedPenalty = state.penalties[def].splice(minorIndex, 1)[0];
+                                addEvent(state.clock, 'penalty_over', def, `PP GOAL! ${endedPenalty.player.name} returns to the ice.`);
+                            }
+                        }
+                        
+                        // Empty Net Reset
+                        if (state.emptyNet) {
+                            state.emptyNet = false;
+                            addEvent(state.clock, 'goalie_returns', null, `The goalie returns to the net after the goal.`);
+                        }
+                        
+                        if (state.period > 3) {
+                            otWinner = true;
+                            break; // Sudden death
                         }
                         
                         state.zone = 'neutral';
                         state.possession = Math.random() > 0.5 ? 'home' : 'away';
                         addEvent(state.clock, 'faceoff', null, `Faceoff at center ice.`);
-                        if (state.period > 3) {
-                            otWinner = true;
-                            break; // Sudden death
-                        }
                     } else if (Math.random() < 0.4) {
                         if (goalie.id) {
                             if (!gameState.matchStats) gameState.matchStats = {};
@@ -544,7 +597,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
                 if (Math.random() < 0.25) { // Penalty
                     let offender = getPlayer(atk, null);
                     let duration = Math.random() < 0.1 ? 300 : 120; // Major vs Minor
-                    state.penalties[atk].push({ player: offender, time: duration });
+                    state.penalties[atk].push({ player: offender, time: duration, minor: duration === 120 });
                     addEvent(state.clock, 'penalty', atk, `PENALTY: ${offender.name} (${atkTeam.name}) gets ${duration/60} minutes.`, true);
                     state.possession = def;
                     state.zone = 'offensive';
@@ -578,11 +631,17 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
     
     function simulateShootout() {
         let soPeriod = 6;
-        addEvent(1200, 'shootout', null, `--- SHOOTOUT ---`);
+        let soTime = 1200;
+        state.period = soPeriod; // Set period to 6 BEFORE adding the first shootout event
+        addEvent(soTime--, 'shootout', null, `--- SHOOTOUT ---`);
         let hGoalie = homeLines.g[0] || { name: 'Goalie', overall: 70 };
         let aGoalie = awayLines.g[0] || { name: 'Goalie', overall: 70 };
         let hForwards = homeLines.f.flat().filter(p => p).sort((a,b) => b.overall - a.overall);
         let aForwards = awayLines.f.flat().filter(p => p).sort((a,b) => b.overall - a.overall);
+        
+        // Failsafe if a CPU team has no forwards in gameState.players
+        if (hForwards.length === 0) hForwards = [{ name: 'Shooter', overall: 70 }];
+        if (aForwards.length === 0) aForwards = [{ name: 'Shooter', overall: 70 }];
         
         let soHomeScore = 0;
         let soAwayScore = 0;
@@ -602,23 +661,9 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             state.period = soPeriod;
             if (hShotOvr > aSaveOvr) {
                 soHomeScore++;
-                addEvent(1200, 'shootout_goal', 'home', `Round ${round+1}: ${hShooter.name} scores on ${aGoalie.name}!`, true);
+                addEvent(soTime--, 'shootout_goal', 'home', `Round ${round+1}: ${hShooter.name} scores on ${aGoalie.name}!`, true);
             } else {
-                addEvent(1200, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
-            }
-            
-            // Check win after Home shoots
-            let guaranteedShots = Math.max(3, round + 1);
-            let hRem = guaranteedShots - (round + 1);
-            let aRem = guaranteedShots - round;
-            
-            if (soHomeScore > soAwayScore + aRem) {
-                winner = 'home';
-                break;
-            }
-            if (soAwayScore > soHomeScore + hRem) {
-                winner = 'away';
-                break;
+                addEvent(soTime--, 'shootout_save', 'home', `Round ${round+1}: ${hShooter.name} is stopped by ${aGoalie.name}.`);
             }
             
             // Away shoots
@@ -627,22 +672,24 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             state.period = soPeriod;
             if (aShotOvr > hSaveOvr) {
                 soAwayScore++;
-                addEvent(1200, 'shootout_goal', 'away', `Round ${round+1}: ${aShooter.name} scores on ${hGoalie.name}!`, true);
+                addEvent(soTime--, 'shootout_goal', 'away', `Round ${round+1}: ${aShooter.name} scores on ${hGoalie.name}!`, true);
             } else {
-                addEvent(1200, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
+                addEvent(soTime--, 'shootout_save', 'away', `Round ${round+1}: ${aShooter.name} is stopped by ${hGoalie.name}.`);
             }
             
-            // Check win after Away shoots
-            hRem = guaranteedShots - (round + 1);
-            aRem = guaranteedShots - (round + 1);
-            
-            if (soHomeScore > soAwayScore + aRem) {
-                winner = 'home';
-                break;
-            }
-            if (soAwayScore > soHomeScore + hRem) {
-                winner = 'away';
-                break;
+            // Check win after Away shoots (ensures both teams had equal shots in the round)
+            // User requested: "depois do 6º chute ser realizado que o jogo processa os valores"
+            // So we only check for a winner starting from round 2 (which is the 3rd round, i.e., 6 shots total)
+            if (round >= 2) {
+                // If it's round 3 or later, ANY difference in score means someone won
+                // because they have taken an equal number of shots.
+                if (soHomeScore !== soAwayScore) {
+                    // Check if mathematically impossible to tie (if we want early exit).
+                    // But user specifically wants 6 shots, so we don't exit early before round 2.
+                    // For rounds >= 2, if scores are different after Away shoots, the match is over!
+                    winner = soHomeScore > soAwayScore ? 'home' : 'away';
+                    break;
+                }
             }
             
             round++;
@@ -651,7 +698,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
             if (round > 50) {
                 if (soHomeScore === soAwayScore) {
                     soHomeScore++;
-                    addEvent(1200, 'shootout_goal', 'home', `Round ${round+1}: ${hForwards[0].name} finally ends the marathon shootout!`, true);
+                    addEvent(soTime--, 'shootout_goal', 'home', `Round ${round+1}: ${hForwards[0].name} finally ends the marathon shootout!`, true);
                 }
                 winner = soHomeScore > soAwayScore ? 'home' : 'away';
                 break;
@@ -659,7 +706,7 @@ export function generateMatchTimeline(gameState, myOvr, oppOvr, isHome, myTeam, 
         }
         
         state.period = soPeriod;
-        addEvent(1200, 'shootout_winner', winner, `${winner === 'home' ? homeTeam.name : awayTeam.name} is awarded the shootout win!`, true);
+        addEvent(soTime--, 'shootout_winner', winner, `${winner === 'home' ? homeTeam.name : awayTeam.name} is awarded the shootout win!`, true);
         addEvent(0, 'end_period', null, `GAME OVER! ${winner === 'home' ? homeTeam.name : awayTeam.name} wins in Shootout!`);
     }
 

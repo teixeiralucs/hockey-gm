@@ -71,8 +71,13 @@ export function renderDashboard(container, gameState, currentTeam) {
         const homeTeam = getActiveTeams().find(t => t.id === nextMatchObj.homeId);
         const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
         const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id) || {w:0, l:0, otl:0};
-        const homeStandings = gameState.standings.find(s => s.teamId === homeTeam.id) || {w:0, l:0, otl:0};
+        let awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id) || {w:0, l:0, otl:0};
+        let homeStandings = gameState.standings.find(s => s.teamId === homeTeam.id) || {w:0, l:0, otl:0};
+        
+        if (gameState.playoffs && gameState.playoffs.isActive && gameState.seasonHistory) {
+            awayStandings = gameState.seasonHistory.standings.find(s => s.teamId === awayTeam.id) || awayStandings;
+            homeStandings = gameState.seasonHistory.standings.find(s => s.teamId === homeTeam.id) || homeStandings;
+        }
         
         const awayOvr = window.getTeamOverall ? window.getTeamOverall(awayTeam.id, awayTeam.id === currentTeam.id) : 60;
         const homeOvr = window.getTeamOverall ? window.getTeamOverall(homeTeam.id, homeTeam.id === currentTeam.id) : 60;
@@ -81,15 +86,15 @@ export function renderDashboard(container, gameState, currentTeam) {
         if (daysToSimulate > 0) {
             buttonHTML = `
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center; width: 100%;">
-                    <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 60%; border: none; font-size: 1.1rem; letter-spacing: 1px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 0.8rem; border-radius: 12px;">
-                        <i data-lucide="fast-forward" style="width: 20px; height: 20px;"></i> SIMULATE TO NEXT MATCH
+                    <button class="btn" onclick="simulateBackgroundDays(${daysToSimulate})" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: var(--team-primary); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+                        <i data-lucide="fast-forward" style="width: 24px; height: 24px;"></i> SIMULATE TO NEXT MATCH
                     </button>
                 </div>
             `;
         } else {
             buttonHTML = `
                 <div style="display: flex; justify-content: center; width: 100%;">
-                    <button class="btn" onclick="startMatchSimulation()" style="width: 70%; border: none; font-size: 1.3rem; letter-spacing: 2px; background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+                    <button class="btn" onclick="startMatchSimulation()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, ${awayTeam.colors.primary} 0%, ${homeTeam.colors.primary} 100%); transition: transform 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #fff; padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
                         <i data-lucide="play-circle" style="width: 24px; height: 24px;"></i> PLAY MATCH
                     </button>
                 </div>
@@ -160,7 +165,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <i data-lucide="calendar-check" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">REGULAR SEASON COMPLETED</h3>
                     <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You have completed all 68 games of the regular season.</p>
-                    <button class="btn" onclick="startPlayoffs()" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                    <button class="btn" onclick="startPlayoffs()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
                         START PLAYOFFS
                     </button>
                 </div>
@@ -171,7 +176,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <i data-lucide="trophy" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
                     <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
-                    <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                    <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
                         SIMULATE TO NEXT MATCH
                     </button>
                 </div>
@@ -182,7 +187,7 @@ export function renderDashboard(container, gameState, currentTeam) {
                     <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
                     <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">CHAMPION CROWNED</h3>
                     <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">The playoffs have concluded.</p>
-                    <button class="btn" onclick="startAwardsCeremony()" style="width: 80%; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%);">
+                    <button class="btn" onclick="startAwardsCeremony()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
                         ENTER OFFSEASON
                     </button>
                 </div>
@@ -192,6 +197,9 @@ export function renderDashboard(container, gameState, currentTeam) {
     
     // Calcula quantos jogos faltam usando o standings do proprio time
     let myStand = gameState.standings.find(s => s.teamId === currentTeam.id) || {gp: 0};
+    if (gameState.playoffs && gameState.playoffs.isActive && gameState.seasonHistory) {
+        myStand = gameState.seasonHistory.standings.find(s => s.teamId === currentTeam.id) || myStand;
+    }
     let playedGames = myStand.gp;
     
     let topBarSubtitle = `Match ${playedGames + 1} of ${gameState.totalMatches || 68}`;
@@ -438,9 +446,14 @@ function renderStandings() {
                     <tr class="${isActiveTeam ? 'team-row-active' : ''}">
                         <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
                         <td class="team-cell" style="text-align: left;">
-                            <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 20px; height: 20px;">
-                            ${s.clinch ? `<span style="font-family: 'Blockletter', sans-serif; font-size: 0.9rem; color: #fbbf24; margin-right: 4px; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">${s.clinch}</span>` : ''}
-                            <span style="font-weight: 500; font-size: 0.95rem;">${teamInfo.name}</span>
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain;">
+                                ${s.clinch ? `<span style="font-family: 'Blockletter', sans-serif; font-size: 0.9rem; color: #fbbf24; margin-right: 2px; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">${s.clinch}</span>` : ''}
+                                <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                                    <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">${teamInfo.name.split(' ').slice(0, -1).join(' ')}</span>
+                                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.05rem; color: var(--text-color);">${teamInfo.name.split(' ').slice(-1).join(' ')}</span>
+                                </div>
+                            </div>
                         </td>
                         <td>${s.gp || 0}</td>
                         <td style="font-weight: bold; color: #fff;">${s.pts || 0}</td>

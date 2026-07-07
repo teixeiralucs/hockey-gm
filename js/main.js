@@ -43,9 +43,9 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
     const targetTeam = teamIdOverride ? activeTeams.find(t => t.id === teamIdOverride) : currentTeam;
     const currentYear = new Date().getFullYear();
     
-    // Calcula a 3ª quinta-feira de Setembro do ano atual
+    // Calcula a 3ª quarta-feira de Setembro do ano atual
     let date = new Date(currentYear, 8, 1);
-    while (date.getDay() !== 4 || Math.ceil(date.getDate() / 7) !== 3) {
+    while (date.getDay() !== 3 || Math.ceil(date.getDate() / 7) !== 3) {
         date.setDate(date.getDate() + 1);
     }
     
@@ -133,16 +133,25 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
             
             const teamRoster = allRosters[team.id];
             if (teamRoster && teamRoster.length > 0) {
-                teamRoster.forEach(p => {
-                    // Evita adicionar jogadores que já foram draftados pelo usuário
-                    if (!userDraftedPlayers.some(drafted => drafted.id === p.id)) {
-                        gameState.players.push({
-                            ...p,
-                            teamId: team.id,
-                            location: 'cpu_bench',
-                            stats: JSON.parse(JSON.stringify(p.stats)) // DEEP COPY
-                        });
-                    }
+                // Remove players already drafted by user
+                let availablePlayers = teamRoster.filter(p => !userDraftedPlayers.some(drafted => drafted.id === p.id));
+                
+                // Shuffle available players
+                for (let i = availablePlayers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availablePlayers[i], availablePlayers[j]] = [availablePlayers[j], availablePlayers[i]];
+                }
+                
+                // Take up to 20 players
+                const cpuDrafted = availablePlayers.slice(0, 20);
+                
+                cpuDrafted.forEach(p => {
+                    gameState.players.push({
+                        ...p,
+                        teamId: team.id,
+                        location: 'cpu_bench',
+                        stats: JSON.parse(JSON.stringify(p.stats)) // DEEP COPY
+                    });
                 });
             }
         });
@@ -368,6 +377,19 @@ function renderDashboard(container) {
 }
 
 window.startPlayoffs = function() {
+    // 0. Auto-simulate any remaining regular season games for CPU teams to close out the calendar properly
+    if (gameState.schedule) {
+        gameState.schedule.forEach(day => {
+            if (day.matches) {
+                day.matches.forEach(m => {
+                    if (!m.played) {
+                        SimEngine.simulateBackgroundMatch(gameState, m);
+                    }
+                });
+            }
+        });
+    }
+
     // 1. Generate playoffs FIRST so the engine can use regular season standings for seeding
     generatePlayoffs(gameState);
     
@@ -408,7 +430,7 @@ window.startPlayoffs = function() {
     }
 
     if (window.saveGame) window.saveGame();
-    switchView('halloffame');
+    switchView('dashboard');
 };
 
 window.refreshFreeAgencyMarket = function() {
@@ -442,6 +464,15 @@ window.refreshFreeAgencyMarket = function() {
     if (window.logEvent) {
         window.logEvent("New Free Agents available in the Free Shopping market!", "#10b981");
     }
+    
+    gameState.notifications = gameState.notifications || [];
+    gameState.notifications.push({
+        id: Date.now(),
+        message: 'New Free Agents are available in the Free Agency Market!',
+        color: '#10b981',
+        read: false
+    });
+    if (window.updateNotificationBadge) window.updateNotificationBadge();
 };
 
 window.simulateBackgroundDays = function(daysCount) {
@@ -795,7 +826,7 @@ window.openPlayerCardModal = function(playerId) {
 
     const modalHTML = `
         <div id="player-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-            <div style="display: flex; gap: 2rem; max-width: 1100px; width: 100%; padding: 2rem; align-items: stretch; justify-content: center;">
+            <div style="display: flex; gap: 2rem; max-width: 1100px; width: 100%; padding: 2rem; align-items: stretch; justify-content: center;" onclick="event.stopPropagation()">
                 
                 <!-- LEFT COLUMN: CARD + SEASON STATS -->
                 <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 450px;">
@@ -984,9 +1015,17 @@ window.renderShopPage = function(container) {
                     <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Store</span>
                     <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">HOCKEY SHOP</h2>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.8rem; background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                    <i data-lucide="coins" style="color: #fbbf24; width: 20px; height: 20px;"></i>
-                    <span id="shop-coins-header-display" style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fbbf24; line-height: 1;">${gameState.coins || 0}</span>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    ${window.currentShopTab === 'freeagency' ? `
+                    <div style="display: flex; align-items: center; gap: 0.8rem; background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);" title="Market Refreshes In ${gameState.freeAgencyMarket ? gameState.freeAgencyMarket.nextRefreshGames : 10} Games">
+                        <i data-lucide="refresh-cw" style="color: var(--text-muted); width: 18px; height: 18px;"></i>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: var(--text-muted); line-height: 1; letter-spacing: 1px;">REFRESHES IN: <span style="color: #fbbf24;">${gameState.freeAgencyMarket ? gameState.freeAgencyMarket.nextRefreshGames : 10} GAMES</span></span>
+                    </div>
+                    ` : ''}
+                    <div style="display: flex; align-items: center; gap: 0.8rem; background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <i data-lucide="coins" style="color: #fbbf24; width: 20px; height: 20px;"></i>
+                        <span id="shop-coins-header-display" style="font-family: 'Blockletter', sans-serif; font-size: 1.2rem; color: #fbbf24; line-height: 1;">${gameState.coins || 0}</span>
+                    </div>
                 </div>
             </div>
 
@@ -1558,7 +1597,7 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     
     function logEvent(text, color = '#a1a1aa', highlight = false) {
         const p = document.createElement('div');
-        p.innerText = text;
+        p.innerHTML = text;
         p.style.color = color;
         p.style.marginBottom = '8px';
         p.style.padding = '8px 12px';
@@ -1924,7 +1963,8 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     gameState.coins = (gameState.coins || 0) + finalReward;
     if (window.saveGame) window.saveGame();
     
-    logEvent(`Match Reward: +${finalReward} 🪙 (${rewardType})`, '#fbbf24');
+    logEvent(`Match Reward: +${finalReward} <i data-lucide="coins" style="width: 16px; height: 16px; vertical-align: middle;"></i> (${rewardType})`, '#fbbf24');
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function openBackConfirmationModal() {

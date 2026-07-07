@@ -61,7 +61,7 @@ A primeira fase garantirá um x1.3 de boost na recompensa de cada fim de jogo. S
 
 ### 3.2 Semi Final da Conferencia
 
-Na semi final da conferencia o boost é de x1.7 aumentando para x2 para caso o jogador consiga vencer essa fase 
+Na semi final da conferencia o boost é de x1.7 aumentando para x2 para caso o jogador consiga vencer essa fase
 
 ### 3.3 Final da Conferencia
 
@@ -77,7 +77,25 @@ Os valores de bônus também serão aplicados a outras ligas criadas anteriormen
 
 Com o envelhecimento dos jogadores no fim de cada ano, os jogadores que não foram aposentados ainda recebem um boost de 5% no overall.
 
+## 5. Revamp do Menu de Save
 
-## 5. Bug Fixes e Outras Correções
+Alteração do Menu de Save, buscando mais coerencia com o design atual.
 
-1. Erro na atribuição de Assists, por gol deve haver pelo menos uma atribuição de Assist.
+## 6. Bug Fixes e Outras Correções
+
+1. ~~Erro na atribuição de Assists, por gol deve haver pelo menos uma atribuição de Assist.~~
+2. ~~Durante um jogo, se o jogador receber um gol durante um Power Play, o Power Play acaba. O Mesmo acontece com um Empty Net~~
+   ~~2.1 Se o Gol do Power Play for feito pelo time que está em Power Play, em disvantagem com 4 jogadores, o relógio continua. Se o golf for feito pelo time com 5 jogadores o Power Play encerra imediatamente. Punições de 5 minutos não acabam com o Power Play.~~
+3. ~~Shootout quebrado, ainda não estão revezando nos shoots e nem mesmo fazendo as 3 tentativas por time~~
+4. ~~Free Agency quebrado, os jogadores não estão sendo adicionados.~~
+5. ~~Free Agency não notifica o usuário quando tem mudança e não sinaliza quantos dias falta para a mudança do mercado.~~
+6. ~~Na simulação, mudar a icone de moeda~~
+7. ~~Na simulação, quando um jogo acaba durante um Overtime ainda tem um prompt no console de faceoff no center ice, retirar isso.~~
+8. ~~O botão de simulate next match e play match são de tamanhos diferentes, o que acaba deixando tamanhos diferentes em diferentes ações.~~
+9. ~~Consertar o standings pra ficar no da cidade em cima nome do time em baixo.~~
+10. ~~No modal do jogador, o season stats tá como se fosse fora da página, ai quando clica ele fecha o modal.~~
+11. ~~verificar o modelo de calendário, alguns times estão jogando muito e outros jogando pouco.~~
+12. ~~Quando vc clica em Iniciar Playoffs ele joga direto para o hall of fame porém deve permanecer no dash. E depois disso o hall of fame não funciona mais~~
+13. ~~Caso ainda tenham jogos antes de vc iniciar as playoffs ele entende que depois que vc simular até que todos os jogos da season regular tenham sido completados, as estatisticas já são das playoffs e ai infla os stats dos jogadores.~~
+14. ~~O Record dos times não está funcionando para as playoffs~~
+15. ~~Nas play off só a primiera e ultima rodada funcionam, as outras rodadas ele simula sozinho fora do controle do jogador.~~

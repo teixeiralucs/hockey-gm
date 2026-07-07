@@ -55,7 +55,7 @@ export function renderFreeAgencyPage(container) {
                         ${cardInnerHtml}
                     </div>
                     
-                    <button class="btn" ${!canAfford ? 'disabled' : ''} onclick="signFreeAgent(${p.id}, ${price})" style="width: 100%; max-width: 320px; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1.2rem; background: linear-gradient(135deg, ${tierColor} 0%, color-mix(in srgb, ${tierColor} 60%, black) 100%); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s; cursor: pointer; ${affordStyle}">
+                    <button class="btn" ${!canAfford ? 'disabled' : ''} onclick="signFreeAgent('${p.id}', ${price})" style="width: 100%; max-width: 320px; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1.2rem; background: linear-gradient(135deg, ${tierColor} 0%, color-mix(in srgb, ${tierColor} 60%, black) 100%); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s; cursor: pointer; ${affordStyle}">
                         SIGN FOR <i data-lucide="coins" style="color: #fbbf24; width: 22px; height: 22px;"></i> <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; line-height: 1; letter-spacing: 1px;">${price}</span>
                     </button>
                 </div>
@@ -74,7 +74,7 @@ export function renderFreeAgencyPage(container) {
 }
 
 window.signFreeAgent = function(playerId, price) {
-    if (!gameState || !currentTeam) return;
+    if (!gameState || !gameState.team) return;
 
     let p = window.globalDraftPool ? window.globalDraftPool.find(x => x.id === playerId) : null;
     if (!p) return;
@@ -95,7 +95,7 @@ window.signFreeAgent = function(playerId, price) {
     // Add to players array
     let newPlayer = {
         ...p,
-        teamId: currentTeam.id,
+        teamId: gameState.team.id,
         location: 'bench',
         stats: { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 }
     };
@@ -108,7 +108,7 @@ window.signFreeAgent = function(playerId, price) {
     gameState.freeAgencyMarket.soldSlots.push(playerId);
     
     if (window.logEvent) {
-        window.logEvent(`Signed ${p.name} for ${price} 🪙`, '#10b981');
+        window.logEvent(`Signed ${p.name} for ${price} <i data-lucide="coins" style="width: 14px; height: 14px; vertical-align: middle;"></i>`, '#10b981');
     }
     
     if (window.saveGame) window.saveGame();

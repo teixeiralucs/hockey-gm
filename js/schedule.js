@@ -1,120 +1,144 @@
 export function generateSeasonSchedule(teams, startDate) {
-    let matchups = [];
-    let teamGamesCount = {};
-    teams.forEach(t => teamGamesCount[t.id] = 0);
+    let N = teams.length;
+    let teamIds = teams.map(t => t.id);
     
-    // Pass 1: Every team plays every other team 3 times (57 games each)
-    for (let i = 0; i < teams.length; i++) {
-        for (let j = i + 1; j < teams.length; j++) {
-            for(let k = 0; k < 3; k++) {
-                matchups.push({
-                    id: `m_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-                    homeId: k % 2 === 0 ? teams[i].id : teams[j].id,
-                    awayId: k % 2 === 0 ? teams[j].id : teams[i].id,
+    // Fix for odd number of teams (e.g. custom teams added)
+    if (N % 2 !== 0) {
+        teamIds.push('BYE');
+        N++;
+    }
+    
+    // 1. Generate EXACTLY 68 Round-Robin Rounds
+    let numRounds = 68;
+    let rounds = [];
+    
+    while (rounds.length < numRounds) {
+        let cycleTeams = [...teamIds];
+        cycleTeams.sort(() => Math.random() - 0.5); // Shuffle for each new cycle
+        
+        for (let r = 0; r < N - 1; r++) {
+            if (rounds.length >= numRounds) break;
+            
+            let roundMatches = [];
+            for (let i = 0; i < N / 2; i++) {
+                let homeId = cycleTeams[i];
+                let awayId = cycleTeams[N - 1 - i];
+                
+                if (homeId === 'BYE' || awayId === 'BYE') continue; // Skip byes
+                
+                if (Math.random() > 0.5) {
+                    let temp = homeId; homeId = awayId; awayId = temp;
+                }
+                
+                roundMatches.push({
+                    id: `m_${Date.now()}_${Math.floor(Math.random() * 10000)}_${r}_${i}`,
+                    homeId,
+                    awayId,
                     played: false
                 });
-                teamGamesCount[teams[i].id]++;
-                teamGamesCount[teams[j].id]++;
             }
+            rounds.push(roundMatches);
+            
+            // Rotate the array (keeping index 0 fixed)
+            let last = cycleTeams.pop();
+            cycleTeams.splice(1, 0, last);
         }
     }
     
-    // Pass 2: The remaining 11 games per team
-    // Total 110 games needed.
-    let needyTeams = teams.map(t => t.id).filter(id => teamGamesCount[id] < 68);
-    while (needyTeams.length >= 2) {
-        needyTeams.sort(() => Math.random() - 0.5);
-        let t1 = needyTeams[0];
-        let t2 = needyTeams[1];
-        matchups.push({ 
-            id: `m_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-            homeId: t1, 
-            awayId: t2,
-            played: false
-        });
-        teamGamesCount[t1]++;
-        teamGamesCount[t2]++;
-        needyTeams = teams.map(t => t.id).filter(id => teamGamesCount[id] < 68);
+    // 2. Prepare 26 Weeks of Quotas
+    let totalWeeks = 26;
+    let weekQuotas = Array(totalWeeks).fill(Math.floor(numRounds / totalWeeks));
+    let extraRounds = numRounds % totalWeeks;
+    
+    let indices = Array.from({length: totalWeeks}, (_, i) => i);
+    indices.sort(() => Math.random() - 0.5);
+    for(let i = 0; i < extraRounds; i++) {
+        weekQuotas[indices[i]]++;
     }
     
-    // If 1 team is left needing 1 game, just add a random team to play against them.
-    if (needyTeams.length === 1) {
-        let t1 = needyTeams[0];
-        let t2 = teams.find(t => t.id !== t1).id;
-        matchups.push({ 
-            id: `m_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-            homeId: t1, 
-            awayId: t2,
-            played: false
-        });
-        teamGamesCount[t1]++;
-        teamGamesCount[t2]++;
-    }
-    
-    // Shuffle all matchups randomly
-    matchups.sort(() => Math.random() - 0.5);
-    
-    // Distribute across days
-    let schedule = []; 
+    let schedule = [];
     let currentDate = new Date(startDate);
     
-    let currentWeekNumber = 0;
-    let teamWeeklyData = {};
-    teams.forEach(t => teamWeeklyData[t.id] = { count: 0, limit: 3 });
+    // Align to Monday of that week
+    while(currentDate.getDay() !== 1) {
+        currentDate.setDate(currentDate.getDate() - 1);
+    }
     
-    while(matchups.length > 0) {
-        let dayOfWeek = currentDate.getDay(); // 0 = Sun, 4 = Thu, 5 = Fri, 6 = Sat
-        
-        // Reset weekly counters on Monday (day 1)
-        if (dayOfWeek === 1) {
-            currentWeekNumber++;
-            // Teams get up to 3 games per week
-            teams.forEach(t => teamWeeklyData[t.id] = { count: 0, limit: 3 });
+    // 3. Distribute Matches across weeks
+    for (let w = 0; w < totalWeeks; w++) {
+        let weekMatches = [];
+        for(let k = 0; k < weekQuotas[w]; k++) {
+            if (rounds.length > 0) {
+                weekMatches.push(...rounds.shift());
+            }
         }
         
-        if ([0, 4, 5, 6].includes(dayOfWeek)) {
-            let dayMatches = [];
-            let teamsPlayingToday = new Set();
+        // 4. Distribute into days of the week realistically (Wed, Thu, Fri, Sat, Sun)
+        let dailySchedule = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+        let teamDays = {};
+        
+        let success = false;
+        for (let attempt = 0; attempt < 50; attempt++) {
+            dailySchedule = {0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []};
+            teamDays = {};
+            teams.forEach(t => teamDays[t.id] = new Set());
+            success = true;
             
-            // Limit matches per day to spread them out and guarantee Sunday games!
-            let maxMatchesToday = 6;
-            if (dayOfWeek === 4) maxMatchesToday = 4; // Thursday: fewer games
-            if (dayOfWeek === 5) maxMatchesToday = 8; // Friday: lots of games
-            if (dayOfWeek === 6) maxMatchesToday = 8; // Saturday: lots of games
-            if (dayOfWeek === 0) maxMatchesToday = 6; // Sunday: remaining games
+            weekMatches.sort(() => Math.random() - 0.5);
             
-            let i = 0;
-            while(i < matchups.length && dayMatches.length < maxMatchesToday) {
-                let match = matchups[i];
-                let homeData = teamWeeklyData[match.homeId];
-                let awayData = teamWeeklyData[match.awayId];
+            for (let match of weekMatches) {
+                let availableDays = [3, 4, 5, 6, 0].filter(d => 
+                    !teamDays[match.homeId].has(d) && !teamDays[match.awayId].has(d)
+                );
                 
-                if (!teamsPlayingToday.has(match.homeId) && 
-                    !teamsPlayingToday.has(match.awayId) && 
-                    homeData.count < homeData.limit && 
-                    awayData.count < awayData.limit) {
-                    
-                    dayMatches.push(match);
-                    teamsPlayingToday.add(match.homeId);
-                    teamsPlayingToday.add(match.awayId);
-                    
-                    homeData.count++;
-                    awayData.count++;
-                    
-                    matchups.splice(i, 1);
+                if (availableDays.length === 0) {
+                    availableDays = [1, 2].filter(d => !teamDays[match.homeId].has(d) && !teamDays[match.awayId].has(d));
+                }
+                
+                if (availableDays.length === 0) {
+                    success = false;
+                    break; // Restart attempt
+                }
+                
+                let preferences = {5: 100, 6: 80, 0: 40, 4: 20, 3: 20, 1: 5, 2: 5};
+                availableDays.sort((a,b) => (preferences[b] * Math.random()) - (preferences[a] * Math.random()));
+                
+                let selectedDay = availableDays[0];
+                dailySchedule[selectedDay].push(match);
+                teamDays[match.homeId].add(selectedDay);
+                teamDays[match.awayId].add(selectedDay);
+            }
+            
+            if (success) break;
+        }
+        
+        // If it still failed after 50 attempts (mathematically near impossible), just discard the week
+        // to avoid duplicating matches on the same day. This will never hit in normal scenarios.
+        if (!success) {
+            console.warn("Schedule generation fallback: Week generation failed completely, skipping to next week.");
+        }
+        
+        // 5. Build Schedule array mapping to actual Dates
+        for (let d = 0; d < 7; d++) {
+            let currentDayOfWeek = currentDate.getDay();
+            
+            if (dailySchedule[currentDayOfWeek] && dailySchedule[currentDayOfWeek].length > 0) {
+                let matchDate = new Date(currentDate);
+                
+                // Merge if day already exists (e.g. from fallback)
+                let existingDay = schedule.find(s => s.date === matchDate.toISOString());
+                if (existingDay) {
+                    existingDay.matches.push(...dailySchedule[currentDayOfWeek]);
                 } else {
-                    i++;
+                    schedule.push({
+                        date: matchDate.toISOString(),
+                        matches: dailySchedule[currentDayOfWeek]
+                    });
                 }
             }
             
-            if (dayMatches.length > 0 || matchups.length === 0) {
-                schedule.push({
-                    date: new Date(currentDate).toISOString(),
-                    matches: dayMatches
-                });
-            }
+            currentDate.setDate(currentDate.getDate() + 1);
         }
-        currentDate.setDate(currentDate.getDate() + 1);
     }
     
     return schedule;
