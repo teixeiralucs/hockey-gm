@@ -46,3 +46,20 @@ Este documento rastreia as implementações reais feitas, explicando _o que_ foi
 - **Design Bento Glassmorphism**: O esqueleto antigo e quadrado foi migrado para coincidir com a estética premium do Dashboard (`backdrop-filter: blur(20px)`), possuindo caixas translúcidas, bordas em névoa branca e sombras.
 - **Logos das Franquias**: O painel agora busca do payload `.json` gravado em `localStorage` o ID exato da franquia vinculada ao Save, importando o SVG/PNG real (`assets/logos/`) direto para dentro do Slot na UI, permitindo distinção puramente visual dos saves.
 - **Hover Responsivo**: Como os cards de loja, interagir com um Slot acende a borda no azul primário e realiza a animação `scale(1.02)`, sem quebrar o layout (agora reforçado por um grid largo de `600px`). Os botões também foram substituídos por ícones *Lucide* polidos (Disquete para Overwrite e Play em neon para Load).
+
+### 7. Expansão WHL (Western Hockey League)
+
+- **Nova Liga e Equipes**: Injetada a segunda liga majoritária do hóquei canadense, contendo 22 equipes oficiais (Conferências Leste e Oeste) separadas por ID, cores pantone oficais e estéticas visuais precisas (e.g. Edmonton Oil Kings, Seattle Thunderbirds).
+- **Rosters Reais**: Parseados e injetados de mais de 700+ jogadores reais pertencentes à WHL, mantendo a métrica OVR idêntica à escala Junior (OHL), garantindo paridade e permitindo cross-league scouting / drafts num futuro próximo.
+- **Logos Dinâmicos**: A arquitetura de assets da UI de partidas foi desacoplada de `assets/logos/{nome}` para uma árvore sub-dividida por ligas (`assets/logos/ohl/` e `assets/logos/whl/`), identificada recursivamente pela variável `gameState.league` para puxar emblemas, ice rinks e scoreboard themes de maneira escalável.
+
+### 8. Big Fixes: O Grande Polimento
+
+- **Overhaul do Shootout**: O motor de pênaltis foi totalmente reconstruído. O jogo agora exige, matematicamente, que 3 rodadas estritas (6 chutes no total, Home/Away alternado) aconteçam antes de aplicar condições de vitória. A lógica de eventos também foi corrigida e blindada contra o filtro RNG (12%) da timeline, assegurando que 100% dos eventos de shootout gerem `divs` com cores/opacidades apropriadas no tracker (bolinhas vermelhas para gols, Xs brancos para saves), culminando numa leitura unificada do placar final de desempate.
+- **Consolidação do Calendário**: O gerador logarítmico round-robin (`generateSchedule`) da temporada regular foi refeito com um algoritmo de `Graph Edge-Coloring` pareado, garantindo que absolutamente todos os times joguem exatas 68 partidas (rodadas justas, home e away equilibrados, apenas em finais de semana).
+- **Tratamento de Playoffs**: 
+  - Resolvido hard-redirect prematuro para o *Hall of Fame* ao iniciar os Playoffs, mantendo o jogador no controle contínuo do Dashboard.
+  - Correção na UI da chave de campeonatos: as rodadas semi-finais e finais já não simulam silenciosamente em *background*, elas agora param no estágio core e respeitam o controle de avanço explícito via botão.
+  - Bloqueada a inflação dos atributos de `Season Stats` nas partidas da pós-temporada (os Playoff Stats começaram a ser filtrados e acumulados separadamente do payload base `p.stats.gp`).
+  - Atualização do *Team Record*: a engine não quebra mais ao buscar registros (W-L-OTL) nos menus durante o Playoff, mantendo um log perpétuo das vitórias em séries.
+- **Micro-interações UI**: Uniformização minuciosa dos botões de `Play Match` e `Simulate Next` (alinhamento em grid padronizado), centralização correta de Cidade/Nome no painel *Standings*, além de z-index fixes nos gráficos dos Modais de Jogadores.
