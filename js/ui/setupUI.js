@@ -12,7 +12,7 @@ function getTeamNameParts(fullName) {
     const city = parts.join(' ');
     return { city, mascot };
 }
-import { ohlTeams, whlTeams, qmjhlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams, qmjhlTeams, fphlTeams } from '../../data/teams.js';
 
 export function transitionTo(nextFunc) {
     const container = document.querySelector('#app > div');
@@ -143,6 +143,14 @@ export function initLeagueSelection() {
                     <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">QMJHL</h3>
                     <p style="color: var(--text-muted); position: relative; z-index: 2;">Quebec Maritimes Junior HL</p>
                 </div>
+
+                <!-- FPHL (Playable) -->
+                <div class="linear-card" id="league-fphl" style="--card-color-light: #c52634; --card-color-dark: #25304a; width: 260px; height: 360px;">
+                    <div class="linear-card-glow"></div>
+                    <img src="assets/fphl-logo.png" alt="FPHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">FPHL</h3>
+                    <p style="color: var(--text-muted); position: relative; z-index: 2;">Federal Prospects Hockey League</p>
+                </div>
                 
             </div>
         </div>
@@ -164,6 +172,10 @@ export function initLeagueSelection() {
         transitionTo(() => initFranchiseSelection('qmjhl'));
     });
     
+    document.getElementById('league-fphl').addEventListener('click', () => {
+        transitionTo(() => initFranchiseSelection('fphl'));
+    });
+    
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -176,7 +188,11 @@ export function initFranchiseSelection(league = 'ohl') {
     const app = document.getElementById('app');
     
     // Select 6 random teams from the chosen league
-    const leagueTeams = league === 'whl' ? whlTeams : (league === 'qmjhl' ? qmjhlTeams : ohlTeams);
+    let leagueTeams = ohlTeams;
+    if (league === 'whl') leagueTeams = whlTeams;
+    if (league === 'qmjhl') leagueTeams = qmjhlTeams;
+    if (league === 'fphl') leagueTeams = fphlTeams;
+
     const selectedTeams = getRandomTeams(leagueTeams, 6);
     
     let bgGradient = 'linear-gradient(135deg, rgba(4, 122, 196, 0.15) 0%, rgba(170, 170, 170, 0.25) 100%)';
@@ -184,6 +200,8 @@ export function initFranchiseSelection(league = 'ohl') {
         bgGradient = 'linear-gradient(135deg, rgba(226, 55, 63, 0.15) 0%, rgba(0, 0, 0, 0.25) 100%)';
     } else if (league === 'qmjhl') {
         bgGradient = 'linear-gradient(135deg, rgba(0, 98, 176, 0.15) 0%, rgba(1, 1, 1, 0.25) 100%)';
+    } else if (league === 'fphl') {
+        bgGradient = 'linear-gradient(135deg, rgba(37, 48, 74, 0.25) 0%, rgba(197, 38, 52, 0.15) 100%)';
     }
     
     const teamsHTML = selectedTeams.map(team => {
@@ -192,6 +210,7 @@ export function initFranchiseSelection(league = 'ohl') {
         let logoPath = `assets/logos/ohl/${logoFile}.png`;
         if (league === 'whl') logoPath = `assets/logos/whl/${logoFile}.png`;
         if (league === 'qmjhl') logoPath = `assets/logos/qmjhl/${logoFile}.png`;
+        if (league === 'fphl') logoPath = `assets/logos/fphl/${logoFile}.png`;
         
         return `
         <div class="linear-card" data-team-id="${team.id}" style="--card-color-light: ${team.colors.secondary}; --card-color-dark: ${team.colors.primary}; width: 220px; height: 280px; padding: 1.5rem;">

@@ -1,6 +1,7 @@
 ohl:                                    #047ac4  #aaaaaa
 whl:                                    #e2373f  #000000
 qmjhl:                                  #0062b0  #010101 
+fphl:                                   #25304a  #c52634
 
 barrie-colts:                           #ec2634  #001c63
 brampton-steelheads:                    #a7aaac  #002868
@@ -66,3 +67,20 @@ sherbooke phoenix:                      #002e62  #397ecc
 val-d'or foreurs:                       #017143  #000000
 victoriaville tigres:                   #fcb825  #000000
 
+monroe moccasins:                       #35262b  #610101
+columbus river dragons:                 #43c2cc  #a61d2f
+twin city thunderbirds:                 #97070f  #ece9e9
+baton rouge kingfish:                   #079fbd  #348c70
+binghamton black bears:                 #108040  #010101
+blue ridge bobcats:                     #1976bc  #fac11a
+danbury hat tricks:                     #ff6e27  #bbbbbb
+indiana sentinels:                      #0e1d49  #f8be3c
+motor city rockers:                     #531e57  #000000
+port huron prowlers:                    #e31937  #ffc83f
+topeka scarecrows:                      #c08448  #67615a
+watertown wolves:                       #16437a  #fbfbfb
+mid-south monarchs:                     #4b286e  #d1a775
+fresno falcons:                         #0e3c70  #bc9a5e
+minnesota northern lights:              #7c4097  #25ff10
+oceanside:                              #1a8dc8  #d0f7fe
+stockton thunder:                       #fec526  #030302
