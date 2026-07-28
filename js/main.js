@@ -1,6 +1,21 @@
-import { ohlTeams, whlTeams } from '../data/teams.js';
+
+function getTeamNameParts(fullName) {
+    if (!fullName) return { city: '', mascot: '' };
+    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants'];
+    for (let m of twoWordMascots) {
+        if (fullName.endsWith(m)) {
+            return { city: fullName.substring(0, fullName.length - m.length).trim(), mascot: m };
+        }
+    }
+    const parts = fullName.split(' ');
+    const mascot = parts.pop();
+    const city = parts.join(' ');
+    return { city, mascot };
+}
+import { ohlTeams, whlTeams, qmjhlTeams, getTeamLogoUrl } from '../data/teams.js';
 import { generateSeasonSchedule } from './schedule.js';
 import { generatePlayoffs, processPlayoffMatchResult, advancePlayoffRound } from './playoffs.js';
+import { processMemorialCupMatchResult, advanceMemorialCupPhase } from './memorial_cup.js';
 import { initMainMenu } from './ui/setupUI.js';
 import { renderDashboard as renderDashboardUI } from './ui/dashboardUI.js';
 import { renderRoster, autoFillRoster } from './ui/rosterUI.js';
@@ -38,8 +53,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 let currentTeam = null;
 let gameState = null;
 
+window.getActiveLeagueTeams = function(stateObj = gameState) {
+    if (!stateObj) return ohlTeams;
+    if (stateObj.league === 'whl') return whlTeams;
+    if (stateObj.league === 'qmjhl') return qmjhlTeams;
+    return ohlTeams;
+};
+
+
 async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
-    const activeTeams = leagueOverride === 'whl' ? whlTeams : ohlTeams;
+    const activeTeams = leagueOverride === 'whl' ? whlTeams : (leagueOverride === 'qmjhl' ? qmjhlTeams : ohlTeams);
     const targetTeam = teamIdOverride ? activeTeams.find(t => t.id === teamIdOverride) : currentTeam;
     const currentYear = new Date().getFullYear();
     
@@ -81,6 +104,7 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
             clinch: ''
         })),
         playoffs: null,
+        memorialCup: null,
         freeAgencyMarket: {
             players: [],
             nextRefreshGames: 5,
@@ -172,8 +196,7 @@ async function initNewGame(teamIdOverride = null, leagueOverride = 'ohl') {
 }
 
 window.openConfirmationModal = function(team, league = 'ohl') {
-    const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-    const logoPath = league === 'whl' ? `assets/logos/whl/${logoFile}.png` : `assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logoFile}.png`;
+    const logoPath = getTeamLogoUrl(team.id);
     const modalHTML = `
         <div id="confirm-modal" class="modal-overlay">
             <div class="modal-content">
@@ -641,17 +664,8 @@ function getPlayerCardHTML(player) {
         'LW': '#3b82f6', 'C': '#ef4444', 'RW': '#06b6d4',
         'LD': '#f59e0b', 'RD': '#8b5cf6', 'G': '#ec4899'
     };
-    let teamInfo = null;
-    let leagueFolder = 'ohl';
-    if (player.originalTeamId) {
-        teamInfo = ohlTeams.find(t => t.id === player.originalTeamId);
-        if (!teamInfo) {
-            teamInfo = whlTeams.find(t => t.id === player.originalTeamId);
-            leagueFolder = 'whl';
-        }
-    }
-    const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
-    
+    const logoPath = getTeamLogoUrl(player.originalTeamId);
+
     // Determine overall color based on tier
     let tierColorHex = '#8b5cf6'; // bronze fallback (orangeish bronze)
     if (player.tier === 'gold') tierColorHex = '#fbbf24';
@@ -675,7 +689,7 @@ function getPlayerCardHTML(player) {
              style="background-color: var(--card-bg, rgba(255,255,255,0.05)); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${posColors[player.position] || 'var(--team-primary)'}; user-select: none; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-family: 'Blockletter', sans-serif; color: ${posColors[player.position]}; font-size: 1.1rem; width: 24px;">${player.position}</span>
-                ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 18px; object-fit: contain;">` : ''}
+                ${logoPath ? `<img src="${logoPath}" style="height: 18px; object-fit: contain;">` : ''}
                 <span style="font-weight: 500; color: var(--text-color); font-size: 0.95rem;">${player.name}</span>
             </div>
             <div style="display: flex; align-items: center;">
@@ -705,16 +719,7 @@ window.getTradingCardHTML = function(player, options = {}) {
         metallicGradient = 'var(--metallic-silver, linear-gradient(135deg, #8e9eab, #eef2f3, #757f9a, #d7dde8, #606b80))';
     }
 
-    let teamInfo = null;
-    let leagueFolder = 'ohl';
-    if (player.originalTeamId) {
-        teamInfo = ohlTeams.find(t => t.id === player.originalTeamId);
-        if (!teamInfo) {
-            teamInfo = whlTeams.find(t => t.id === player.originalTeamId);
-            leagueFolder = 'whl';
-        }
-    }
-    const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+    const logoPath = getTeamLogoUrl(player.originalTeamId);
 
     const fullPositions = {
         'LW': 'Left Wing', 'C': 'Center', 'RW': 'Right Wing',
@@ -726,6 +731,7 @@ window.getTradingCardHTML = function(player, options = {}) {
     const finalOVR = Math.round(player.overall * (1 + mod));
 
     const photoUrl = player.photo || 'assets/default-player.svg';
+    const playerLeague = qmjhlTeams.some(t => t.id === player.originalTeamId) ? 'lhjmq' : (whlTeams.some(t => t.id === player.originalTeamId) ? 'whl' : 'ohl');
 
     const scale = options.scale || 1.0;
     const transformStyle = scale !== 1.0 ? `transform: scale(${scale}); transform-origin: center;` : '';
@@ -740,7 +746,7 @@ window.getTradingCardHTML = function(player, options = {}) {
                     <div class="trading-card-overlay">
                         <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2.7rem; color: #fff; margin: 0; line-height: 0.9; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">${player.name}</h2>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                            ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 28px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));">` : ''}
+                            ${logoPath ? `<img src="${logoPath}" style="height: 28px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));">` : ''}
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: ${tierColor}; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">${posFullName}</span>
                         </div>
                     </div>
@@ -819,7 +825,7 @@ window.openPlayerCardModal = function(playerId) {
     let teamInfoModal = null;
     if (player.originalTeamId) {
         teamInfoModal = ohlTeams.find(t => t.id === player.originalTeamId);
-        if (!teamInfoModal) teamInfoModal = whlTeams.find(t => t.id === player.originalTeamId);
+        if (!teamInfoModal) teamInfoModal = (ohlTeams.find(t => t.id === player.originalTeamId) || whlTeams.find(t => t.id === player.originalTeamId) || qmjhlTeams.find(t => t.id === player.originalTeamId));
     }
     const teamName = teamInfoModal ? teamInfoModal.name : 'Unknown Team';
     const teamColor = teamInfoModal ? teamInfoModal.primaryColor : '#0f172a';
@@ -1373,7 +1379,7 @@ function renderMatchPage(container) {
     const opponentId = isHome ? nextMatchObj.awayId : nextMatchObj.homeId;
     
     const myTeamInfo = currentTeam;
-    const activeLeagueTeams = (gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+    const activeLeagueTeams = getActiveLeagueTeams();
     const oppTeamInfo = activeLeagueTeams.find(t => t.id === opponentId);
     
     // Mocking currentMatch for the simulation loop logic
@@ -1382,8 +1388,8 @@ function renderMatchPage(container) {
     currentMatch.homeScore = 0;
     currentMatch.awayScore = 0;
     
-    const myLogo = myTeamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-    const oppLogo = oppTeamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+    const myLogo = myTeamInfo.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
+    const oppLogo = oppTeamInfo.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
     
     const myOvr = getTeamOverall(myTeamInfo.id, true);
     const oppOvr = getTeamOverall(oppTeamInfo.id, false);
@@ -1448,7 +1454,7 @@ function renderMatchPage(container) {
                     
                     <!-- HOME TEAM -->
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
+                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${homeColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${homeCity}</span>
                             <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${homeMascot}</h2>
@@ -1493,7 +1499,7 @@ function renderMatchPage(container) {
                     
                     <!-- AWAY TEAM -->
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; flex: 1; z-index: 1;">
-                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
+                        <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${!isHome ? myLogo : oppLogo}.png" style="width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 0 20px ${awayColor}); margin-bottom: 0.5rem;">
                         <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
                             <span style="font-family: 'Roboto', sans-serif; font-size: 1rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 3px; margin-bottom: -4px;">${awayCity}</span>
                             <h2 style="font-family: 'Blockletter', sans-serif; font-size: 4.5rem; color: #fff; margin: 0; text-align: center; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${awayMascot}</h2>
@@ -1666,9 +1672,8 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         if (event.emptyNetTeam) {
             let isHomeNet = event.emptyNetTeam === 'home';
             let teamData = isHomeNet ? (isHome ? myTeam : oppTeam) : (!isHome ? myTeam : oppTeam);
-            let logoFile = teamData.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
             
-            enLogo.src = `assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logoFile}.png`;
+            enLogo.src = getTeamLogoUrl(teamData.id);
             enIndicator.style.backgroundColor = teamData.colors.primary;
             enIndicator.style.boxShadow = `0 0 10px ${teamData.colors.primary}`;
             enIndicator.style.opacity = '1';
@@ -1890,6 +1895,8 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
     
     if (currentMatch.isPlayoff) {
         processPlayoffMatchResult(currentMatch, gameState);
+    } else if (currentMatch.isMemorialCup) {
+        processMemorialCupMatchResult(gameState, currentMatch);
     } else {
         SimEngine.updateStandings(gameState, currentMatch.homeId, currentMatch.awayId, currentMatch.homeScore, currentMatch.awayScore, isOT);
     }
@@ -1949,6 +1956,9 @@ async function playMatchEvents(timeline, isHome, myTeam, oppTeam, currentMatch) 
         // After all matches for the day are played, check if a playoff round should advance
         if (gameState.playoffs && gameState.playoffs.isActive) {
             advancePlayoffRound(gameState);
+        }
+        if (gameState.memorialCup && gameState.memorialCup.isActive) {
+            advanceMemorialCupPhase(gameState);
         }
         
         let nextDay = gameState.schedule[gameState.currentScheduleDayIndex + 1];
@@ -2015,7 +2025,7 @@ window.openSaveModal = function() {
                 let logoHtml = '';
                 
                 if (data.currentTeam && data.currentTeam.name) {
-                    const logoName = data.currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\\s+/g, '-');
+                    const logoName = data.currentTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\\s+/g, '-');
                     const league = (data.gameState && data.gameState.league === 'whl') ? 'whl' : 'ohl';
                     logoHtml = `<img src="assets/logos/${league}/${logoName}.png" style="width: 40px; height: 40px; object-fit: contain; margin-right: 1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));" onerror="this.style.display='none'">`;
                 }
@@ -2079,7 +2089,7 @@ export function openLoadModal() {
                 
                 let logoHtml = '';
                 if (data.currentTeam && data.currentTeam.name) {
-                    const logoName = data.currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\\s+/g, '-');
+                    const logoName = data.currentTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\\s+/g, '-');
                     const league = (data.gameState && data.gameState.league === 'whl') ? 'whl' : 'ohl';
                     logoHtml = `<img src="assets/logos/${league}/${logoName}.png" style="width: 40px; height: 40px; object-fit: contain; margin-right: 1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));" onerror="this.style.display='none'">`;
                 }
@@ -2247,7 +2257,7 @@ window.loadGame = async function(slotId = 'auto') {
     if (data.currentTeam) {
         currentTeam = data.currentTeam;
     } else if (gameState.team && gameState.team.id) {
-        currentTeam = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === gameState.team.id);
+        currentTeam = getActiveLeagueTeams().find(t => t.id === gameState.team.id);
     }
     
     // Revive or reset global stats
@@ -2366,34 +2376,223 @@ function openCollectionConfirmationModal(player) {
         if (mainContent) renderRoster(mainContent, gameState);
     });
 }
-
-let standingsCurrentTab = 'regular'; // 'regular' or 'playoffs'
+let standingsCurrentTab = 'regular'; // 'regular', 'playoffs', 'memorialcup'
 let standingsGroupBy = 'division'; // 'division', 'conference', 'league'
 
 function saveGameState() {
     if (window.saveGame) window.saveGame();
 }
 
-
+window.switchStandingsTab = function(tab) {
+    standingsCurrentTab = tab;
+    const container = document.getElementById('main-content');
+    if (container) renderStandingsPage(container);
+};
 
 function renderStandingsPage(container) {
     if (!gameState) return;
+    
+    // Auto-switch to playoffs/memorial cup if active and we are currently on regular
+    if (standingsCurrentTab === 'regular') {
+        if (gameState.memorialCup && gameState.memorialCup.isActive) {
+            standingsCurrentTab = 'memorialcup';
+        } else if (gameState.playoffs && gameState.playoffs.isActive) {
+            standingsCurrentTab = 'playoffs';
+        }
+    }
+
+    let hasMemorialCup = gameState.memorialCup !== null;
 
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1 class="title-main" style="margin: 0; text-align: left;">League Standings</h1>
+            <h1 class="title-main" style="margin: 0; text-align: left;">League Overview</h1>
+            <div class="tabs" style="display: flex; background-color: rgba(0,0,0,0.3); padding: 0.3rem; border-radius: 12px; gap: 0.5rem;">
+                <button class="tab-btn ${standingsCurrentTab === 'regular' ? 'active' : ''}" onclick="switchStandingsTab('regular')" style="padding: 0.5rem 1.5rem; border-radius: 8px; border: none; background: ${standingsCurrentTab === 'regular' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer; font-weight: bold;">Regular Season</button>
+                <button class="tab-btn ${standingsCurrentTab === 'playoffs' ? 'active' : ''}" onclick="switchStandingsTab('playoffs')" style="padding: 0.5rem 1.5rem; border-radius: 8px; border: none; background: ${standingsCurrentTab === 'playoffs' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer; font-weight: bold;">Playoffs</button>
+                ${hasMemorialCup ? `<button class="tab-btn ${standingsCurrentTab === 'memorialcup' ? 'active' : ''}" onclick="switchStandingsTab('memorialcup')" style="padding: 0.5rem 1.5rem; border-radius: 8px; border: none; background: ${standingsCurrentTab === 'memorialcup' ? 'var(--team-primary)' : 'transparent'}; color: white; cursor: pointer; font-weight: bold;">Memorial Cup</button>` : ''}
+            </div>
         </div>
-        
+
         <div id="standings-page-content">
             <!-- Content will be injected here -->
         </div>
     `;
-    
+
     container.innerHTML = html;
-    
+
     const content = document.getElementById('standings-page-content');
-    renderFullStandings(content);
+    if (standingsCurrentTab === 'regular') {
+        renderFullStandings(content);
+    } else if (standingsCurrentTab === 'playoffs') {
+        if (typeof window.renderPlayoffsPage === 'function') {
+            window.renderPlayoffsPage(content);
+        }
+    } else if (standingsCurrentTab === 'memorialcup') {
+        if (typeof window.renderMemorialCupPage === 'function') {
+            window.renderMemorialCupPage(content);
+        }
+    }
 }
+
+window.renderMemorialCupPage = function(container) {
+    let mc = gameState.memorialCup;
+    if (!mc) return;
+
+    // Get all teams across all leagues to find their info
+    const allTeams = [];
+    if (typeof ohlTeams !== 'undefined') allTeams.push(...ohlTeams);
+    if (typeof whlTeams !== 'undefined') allTeams.push(...whlTeams);
+    if (typeof qmjhlTeams !== 'undefined') allTeams.push(...qmjhlTeams);
+
+    // Sort standings by PTS, then W, then GD
+    let sortedStandings = [...mc.standings].sort((a, b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.w !== a.w) return b.w - a.w;
+        let gdA = a.gf - a.ga;
+        let gdB = b.gf - b.ga;
+        return gdB - gdA;
+    });
+
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 class="title-main" style="margin: 0; color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.4);">Memorial Cup</h1>
+                <span style="background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; letter-spacing: 1px;">
+                    ${mc.champion ? 'CHAMPION CROWNED' : 'PHASE: ' + mc.phase.toUpperCase()}
+                </span>
+            </div>
+    `;
+
+    // Champion Banner
+    if (mc.champion) {
+        let champTeam = allTeams.find(t => t.id === mc.champion) || { name: 'Unknown' };
+        html += `
+            <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; border-color: #fbbf24; text-align: center; box-shadow: 0 0 30px rgba(251,191,36,0.2);">
+                <i data-lucide="trophy" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1rem;"></i>
+                <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fbbf24; margin: 0;">${champTeam.name.toUpperCase()}</h2>
+                <h3 style="color: var(--text-color); margin: 0; font-size: 1.5rem; opacity: 0.8;">MEMORIAL CUP CHAMPIONS</h3>
+            </div>
+        `;
+    }
+
+    // Round Robin Standings Table
+    html += `
+        <div class="dashboard-card" style="padding: 1.5rem;">
+            <h2 style="font-family: 'Blockletter', sans-serif; font-size: 1.8rem; margin: 0 0 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Round Robin Standings</h2>
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="color: var(--text-muted); font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <th style="padding: 0.75rem;">TEAM</th>
+                        <th style="padding: 0.75rem; text-align: center;">GP</th>
+                        <th style="padding: 0.75rem; text-align: center;">W</th>
+                        <th style="padding: 0.75rem; text-align: center;">L</th>
+                        <th style="padding: 0.75rem; text-align: center; color: white;">PTS</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    sortedStandings.forEach((st, idx) => {
+        let teamInfo = allTeams.find(t => t.id === st.teamId) || { name: st.teamId };
+        let isHost = st.teamId === mc.hostTeam;
+        let badge = isHost ? `<span style="background: rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.5rem;">HOST</span>` : '';
+        let rowColor = (idx === 0) ? 'rgba(251, 191, 36, 0.15)' : (idx < 3 ? 'rgba(255,255,255,0.02)' : 'transparent');
+        let style = `border-bottom: 1px solid rgba(255,255,255,0.05); background: ${rowColor};`;
+
+        html += `
+            <tr style="${style}">
+                <td style="padding: 0.75rem; font-weight: bold;">
+                    ${idx + 1}. ${teamInfo.name} ${badge}
+                </td>
+                <td style="padding: 0.75rem; text-align: center;">${st.gp}</td>
+                <td style="padding: 0.75rem; text-align: center;">${st.w}</td>
+                <td style="padding: 0.75rem; text-align: center;">${st.l}</td>
+                <td style="padding: 0.75rem; text-align: center; color: #fbbf24; font-weight: bold;">${st.pts}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+            <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                * 1st place advances directly to Final. 2nd & 3rd play in Semifinal. 4th is eliminated.
+            </div>
+        </div>
+    `;
+
+    // Knockout Stage Bracket
+    if (mc.semifinal || mc.final || mc.tiebreaker) {
+        html += `
+            <div style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap;">
+        `;
+        
+        if (mc.tiebreaker) {
+            let tHome = allTeams.find(t => t.id === mc.tiebreaker.homeId) || { name: mc.tiebreaker.homeId };
+            let tAway = allTeams.find(t => t.id === mc.tiebreaker.awayId) || { name: mc.tiebreaker.awayId };
+            let tieColor = mc.tiebreaker.played ? 'rgba(255,255,255,0.05)' : 'rgba(251, 191, 36, 0.1)';
+            html += `
+                <div class="dashboard-card" style="flex: 1; min-width: 300px; padding: 1.5rem; background: ${tieColor}; border-color: ${mc.tiebreaker.played ? 'rgba(255,255,255,0.1)' : '#fbbf24'};">
+                    <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; color: #fbbf24;">Tiebreaker</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <span>${tHome.name}</span>
+                        <span style="font-weight: bold;">${mc.tiebreaker.played ? mc.tiebreaker.homeScore : '-'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                        <span>${tAway.name}</span>
+                        <span style="font-weight: bold;">${mc.tiebreaker.played ? mc.tiebreaker.awayScore : '-'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Semifinal
+        if (mc.semifinal) {
+            let sHome = allTeams.find(t => t.id === mc.semifinal.homeId) || { name: mc.semifinal.homeId };
+            let sAway = allTeams.find(t => t.id === mc.semifinal.awayId) || { name: mc.semifinal.awayId };
+            let semiColor = mc.semifinal.played ? 'rgba(255,255,255,0.05)' : 'rgba(251, 191, 36, 0.1)';
+            html += `
+                <div class="dashboard-card" style="flex: 1; min-width: 300px; padding: 1.5rem; background: ${semiColor}; border-color: ${mc.semifinal.played ? 'rgba(255,255,255,0.1)' : '#fbbf24'};">
+                    <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; color: #fbbf24;">Semifinal</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <span>${sHome.name}</span>
+                        <span style="font-weight: bold;">${mc.semifinal.played ? mc.semifinal.homeScore : '-'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                        <span>${sAway.name}</span>
+                        <span style="font-weight: bold;">${mc.semifinal.played ? mc.semifinal.awayScore : '-'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Final
+        if (mc.final) {
+            let fHome = allTeams.find(t => t.id === mc.final.homeId) || { name: mc.final.homeId };
+            let fAway = allTeams.find(t => t.id === mc.final.awayId) || { name: mc.final.awayId };
+            let finalColor = mc.final.played ? 'rgba(255,255,255,0.05)' : 'rgba(251, 191, 36, 0.1)';
+            html += `
+                <div class="dashboard-card" style="flex: 1; min-width: 300px; padding: 1.5rem; background: ${finalColor}; border-color: ${mc.final.played ? 'rgba(255,255,255,0.1)' : '#fbbf24'}; box-shadow: 0 0 15px rgba(251,191,36,0.1);">
+                    <h3 style="margin: 0 0 1rem 0; font-family: 'Blockletter', sans-serif; color: #fbbf24;">Championship Final</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <span>${fHome.name}</span>
+                        <span style="font-weight: bold;">${mc.final.played ? mc.final.homeScore : '-'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                        <span>${fAway.name}</span>
+                        <span style="font-weight: bold;">${mc.final.played ? mc.final.awayScore : '-'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    container.innerHTML = html;
+    if (window.lucide) window.lucide.createIcons();
+};
 
 window.calendarSelectedDateStr = window.calendarSelectedDateStr || null;
 
@@ -2536,12 +2735,11 @@ function renderCalendarPage(container) {
         `;
         
         selectedDayObj.matches.forEach(match => {
-            const activeLeagueTeams = (typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
-            const leagueFolder = (typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl';
-            const homeTeam = activeLeagueTeams.find(t => t.id === match.homeId);
-            const awayTeam = activeLeagueTeams.find(t => t.id === match.awayId);
-            const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
-            const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+            const activeLeagueTeams = getActiveLeagueTeams(typeof gameState !== 'undefined' ? gameState : null);
+            const homeTeam = activeLeagueTeams.find(t => t.id === match.homeId) || { name: 'TBD', id: 'tbd' };
+            const awayTeam = activeLeagueTeams.find(t => t.id === match.awayId) || { name: 'TBD', id: 'tbd' };
+            const homeLogoPath = getTeamLogoUrl(homeTeam.id);
+            const awayLogoPath = getTeamLogoUrl(awayTeam.id);
             
             let statusHtml = `<span style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px;">SCHEDULED</span>`;
             
@@ -2559,7 +2757,7 @@ function renderCalendarPage(container) {
                 <div style="background: ${cardBg}; ${borderStyle} ${glow} border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; transition: transform 0.2s ease;">
                     
                     <div style="display: flex; align-items: center; gap: 1.5rem; flex: 1;">
-                        <img src="assets/logos/${leagueFolder}/${homeLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                        <img src="${homeLogoPath}" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                         <div style="display: flex; flex-direction: column;">
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Home</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; ${match.played && match.homeScore > match.awayScore ? 'color: #fff;' : (match.played ? 'color: var(--text-muted);' : 'color: var(--text-color);')}">${homeTeam.name}</span>
@@ -2575,7 +2773,7 @@ function renderCalendarPage(container) {
                             <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Away</span>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.4rem; ${match.played && match.awayScore > match.homeScore ? 'color: #fff;' : (match.played ? 'color: var(--text-muted);' : 'color: var(--text-color);')}">${awayTeam.name}</span>
                         </div>
-                        <img src="assets/logos/${leagueFolder}/${awayLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                        <img src="${awayLogoPath}" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
                     </div>
                 </div>
             `;
@@ -2635,10 +2833,7 @@ function renderCalendarPage(container) {
 }
 
 
-window.switchStandingsTab = function(tab) {
-    standingsCurrentTab = tab;
-    switchView('standings');
-};
+
 
 window.switchStandingsGroup = function(group) {
     standingsGroupBy = group;
@@ -2663,7 +2858,7 @@ function renderFullStandings(container) {
     let allStandings = [...gameState.standings];
     allStandings.forEach(s => {
         s.pts = (s.w * 2) + s.otl;
-        const info = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.teamId);
+        const info = getActiveLeagueTeams().find(t => t.id === s.teamId);
         s.teamName = info.name;
         s.conference = info.conference;
         s.division = info.division;
@@ -2699,9 +2894,9 @@ function renderFullStandings(container) {
         `;
         
         standingsArr.forEach((s, idx) => {
-            const activeLeagueTeams = (typeof localGameState !== 'undefined' && localGameState && localGameState.league === 'whl' || typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+            const activeLeagueTeams = getActiveLeagueTeams(typeof localGameState !== 'undefined' ? localGameState : null);
             const teamInfo = activeLeagueTeams.find(t => t.id === s.teamId);
-            const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            const logoFile = teamInfo.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
             const isActiveTeam = teamInfo.id === currentTeam.id;
             
             // Seed Calculation based on Clinch algorithm
@@ -2928,7 +3123,8 @@ window.startAwardsCeremony = function() {
         
         let faceUrl = 'assets/default-player.svg';
         if (p.id && p.id.includes('_')) {
-            faceUrl = `https://assets.leaguestat.com/ohl/240x240/${p.id.split('_')[1]}.jpg`;
+            const playerLeague = qmjhlTeams.some(t => t.id === p.originalTeamId) ? 'lhjmq' : (whlTeams.some(t => t.id === p.originalTeamId) ? 'whl' : 'ohl');
+            faceUrl = p.photo || `https://assets.leaguestat.com/${playerLeague}/240x240/${p.id.split('_')[1]}.jpg`;
         }
         
         return `
@@ -2945,9 +3141,9 @@ window.startAwardsCeremony = function() {
 
     // Helper for Team Cards
     const createTeamCard = (id, title, subtitle, color, awardKey, isFinal) => {
-        const t = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(x => x.id === awards[awardKey]);
+        const t = getActiveLeagueTeams().find(x => x.id === awards[awardKey]);
         if (!t) return '';
-        const logo = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+        const logo = t.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/ /g, '-');
         
         let extraBtn = isFinal ? `
             <button class="btn" id="ceremony-finish-btn" style="margin-top: 3rem; padding: 1.2rem 3rem; font-size: 1.5rem; font-family: 'Blockletter', sans-serif; background: #fbbf24; color: #000; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 10px 25px rgba(251,191,36,0.5); transition: transform 0.2s ease;">
@@ -2961,7 +3157,7 @@ window.startAwardsCeremony = function() {
             <h2 style="color: ${color}; font-family: 'Blockletter', sans-serif; font-size: 3rem; letter-spacing: 3px;">${title}</h2>
             <p style="color: var(--text-muted); font-size: 1.5rem; margin-bottom: 2.5rem;">${subtitle}</p>
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); padding: 3rem; border-radius: 50%; width: 300px; height: 300px; border: 4px solid ${color}; box-shadow: inset 0 0 50px ${color};">
-                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo}.png" onerror="this.src='assets/logos/hockey_gm_logo.png'" style="width: 200px; height: 200px; object-fit: contain;">
+                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${logo}.png" onerror="this.src='assets/logos/hockey_gm_logo.png'" style="width: 200px; height: 200px; object-fit: contain;">
             </div>
             <h1 style="color: #fff; font-family: 'Blockletter', sans-serif; font-size: 3.5rem; margin-top: 2rem; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">${t.name.toUpperCase()}</h1>
             ${extraBtn}
@@ -3034,6 +3230,51 @@ window.startAwardsCeremony = function() {
 
 window.advanceSeason = function(precomputedAwards) {
     if (!gameState) return;
+
+    // Check Memorial Cup Winner logic for FPHL promotion
+    if (gameState.memorialCup && gameState.memorialCup.champion === currentTeam.id) {
+        // Clear it so it doesn't trigger again immediately if they stay
+        gameState.memorialCup.champion = null;
+        
+        const modalHTML = `
+            <div id="fphl-promo-modal" class="modal-overlay">
+                <div class="modal-content" style="border-color: #fbbf24; text-align: center; max-width: 600px;">
+                    <i data-lucide="crown" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1rem;"></i>
+                    <h2 style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 1rem;">MEMORIAL CUP CHAMPIONS!</h2>
+                    <p style="color: var(--text-color); margin-bottom: 1.5rem; line-height: 1.5; font-size: 1.1rem;">
+                        Congratulations! Your incredible run has attracted the attention of the <strong style="color:#fbbf24;">Federal Prospects Hockey League (FPHL)</strong>.
+                        <br><br>
+                        You are invited to step up to the pros and take over a new C-Tier franchise. Will you accept the challenge and move up a tier?
+                    </p>
+                    <div class="modal-actions" style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+                        <button class="btn" id="btn-refuse-promo" style="background: rgba(255,255,255,0.1); color: white;">Stay in CHL</button>
+                        <button class="btn" id="btn-accept-promo" style="background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white; font-weight: bold; padding: 1rem 2rem;">JOIN THE FPHL</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        if (window.lucide) window.lucide.createIcons();
+
+        document.getElementById('btn-refuse-promo').addEventListener('click', () => {
+            document.getElementById('fphl-promo-modal').remove();
+            // Continue advancing season in CHL
+            advanceSeasonLogic(precomputedAwards);
+        });
+
+        document.getElementById('btn-accept-promo').addEventListener('click', () => {
+            document.getElementById('fphl-promo-modal').remove();
+            alert("FPHL Franchise Selection Module not yet loaded. (Placeholder for next phase!)");
+            // Placeholder: for now we just continue in CHL until FPHL roster/teams are built.
+            advanceSeasonLogic(precomputedAwards);
+        });
+        return;
+    }
+
+    advanceSeasonLogic(precomputedAwards);
+};
+
+function advanceSeasonLogic(precomputedAwards) {
     
     // Compute Awards and save history
     let awards = precomputedAwards || computeSeasonAwards();
@@ -3113,7 +3354,7 @@ window.advanceSeason = function(precomputedAwards) {
     gameState.matchIndex = 1;
     gameState.record = { wins: 0, losses: 0, otl: 0 };
     
-    gameState.standings = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).map(team => ({
+    gameState.standings = getActiveLeagueTeams().map(team => ({
         teamId: team.id,
         gp: 0, w: 0, l: 0, otl: 0, pts: 0, gf: 0, ga: 0,
         streak: { type: 'None', count: 0 },
@@ -3139,7 +3380,7 @@ window.advanceSeason = function(precomputedAwards) {
         });
     }
     
-    const currentLeagueTeams = gameState.league === 'whl' ? whlTeams : ohlTeams;
+    const currentLeagueTeams = gameState.league === 'whl' ? whlTeams : (gameState.league === 'qmjhl' ? qmjhlTeams : ohlTeams);
     gameState.schedule = generateSeasonSchedule(currentLeagueTeams, newDate);
     
     if (window.saveGame) window.saveGame();
@@ -3287,7 +3528,8 @@ window.renderCollectionPage = function(container) {
     
     const leagues = [
         { id: 'ohl', name: 'OHL', logo: 'assets/ohl-logo.svg', color: '#047ac4', teams: ohlTeams },
-        { id: 'whl', name: 'WHL', logo: 'assets/whl-logo.svg', color: '#e2373f', teams: whlTeams }
+        { id: 'whl', name: 'WHL', logo: 'assets/whl-logo.svg', color: '#e2373f', teams: whlTeams },
+        { id: 'qmjhl', name: 'QMJHL', logo: 'assets/qmjhl-logo.svg', color: '#f87171', teams: qmjhlTeams }
     ];
 
     if (window.collectionState === 'leagues') {
@@ -3338,7 +3580,7 @@ window.renderCollectionPage = function(container) {
         
         activeLeague.teams.forEach(team => {
             const loopLeagueFolder = activeLeague.id;
-            const logoFile = team.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+            const logoFile = team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
             const isSelected = window.currentCollectionTeamId === team.id;
             
             const isCompleted = (gameState.completedCollections || []).includes(team.id);
@@ -3376,7 +3618,7 @@ window.renderCollectionPage = function(container) {
         </div>
         `;
     } else {
-        const allTeamsForRight = [...ohlTeams, ...whlTeams];
+        const allTeamsForRight = [...ohlTeams, ...whlTeams, ...qmjhlTeams];
         const selectedTeam = allTeamsForRight.find(t => t.id === window.currentCollectionTeamId);
         let originalRoster = window.globalDraftPool.filter(p => p.originalTeamId === selectedTeam.id);
         
@@ -3422,7 +3664,7 @@ window.renderCollectionPage = function(container) {
                         <!-- ALBUM HEADER -->
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; margin-bottom: 2rem;">
                             <div style="display: flex; align-items: center; gap: 1rem;">
-                                <img src="assets/logos/${whlTeams.some(t => t.id === selectedTeam.id) ? 'whl' : 'ohl'}/${selectedTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="height: 40px; object-fit: contain;">
+                                <img src="assets/logos/${qmjhlTeams.some(t => t.id === selectedTeam.id) ? 'qmjhl' : (whlTeams.some(t => t.id === selectedTeam.id) ? 'whl' : 'ohl')}/${selectedTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="height: 40px; object-fit: contain;">
                                 <h2 style="font-family: 'Blockletter', sans-serif; font-size: 2rem; margin: 0; color: ${selectedTeam.colors.primary};">${selectedTeam.name}</h2>
                             </div>
                             <div style="background-color: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; color: var(--text-color);">
@@ -3464,7 +3706,7 @@ window.checkTeamCompletion = function(teamId) {
 }
 
 window.awardCompletionPacks = function(teamId) {
-    const team = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === teamId);
+    const team = getActiveLeagueTeams().find(t => t.id === teamId);
     
     // Simulate FPHL (C-Tier) rewards using random OHL players buffed to Silver
     let availablePlayers = window.globalDraftPool.filter(p => {
@@ -3552,11 +3794,11 @@ window.renderPlayoffsPage = function(container) {
     `;
 
     if (p.champion) {
-        let champTeam = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === p.champion);
+        let champTeam = getActiveLeagueTeams().find(t => t.id === p.champion);
         html += `
             <div class="dashboard-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; border-color: #fbbf24; text-align: center;">
                 <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: 1rem;"></i>
-                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${champTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 1.5rem;">
+                <img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${champTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-')}.png" style="width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 1.5rem;">
                 <h2 style="font-family: 'Blockletter', sans-serif; font-size: 3rem; color: #fbbf24; margin: 0;">${champTeam.name.toUpperCase()}</h2>
                 <h3 style="color: var(--text-color); margin: 0; font-size: 1.5rem; opacity: 0.8;">OHL CHAMPIONS</h3>
             </div>
@@ -3575,11 +3817,11 @@ window.renderPlayoffsPage = function(container) {
 
     function renderMatchup(s) {
         if (!s) return `<div class="matchup-card empty">TBD</div>`;
-        const t1 = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
-        const t2 = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
+        const t1 = getActiveLeagueTeams().find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
+        const t2 = getActiveLeagueTeams().find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
         
-        const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
-        const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
+        const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-') : 'placeholder';
         
         const winner = s.winner;
         
@@ -3587,15 +3829,15 @@ window.renderPlayoffsPage = function(container) {
             <div class="matchup-card" onclick="openSeriesModal('${s.id}')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="matchup-row ${winner === t1.id ? 'winner' : ''}">
                     <div class="matchup-team">
-                        ${t1.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
-                        <span>${t1.name.split(' ').pop()}</span>
+                        ${t1.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${logo1}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${getTeamNameParts(t1.name).mascot}</span>
                     </div>
                     <span>${s.highSeedWins}</span>
                 </div>
                 <div class="matchup-row ${winner === t2.id ? 'winner' : ''}">
                     <div class="matchup-team">
-                        ${t2.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? 'whl' : 'ohl'}/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
-                        <span>${t2.name.split(' ').pop()}</span>
+                        ${t2.id !== 'tbd' ? `<img src="assets/logos/${(typeof gameState !== 'undefined' && gameState ? (gameState.league === 'whl' ? 'whl' : (gameState.league === 'qmjhl' ? 'qmjhl' : 'ohl')) : 'ohl')}/${logo2}.png" style="width: 16px; height: 16px; object-fit: contain;">` : ''}
+                        <span>${getTeamNameParts(t2.name).mascot}</span>
                     </div>
                     <span>${s.lowSeedWins}</span>
                 </div>
@@ -3669,11 +3911,11 @@ window.openSeriesModal = function(seriesId) {
     }
     
     let matchesHtml = matches.map((m, idx) => {
-        let home = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === m.homeId) || { name: 'TBD', id: 'tbd' };
-        let away = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === m.awayId) || { name: 'TBD', id: 'tbd' };
+        let home = getActiveLeagueTeams().find(t => t.id === m.homeId) || { name: 'TBD', id: 'tbd' };
+        let away = getActiveLeagueTeams().find(t => t.id === m.awayId) || { name: 'TBD', id: 'tbd' };
         
-        let homeLogo = home.id !== 'tbd' ? home.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
-        let awayLogo = away.id !== 'tbd' ? away.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+        let homeLogo = home.id !== 'tbd' ? home.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+        let awayLogo = away.id !== 'tbd' ? away.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').split(' ').join('-') : 'placeholder';
         
         let dateObj = m.gameDate ? new Date(m.gameDate) : null;
         let dateStr = dateObj ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() : 'TBA';
@@ -3691,7 +3933,7 @@ window.openSeriesModal = function(seriesId) {
                 <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; width: 70px; color: #fff; padding-left: 0.5rem;">GAME ${m.gameNum || (idx + 1)}</span>
                 
                 <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 0.8rem; opacity: ${awayOpacity};">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${away.name.split(' ').pop()}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${getTeamNameParts(away.name).mascot}</span>
                     <img src="assets/logos/${leagueFolder}/${awayLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-left: 0.5rem;">${m.played ? m.awayScore : '-'}</span>
                 </div>
@@ -3703,7 +3945,7 @@ window.openSeriesModal = function(seriesId) {
                 <div style="flex: 1; display: flex; align-items: center; justify-content: flex-start; gap: 0.8rem; opacity: ${homeOpacity};">
                     <span style="font-family: 'Blockletter', sans-serif; font-size: 1.5rem; color: #fff; margin-right: 0.5rem;">${m.played ? m.homeScore : '-'}</span>
                     <img src="assets/logos/${leagueFolder}/${homeLogo}.png" style="width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${home.name.split(' ').pop()}</span>
+                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.1rem; color: #fff;">${getTeamNameParts(home.name).mascot}</span>
                 </div>
                 
             </div>
@@ -3714,8 +3956,8 @@ window.openSeriesModal = function(seriesId) {
         matchesHtml = `<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No games scheduled yet.</p>`;
     }
     
-    const high = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === series.highSeedId) || { name: 'TBD' };
-    const low = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(t => t.id === series.lowSeedId) || { name: 'TBD' };
+    const high = getActiveLeagueTeams().find(t => t.id === series.highSeedId) || { name: 'TBD' };
+    const low = getActiveLeagueTeams().find(t => t.id === series.lowSeedId) || { name: 'TBD' };
 
     let modalHTML = `
         <div id="series-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);" onclick="this.remove()">
@@ -3783,17 +4025,18 @@ window.renderHallOfFame = function(container) {
         let teamInfo = null;
         if (p.originalTeamId) {
             teamInfo = ohlTeams.find(t => t.id === p.originalTeamId);
-            if (!teamInfo) teamInfo = whlTeams.find(t => t.id === p.originalTeamId);
+            if (!teamInfo) teamInfo = (ohlTeams.find(t => t.id === p.originalTeamId) || whlTeams.find(t => t.id === p.originalTeamId) || qmjhlTeams.find(t => t.id === p.originalTeamId));
         }
-        const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-') : '';
+        const logoPath = getTeamLogoUrl(p.originalTeamId);
+        const playerLeague = qmjhlTeams.some(t => t.id === p.originalTeamId) ? 'lhjmq' : (whlTeams.some(t => t.id === p.originalTeamId) ? 'whl' : 'ohl');
         return `
             <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; gap: 1rem;">
-                <img src="https://assets.leaguestat.com/ohl/240x240/${p.id.split('_')[1]}.jpg" onerror="this.src='assets/default-player.svg'" style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #fbbf24; background-color: #000;">
+                <img src="${p.photo || `https://assets.leaguestat.com/${playerLeague}/240x240/${p.id.split('_')[1]}.jpg`}" onerror="this.src='assets/default-player.svg'" style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #fbbf24; background-color: #000;">
                 <div>
                     <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.1rem; margin-bottom: 0.2rem;">${title}</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        ${logoFile ? `<img src="assets/logos/${leagueFolder}/${logoFile}.png" style="height: 16px; object-fit: contain;">` : ''}
+                        ${logoPath ? `<img src="${logoPath}" style="height: 16px; object-fit: contain;">` : ''}
                         <span style="color: #fff; font-weight: bold; font-size: 1rem;">${p.name}</span>
                     </div>
                 </div>
@@ -3802,12 +4045,12 @@ window.renderHallOfFame = function(container) {
     };
     
     const renderTeamAward = (title, subtitle, teamId) => {
-        const t = ((typeof gameState !== 'undefined' && gameState && gameState.league === 'whl') ? whlTeams : ohlTeams).find(x => x.id === teamId);
+        const t = getActiveLeagueTeams().find(x => x.id === teamId);
         if (!t) return '';
-        const logoFile = t.name.toLowerCase().replace(/[']/g, '').replace(/ /g, '-');
+        const logoPath = getTeamLogoUrl(teamId);
         return `
             <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.5); display: flex; align-items: center; gap: 1rem; flex: 1;">
-                <img src="assets/logos/${leagueFolder}/${logoFile}.png" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));">
+                <img src="${logoPath}" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));">
                 <div>
                     <div style="color: #fbbf24; font-family: 'Blockletter', sans-serif; font-size: 1.2rem; margin-bottom: 0.2rem;">${title}</div>
                     <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.2rem;">${subtitle}</div>

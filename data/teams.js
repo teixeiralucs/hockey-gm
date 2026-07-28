@@ -46,3 +46,42 @@ export const whlTeams = [
     { id: 'wenatchee', name: 'Wenatchee Wild', conference: 'West', division: 'US', colors: { primary: '#002f8e', secondary: '#000000' } },
     { id: 'vancouver', name: 'Vancouver Giants', conference: 'West', division: 'BC', colors: { primary: '#b80305', secondary: '#010101' } }
 ];
+
+export const qmjhlTeams = [
+    { id: 'blainville-boisbriand', name: 'Blainville-Boisbriand Armada', conference: 'West', division: 'West', colors: { primary: '#231f20', secondary: '#fcfefc' } },
+    { id: 'gatineau', name: 'Gatineau Olympiques', conference: 'West', division: 'West', colors: { primary: '#acb2bc', secondary: '#000000' } },
+    { id: 'rouyn-noranda', name: 'Rouyn-Noranda Huskies', conference: 'West', division: 'West', colors: { primary: '#d71f21', secondary: '#000000' } },
+    { id: 'val-dor', name: 'Val-d\'Or Foreurs', conference: 'West', division: 'West', colors: { primary: '#017143', secondary: '#000000' } },
+    { id: 'drummondville', name: 'Drummondville Voltigeurs', conference: 'West', division: 'Central', colors: { primary: '#c4222c', secondary: '#010101' } },
+    { id: 'shawinigan', name: 'Shawinigan Cataractes', conference: 'West', division: 'Central', colors: { primary: '#04265c', secondary: '#001c63' } },
+    { id: 'sherbrooke', name: 'Sherbrooke Phoenix', conference: 'West', division: 'Central', colors: { primary: '#002e62', secondary: '#397ecc' } },
+    { id: 'victoriaville', name: 'Victoriaville Tigres', conference: 'West', division: 'Central', colors: { primary: '#fcb825', secondary: '#000000' } },
+    { id: 'baie-comeau', name: 'Baie-Comeau Drakkar', conference: 'East', division: 'East', colors: { primary: '#ed1c24', secondary: '#003087' } },
+    { id: 'chicoutimi', name: 'Chicoutimi Saguenéens', conference: 'East', division: 'East', colors: { primary: '#003263', secondary: '#000000' } },
+    { id: 'quebec', name: 'Quebec Remparts', conference: 'East', division: 'East', colors: { primary: '#bf1a2f', secondary: '#010101' } },
+    { id: 'rimouski', name: 'Rimouski Oceanic', conference: 'East', division: 'East', colors: { primary: '#023871', secondary: '#010101' } },
+    { id: 'newfoundland', name: 'Newfoundland Regiment', conference: 'East', division: 'Maritimes', colors: { primary: '#0b2240', secondary: '#8a2332' } },
+    { id: 'cape-breton', name: 'Cape Breton Eagles', conference: 'East', division: 'Maritimes', colors: { primary: '#f6b221', secondary: '#010101' } },
+    { id: 'charlottetown', name: 'Charlottetown Islanders', conference: 'East', division: 'Maritimes', colors: { primary: '#d7a151', secondary: '#010101' } },
+    { id: 'halifax', name: 'Halifax Mooseheads', conference: 'East', division: 'Maritimes', colors: { primary: '#005838', secondary: '#cf102d' } },
+    { id: 'moncton', name: 'Moncton Wildcats', conference: 'East', division: 'Maritimes', colors: { primary: '#083a6b', secondary: '#cf102d' } },
+    { id: 'saint-john', name: 'Saint John Sea Dogs', conference: 'East', division: 'Maritimes', colors: { primary: '#004785', secondary: '#a7a8aa' } }
+];
+
+export function getTeamLogoUrl(teamId) {
+    if (!teamId || teamId === 'tbd') return 'assets/logos/hockey_gm_logo.png';
+    let team = ohlTeams.find(t => t.id === teamId);
+    let leagueFolder = 'ohl';
+    if (!team) {
+        team = whlTeams.find(t => t.id === teamId);
+        if (team) {
+            leagueFolder = 'whl';
+        } else {
+            team = qmjhlTeams.find(t => t.id === teamId);
+            if (team) leagueFolder = 'qmjhl';
+        }
+    }
+    if (!team) return 'assets/logos/hockey_gm_logo.png';
+    const logoFile = team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/ /g, '-');
+    return `assets/logos/${leagueFolder}/${logoFile}.png`;
+}

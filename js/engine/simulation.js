@@ -1,8 +1,12 @@
-import { ohlTeams, whlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams, qmjhlTeams } from '../../data/teams.js';
 import { processPlayoffMatchResult, advancePlayoffRound } from '../playoffs.js';
+import { processMemorialCupMatchResult, advanceMemorialCupPhase } from '../memorial_cup.js';
 
 function getActiveTeams(gameState) {
-    return (gameState && gameState.league === 'whl') ? whlTeams : ohlTeams;
+    if (!gameState) return ohlTeams;
+    if (gameState.league === 'whl') return whlTeams;
+    if (gameState.league === 'qmjhl') return qmjhlTeams;
+    return ohlTeams;
 }
 
 
@@ -44,6 +48,9 @@ export function simulateBackgroundDays(gameState, daysCount, callbacks = {}) {
         let advancedPlayoffs = false;
         if (gameState.playoffs && gameState.playoffs.isActive) {
             advancePlayoffRound(gameState);
+        }
+        if (gameState.memorialCup && gameState.memorialCup.isActive) {
+            advanceMemorialCupPhase(gameState);
         }
     }
     
@@ -103,6 +110,8 @@ export function simulateBackgroundMatch(gameState, match) {
     
     if (match.isPlayoff) {
         processPlayoffMatchResult(match, gameState);
+    } else if (match.isMemorialCup) {
+        processMemorialCupMatchResult(gameState, match);
     } else {
         updateStandings(gameState, match.homeId, match.awayId, homeScore, awayScore, isOT);
     }

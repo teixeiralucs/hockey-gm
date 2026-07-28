@@ -1,4 +1,5 @@
-import { ohlTeams, whlTeams } from '../data/teams.js';
+import { ohlTeams, whlTeams, qmjhlTeams } from '../data/teams.js';
+import { startMemorialCup } from './memorial_cup.js';
 
 export function generatePlayoffs(gameState) {
     if (!gameState.standings) return;
@@ -6,7 +7,7 @@ export function generatePlayoffs(gameState) {
     let eastTeams = [];
     let westTeams = [];
 
-    const activeTeams = gameState.league === 'whl' ? whlTeams : ohlTeams;
+    const activeTeams = gameState.league === 'whl' ? whlTeams : (gameState.league === 'qmjhl' ? qmjhlTeams : ohlTeams);
 
     // Group teams by conference and compute points
     gameState.standings.forEach(record => {
@@ -163,7 +164,11 @@ export function advancePlayoffRound(gameState) {
     // If Championship is completed
     if (p.round === 4) {
         p.champion = prevRoundSeries[0].winner;
+        p.runnerUp = prevRoundSeries[0].highSeedId === p.champion ? prevRoundSeries[0].lowSeedId : prevRoundSeries[0].highSeedId;
         p.isActive = false;
+        
+        startMemorialCup(gameState);
+
         return true; // Reached end
     }
 

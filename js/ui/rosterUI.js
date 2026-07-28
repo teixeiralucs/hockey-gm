@@ -1,4 +1,5 @@
 // rosterUI.js
+import { ohlTeams, whlTeams, qmjhlTeams } from '../../data/teams.js';
 
 let benchSortMetric = 'overall';
 let benchSortDesc = true;
@@ -34,14 +35,7 @@ function renderRinkSlot(slotId, label, gameState) {
 
 function getPlayerMinicardHTML(player) {
     let logoUrl = player.photo || 'assets/default-player.svg';
-    const mod = window.getPlayerModifiers(player);
-    const finalOVR = Math.round(player.overall * (1 + mod));
-    let ovrBgColor = 'var(--team-primary, #3b82f6)';
-    if (mod > 0) {
-        ovrBgColor = '#10b981';
-    } else if (mod < 0) {
-        ovrBgColor = '#ef4444';
-    }
+    const playerLeague = typeof qmjhlTeams !== 'undefined' && qmjhlTeams.some(t => t.id === player.originalTeamId) ? 'lhjmq' : 'other';
     const tierColors = {
         'gold': '#fbbf24',
         'silver': '#94a3b8',
@@ -50,13 +44,25 @@ function getPlayerMinicardHTML(player) {
     };
     const tierColor = tierColors[player.tier?.toLowerCase()] || '#3b82f6';
     const bColor = player.isFPHL ? '#fbbf24' : tierColor;
-    
+
+    const mod = window.getPlayerModifiers(player);
+    const finalOVR = Math.round(player.overall * (1 + mod));
+    let ovrBgColor = 'var(--team-primary, #3b82f6)';
+    if (mod > 0) {
+        ovrBgColor = '#10b981';
+    } else if (mod < 0) {
+        ovrBgColor = '#ef4444';
+    }
+
+
+    const photoFilter = playerLeague === 'lhjmq' ? `object-fit: contain !important; object-position: bottom; background: radial-gradient(circle, ${tierColor}40 0%, rgba(15,23,42,1) 100%); border-bottom: 2px solid ${tierColor};` : '';
+
     const nameParts = player.name.split(' ');
     const shortName = nameParts.length > 1 ? `${nameParts[0][0]}. ${nameParts[nameParts.length - 1]}` : player.name;
 
     return `
         <div class="player-minicard player-card" draggable="true" data-player-id="${player.id}" onclick="window.openPlayerCardModal('${player.id}')" style="cursor: pointer; border: 3px solid ${bColor}; padding: 0 !important; background: #0f172a !important; min-height: 0 !important; display: flex; flex-direction: column;">
-            <img src="${logoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; clip-path: circle(50%); display: block; margin: 0; padding: 0;">
+            <img src="${logoUrl}" alt="${player.name}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; clip-path: circle(50%); display: block; margin: 0; padding: 0; ${photoFilter}">
             <div class="minicard-ovr" style="position: absolute; top: -6px; right: -6px; background: ${ovrBgColor}; color: #fff; font-size: 0.88rem; font-weight: bold; width: 27px; height: 27px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #0f172a;">${finalOVR}</div>
             <div class="minicard-name" style="position: absolute; bottom: -8px; background: #0f172a; color: #fff; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.2); font-weight: 600; line-height: 1;">${shortName}</div>
         </div>
@@ -140,9 +146,18 @@ export function renderRoster(container, gameState) {
                 
                 <!-- BENTO 1: HEADER -->
                 <div class="bento-card" style="display: flex; justify-content: space-between; flex-direction: row; align-items: center; flex-shrink: 0; padding: 1rem 2rem;">
-                    <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Lineup</span>
-                        <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">ACTIVE ROSTER</h2>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        ${(() => {
+                            let lFolder = 'ohl';
+                            if (typeof qmjhlTeams !== 'undefined' && qmjhlTeams.some(t => t.id === gameState.team?.id)) lFolder = 'qmjhl';
+                            else if (typeof whlTeams !== 'undefined' && whlTeams.some(t => t.id === gameState.team?.id)) lFolder = 'whl';
+                            const myLogo = gameState.team?.name ? gameState.team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-') : '';
+                            return myLogo ? `<img src="assets/logos/${lFolder}/${myLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));">` : '';
+                        })()}
+                        <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;">Lineup</span>
+                            <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; font-family: 'Blockletter', sans-serif; color: var(--text-color);">ACTIVE ROSTER</h2>
+                        </div>
                     </div>
                     
                     <div style="background-color: rgba(255,255,255,0.05); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 0.6rem;">

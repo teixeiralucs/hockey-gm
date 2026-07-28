@@ -1,6 +1,20 @@
-import { ohlTeams, whlTeams } from '../../data/teams.js';
-function getActiveTeams() { return (localGameState && localGameState.league === 'whl') ? whlTeams : ohlTeams; }
-function getLeagueFolder() { return (localGameState && localGameState.league === 'whl') ? 'whl' : 'ohl'; }
+
+function getTeamNameParts(fullName) {
+    if (!fullName) return { city: '', mascot: '' };
+    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants'];
+    for (let m of twoWordMascots) {
+        if (fullName.endsWith(m)) {
+            return { city: fullName.substring(0, fullName.length - m.length).trim(), mascot: m };
+        }
+    }
+    const parts = fullName.split(' ');
+    const mascot = parts.pop();
+    const city = parts.join(' ');
+    return { city, mascot };
+}
+import { ohlTeams, whlTeams, qmjhlTeams, getTeamLogoUrl } from '../../data/teams.js';
+function getActiveTeams() { if (!localGameState) return ohlTeams; if (localGameState.league === 'whl') return whlTeams; if (localGameState.league === 'qmjhl') return qmjhlTeams; return ohlTeams; }
+function getLeagueFolder() { if (!localGameState) return 'ohl'; if (localGameState.league === 'whl') return 'whl'; if (localGameState.league === 'qmjhl') return 'qmjhl'; return 'ohl'; }
 
 let currentStandingsTab = 'division';
 let standingsGroupSortStates = {}; // Stores { metric, desc } per group ID
@@ -17,7 +31,7 @@ export function renderDashboard(container, gameState, currentTeam) {
 
     // No need to default currentStandingsConf here anymore
 
-    const logoFile = currentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+
     
     // Find Next Match
     let nextMatchObj = null;
@@ -69,8 +83,8 @@ export function renderDashboard(container, gameState, currentTeam) {
     if (nextMatchObj) {
         const awayTeam = getActiveTeams().find(t => t.id === nextMatchObj.awayId);
         const homeTeam = getActiveTeams().find(t => t.id === nextMatchObj.homeId);
-        const awayLogo = awayTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
-        const homeLogo = homeTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+        const awayLogo = awayTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
+        const homeLogo = homeTeam.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-');
         let awayStandings = gameState.standings.find(s => s.teamId === awayTeam.id) || {w:0, l:0, otl:0};
         let homeStandings = gameState.standings.find(s => s.teamId === homeTeam.id) || {w:0, l:0, otl:0};
         
@@ -105,8 +119,8 @@ export function renderDashboard(container, gameState, currentTeam) {
         if (nextMatchObj.isPlayoff && gameState.playoffs) {
             let series = gameState.playoffs.series.find(s => s.id === nextMatchObj.seriesId);
             if (series) {
-                let highTeamStr = series.highSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.highSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'HIGH');
-                let lowTeamStr = series.lowSeedId === homeTeam.id ? homeTeam.name.split(' ').slice(-1) : (series.lowSeedId === awayTeam.id ? awayTeam.name.split(' ').slice(-1) : 'LOW');
+                let highTeamStr = series.highSeedId === homeTeam.id ? getTeamNameParts(homeTeam.name).mascot : (series.highSeedId === awayTeam.id ? getTeamNameParts(awayTeam.name).mascot : 'HIGH');
+                let lowTeamStr = series.lowSeedId === homeTeam.id ? getTeamNameParts(homeTeam.name).mascot : (series.lowSeedId === awayTeam.id ? getTeamNameParts(awayTeam.name).mascot : 'LOW');
                 
                 let scoreText = '';
                 if (series.highSeedWins === series.lowSeedWins) {
@@ -126,8 +140,8 @@ export function renderDashboard(container, gameState, currentTeam) {
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 0.8rem; width: 35%;">
                     <img src="assets/logos/${getLeagueFolder()}/${awayLogo}.png" alt="Away Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
                     <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
-                        <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${awayTeam.name.split(' ').slice(0, -1).join(' ')}</span>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${awayTeam.name.split(' ').slice(-1).join(' ')}</span>
+                        <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${getTeamNameParts(awayTeam.name).city}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${getTeamNameParts(awayTeam.name).mascot}</span>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem; align-items: center; margin-top: 0.2rem;">
                         <span style="color: rgba(255,255,255,0.95); font-size: 1rem; font-weight: 700;">${awayStandings.w}-${awayStandings.l}-${awayStandings.otl}</span>
@@ -146,8 +160,8 @@ export function renderDashboard(container, gameState, currentTeam) {
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 0.8rem; width: 35%;">
                     <img src="assets/logos/${getLeagueFolder()}/${homeLogo}.png" alt="Home Logo" style="width: 110px; height: 110px; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));">
                     <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
-                        <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${homeTeam.name.split(' ').slice(0, -1).join(' ')}</span>
-                        <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${homeTeam.name.split(' ').slice(-1).join(' ')}</span>
+                        <span style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${getTeamNameParts(homeTeam.name).city}</span>
+                        <span style="font-family: 'Blockletter', sans-serif; font-size: 2rem; color: var(--text-color); text-align: center;">${getTeamNameParts(homeTeam.name).mascot}</span>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem; align-items: center; margin-top: 0.2rem;">
                         <span style="color: rgba(255,255,255,0.95); font-size: 1rem; font-weight: 700;">${homeStandings.w}-${homeStandings.l}-${homeStandings.otl}</span>
@@ -158,41 +172,61 @@ export function renderDashboard(container, gameState, currentTeam) {
             
             ${buttonHTML}
         `;
+    } else if (gameState.memorialCup && gameState.memorialCup.isActive) {
+        matchHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
+                <i data-lucide="trophy" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">MEMORIAL CUP IN PROGRESS</h3>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">Simulate the remaining Memorial Cup matches.</p>
+                <button class="btn" onclick="simulateBackgroundDays(3)" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
+                    SIMULATE NEXT DAYS
+                </button>
+            </div>
+        `;
+    } else if (gameState.memorialCup && !gameState.memorialCup.isActive) {
+        matchHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
+                <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">MEMORIAL CUP CHAMPION CROWNED</h3>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">The season has concluded.</p>
+                <button class="btn" onclick="startAwardsCeremony()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
+                    ENTER OFFSEASON
+                </button>
+            </div>
+        `;
+    } else if (!gameState.playoffs) {
+        matchHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
+                <i data-lucide="calendar-check" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">REGULAR SEASON COMPLETED</h3>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You have completed all 68 games of the regular season.</p>
+                <button class="btn" onclick="startPlayoffs()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
+                    START PLAYOFFS
+                </button>
+            </div>
+        `;
+    } else if (gameState.playoffs.isActive) {
+        matchHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
+                <i data-lucide="trophy" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
+                <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
+                    SIMULATE TO NEXT MATCH
+                </button>
+            </div>
+        `;
     } else {
-        if (!gameState.playoffs) {
-            matchHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
-                    <i data-lucide="calendar-check" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">REGULAR SEASON COMPLETED</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You have completed all 68 games of the regular season.</p>
-                    <button class="btn" onclick="startPlayoffs()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
-                        START PLAYOFFS
-                    </button>
-                </div>
-            `;
-        } else if (gameState.playoffs.isActive) {
-            matchHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
-                    <i data-lucide="trophy" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">PLAYOFFS IN PROGRESS</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">You are waiting for the next round or have been eliminated. Simulate the remaining matches.</p>
-                    <button class="btn" onclick="simulateBackgroundDays(7)" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
-                        SIMULATE TO NEXT MATCH
-                    </button>
-                </div>
-            `;
-        } else {
-            matchHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
-                    <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
-                    <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">CHAMPION CROWNED</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">The playoffs have concluded.</p>
-                    <button class="btn" onclick="startAwardsCeremony()" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
-                        ENTER OFFSEASON
-                    </button>
-                </div>
-            `;
-        }
+        matchHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; justify-content: center; text-align: center; height: 100%;">
+                <i data-lucide="award" style="width: 80px; height: 80px; color: #fbbf24; margin-bottom: -1rem;"></i>
+                <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 2.5rem; color: #fbbf24;">CHAMPION CROWNED</h3>
+                <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.5; max-width: 60%;">The playoffs have concluded. Waiting for Memorial Cup.</p>
+                <button class="btn" onclick="simulateBackgroundDays(1)" style="width: 70%; max-width: 400px; border: none; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); padding: 1rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); color: #fff;">
+                    CONTINUE
+                </button>
+            </div>
+        `;
     }
     
     // Calcula quantos jogos faltam usando o standings do proprio time
@@ -255,7 +289,7 @@ export function renderDashboard(container, gameState, currentTeam) {
             <div style="grid-column: span 4; display: flex; flex-direction: column; gap: 1.5rem;">
                 <!-- Team Identity -->
                 <div class="bento-card bento-identity" style="flex-direction: row; align-items: center; justify-content: center; text-align: left; gap: 1.2rem; padding: 1rem;">
-                    <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="${currentTeam.name} Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));">
+                    <img src="${getTeamLogoUrl(currentTeam.id)}" alt="${currentTeam.name} Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));">
                     <div style="display: flex; flex-direction: column; justify-content: center;">
                         <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.4rem; line-height: 1.1;">${currentTeam.name}</h3>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem;">
@@ -328,8 +362,8 @@ function renderStandings() {
                 const t1 = getActiveTeams().find(t => t.id === s.highSeedId) || { name: 'TBD', id: 'tbd' };
                 const t2 = getActiveTeams().find(t => t.id === s.lowSeedId) || { name: 'TBD', id: 'tbd' };
                 
-                const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
-                const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+                const logo1 = t1.id !== 'tbd' ? t1.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').split(' ').join('-') : 'placeholder';
+                const logo2 = t2.id !== 'tbd' ? t2.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').split(' ').join('-') : 'placeholder';
                 
                 const winner = s.winner;
                 
@@ -338,14 +372,14 @@ function renderStandings() {
                         <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t1.id ? '0.3' : '1'}; transition: opacity 0.3s;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
                                 ${t1.id !== 'tbd' ? `<img src="assets/logos/${getLeagueFolder()}/${logo1}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
-                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t1.name.split(' ').pop()}</span>
+                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${getTeamNameParts(t1.name).mascot}</span>
                             </div>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t1.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.highSeedWins}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; opacity: ${winner && winner !== t2.id ? '0.3' : '1'}; transition: opacity 0.3s;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
                                 ${t2.id !== 'tbd' ? `<img src="assets/logos/${getLeagueFolder()}/${logo2}.png" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6));">` : ''}
-                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${t2.name.split(' ').pop()}</span>
+                                <span style="font-family: 'Blockletter', sans-serif; font-size: 1.15rem; color: #fff; letter-spacing: 0.5px;">${getTeamNameParts(t2.name).mascot}</span>
                             </div>
                             <span style="font-family: 'Blockletter', sans-serif; font-size: 1.3rem; color: ${winner === t2.id ? '#fbbf24' : '#fff'}; text-shadow: 0 2px 5px rgba(0,0,0,0.5);">${s.lowSeedWins}</span>
                         </div>
@@ -430,7 +464,7 @@ function renderStandings() {
             let rowsHTML = '';
             teamsData.forEach((s) => {
                 const teamInfo = getActiveTeams().find(t => t.id === s.teamId);
-                const logoFile = teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+
                 const isActiveTeam = teamInfo.id === localCurrentTeam.id;
                 
                 let streakText = '-';
@@ -447,11 +481,11 @@ function renderStandings() {
                         <td style="color: rgba(255,255,255,0.6); font-family: 'Blockletter', sans-serif;">${s.rank}</td>
                         <td class="team-cell" style="text-align: left;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain;">
+                                <img src="${getTeamLogoUrl(teamInfo.id)}" alt="logo" style="width: 28px; height: 28px; object-fit: contain;">
                                 ${s.clinch ? `<span style="font-family: 'Blockletter', sans-serif; font-size: 0.9rem; color: #fbbf24; margin-right: 2px; text-shadow: 0 0 5px rgba(251, 191, 36, 0.4);">${s.clinch}</span>` : ''}
                                 <div style="display: flex; flex-direction: column; line-height: 1.1;">
-                                    <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">${teamInfo.name.split(' ').slice(0, -1).join(' ')}</span>
-                                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.05rem; color: var(--text-color);">${teamInfo.name.split(' ').slice(-1).join(' ')}</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">${getTeamNameParts(teamInfo.name).city}</span>
+                                    <span style="font-family: 'Blockletter', sans-serif; font-size: 1.05rem; color: var(--text-color);">${getTeamNameParts(teamInfo.name).mascot}</span>
                                 </div>
                             </div>
                         </td>
@@ -539,7 +573,10 @@ function renderStandings() {
                 </div>
             `;
         } else {
-            let divisions = localGameState.league === 'whl' ? ['East', 'Central', 'BC', 'US'] : ['East', 'Central', 'Midwest', 'West'];
+            let divisions;
+            if (localGameState.league === 'whl') divisions = ['East', 'Central', 'BC', 'US'];
+            else if (localGameState.league === 'qmjhl') divisions = ['East', 'Maritimes', 'West', 'Central'];
+            else divisions = ['East', 'Central', 'Midwest', 'West'];
             let gridCards = divisions.map(div => {
                 let divTeams = localGameState.standings.filter(s => { let t = getActiveTeams().find(x => x.id === s.teamId); return t && t.division === div; });
                 let groupId = `div_${div.toLowerCase()}`;
@@ -638,8 +675,7 @@ function renderLeagueLeaders() {
         } else {
             leaders.forEach(l => {
                 const teamInfo = getActiveTeams().find(t => t.id === l.teamId);
-                const logoFile = teamInfo ? teamInfo.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-') : '';
-                const logoHtml = logoFile ? `<img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
+                const logoHtml = teamInfo ? `<img src="${getTeamLogoUrl(teamInfo.id)}" alt="logo" style="width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">` : '';
                 const tColor = teamInfo ? teamInfo.colors.primary : '#3b82f6';
                 listHTML += `
                     <div class="leader-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1.1rem; background: linear-gradient(135deg, color-mix(in srgb, ${tColor} 25%, transparent) 0%, rgba(255,255,255,0.03) 100%); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; backdrop-filter: blur(8px);">
@@ -698,7 +734,6 @@ function renderTeamStars() {
         }
         
         let contentHTML = '';
-        let logoFile = localCurrentTeam.name.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
         if (starPlayer) {
             let numericStat = parseFloat(statValue);
             if (numericStat === 0 || isNaN(numericStat)) starPlayer = null;
@@ -716,7 +751,13 @@ function renderTeamStars() {
             contentHTML = `
                 <div style="position: absolute; inset: 0; opacity: 0.15; background-image: repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 4px); z-index: 1; pointer-events: none;"></div>
                 <div style="position: absolute; right: 1.5rem; top: 50%; transform: translateY(-40%); width: 140px; height: 140px; z-index: 2; border-radius: 50%; border: 4px solid var(--team-primary); box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px var(--team-primary); overflow: hidden; background: #fff;">
-                    <img src="${starPlayer.photo || `https://assets.leaguestat.com/${getLeagueFolder()}/240x240/${pId}.jpg`}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top;">
+                    ${(() => {
+                        const tierColors = {'gold': '#fbbf24', 'silver': '#94a3b8', 'bronze': '#b45309', 'c-tier': '#94a3b8'};
+                        const tColor = tierColors[starPlayer.tier?.toLowerCase()] || '#3b82f6';
+                        let pPhotoUrl = starPlayer.photo || `https://assets.leaguestat.com/${getLeagueFolder()}/240x240/${pId}.jpg`;
+                        let photoFilter = getLeagueFolder() === 'qmjhl' ? `object-fit: contain; object-position: bottom; background: radial-gradient(circle at center, ${tColor}40 0%, rgba(15,23,42,1) 100%); border-bottom: 2px solid ${tColor};` : '';
+                        return `<img src="${pPhotoUrl}" onerror="this.src='assets/default-player.svg'" style="width: 100%; height: 100%; object-fit: cover; object-position: top; ${photoFilter}">`;
+                    })()}
                 </div>
                 <div style="position: relative; z-index: 3; display: flex; flex-direction: column; justify-content: flex-end; flex: 1; margin-top: auto; padding-top: 1rem;">
                     <div style="display: flex; flex-direction: column; line-height: 0.9;">
@@ -739,7 +780,7 @@ function renderTeamStars() {
         container.innerHTML = `
             <div style="position: relative; z-index: 3; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
                 <h3 style="margin: 0; font-family: 'Blockletter', sans-serif; font-size: 1.3rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                    <img src="assets/logos/${getLeagueFolder()}/${logoFile}.png" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <img src="${getTeamLogoUrl(localCurrentTeam.id)}" style="width: 20px; height: 20px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                     ${localCurrentTeam.name.substring(0,3).toUpperCase()} HIGHLIGHTS
                 </h3>
             </div>
