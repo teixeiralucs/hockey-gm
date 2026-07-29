@@ -1,0 +1,3 @@
+- O jogo tá muito fácil.
+- O save não tá subindo pra nuvem.
+- Regras de desempate
