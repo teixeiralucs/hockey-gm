@@ -1,7 +1,7 @@
 
 function getTeamNameParts(fullName) {
     if (!fullName) return { city: '', mascot: '' };
-    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants'];
+    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants', 'Black Bears', 'River Dragons', 'Northern Lights', 'Hat Tricks'];
     for (let m of twoWordMascots) {
         if (fullName.endsWith(m)) {
             return { city: fullName.substring(0, fullName.length - m.length).trim(), mascot: m };
@@ -12,9 +12,9 @@ function getTeamNameParts(fullName) {
     const city = parts.join(' ');
     return { city, mascot };
 }
-import { ohlTeams, whlTeams, qmjhlTeams, getTeamLogoUrl } from '../../data/teams.js';
-function getActiveTeams() { if (!localGameState) return ohlTeams; if (localGameState.league === 'whl') return whlTeams; if (localGameState.league === 'qmjhl') return qmjhlTeams; return ohlTeams; }
-function getLeagueFolder() { if (!localGameState) return 'ohl'; if (localGameState.league === 'whl') return 'whl'; if (localGameState.league === 'qmjhl') return 'qmjhl'; return 'ohl'; }
+import { ohlTeams, whlTeams, qmjhlTeams, fphlTeams, getTeamLogoUrl } from '../../data/teams.js';
+function getActiveTeams() { if (!localGameState) return ohlTeams; if (localGameState.league === 'whl') return whlTeams; if (localGameState.league === 'qmjhl') return qmjhlTeams; if (localGameState.league === 'fphl') return fphlTeams; return ohlTeams; }
+function getLeagueFolder() { if (!localGameState) return 'ohl'; if (localGameState.league === 'whl') return 'whl'; if (localGameState.league === 'qmjhl') return 'qmjhl'; if (localGameState.league === 'fphl') return 'fphl'; return 'ohl'; }
 
 let currentStandingsTab = 'division';
 let standingsGroupSortStates = {}; // Stores { metric, desc } per group ID
@@ -522,7 +522,13 @@ function renderStandings() {
         
         const sortAndRankGroup = (teamsData, groupId) => {
             teamsData.forEach(s => {
-                s.pts = ((s.w || 0) * 2) + (s.otl || 0);
+                if (!s.pts) {
+                    if (localGameState.league === 'fphl') {
+                        s.pts = ((s.rw || 0) * 3) + ((s.otw || 0) * 2) + (s.otl || 0);
+                    } else {
+                        s.pts = ((s.w || 0) * 2) + (s.otl || 0);
+                    }
+                }
                 s.gd = (s.gf || 0) - (s.ga || 0);
                 let tInfo = getActiveTeams().find(t => t.id === s.teamId);
                 s.teamName = tInfo ? tInfo.name : 'Unknown';
@@ -576,6 +582,7 @@ function renderStandings() {
             let divisions;
             if (localGameState.league === 'whl') divisions = ['East', 'Central', 'BC', 'US'];
             else if (localGameState.league === 'qmjhl') divisions = ['East', 'Maritimes', 'West', 'Central'];
+            else if (localGameState.league === 'fphl') divisions = ['Atlantic', 'Great Lakes', 'Delta', 'Frontier'];
             else divisions = ['East', 'Central', 'Midwest', 'West'];
             let gridCards = divisions.map(div => {
                 let divTeams = localGameState.standings.filter(s => { let t = getActiveTeams().find(x => x.id === s.teamId); return t && t.division === div; });

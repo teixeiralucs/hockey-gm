@@ -70,28 +70,29 @@ export const qmjhlTeams = [
 
 export const fphlTeams = [
     // Eastern Conference - Atlantic Division
-    { id: 'binghamton', name: 'Binghamton Black Bears', conference: 'Eastern', division: 'Atlantic', colors: { primary: '#108040', secondary: '#010101' } },
-    { id: 'blue-ridge', name: 'Blue Ridge Bobcats', conference: 'Eastern', division: 'Atlantic', colors: { primary: '#1976bc', secondary: '#fac11a' } },
-    { id: 'danbury', name: 'Danbury Hat Tricks', conference: 'Eastern', division: 'Atlantic', colors: { primary: '#ff6e27', secondary: '#bbbbbb' } },
-    { id: 'twin-city', name: 'Twin City Thunderbirds', conference: 'Eastern', division: 'Atlantic', colors: { primary: '#97070f', secondary: '#ece9e9' } },
+    { id: 'binghamton', name: 'Binghamton Black Bears', conference: 'East', division: 'Atlantic', colors: { primary: '#108040', secondary: '#010101' } },
+    { id: 'blue-ridge', name: 'Blue Ridge Bobcats', conference: 'East', division: 'Atlantic', colors: { primary: '#1976bc', secondary: '#fac11a' } },
+    { id: 'danbury', name: 'Danbury Hat Tricks', conference: 'East', division: 'Atlantic', colors: { primary: '#ff6e27', secondary: '#bbbbbb' } },
+    { id: 'twin-city', name: 'Twin City Thunderbirds', conference: 'East', division: 'Atlantic', colors: { primary: '#97070f', secondary: '#ece9e9' } },
     
     // Eastern Conference - Great Lakes Division
-    { id: 'port-huron', name: 'Port Huron Prowlers', conference: 'Eastern', division: 'Great Lakes', colors: { primary: '#e31937', secondary: '#ffc83f' } },
-    { id: 'motor-city', name: 'Motor City Rockers', conference: 'Eastern', division: 'Great Lakes', colors: { primary: '#531e57', secondary: '#000000' } },
-    { id: 'indiana', name: 'Indiana Sentinels', conference: 'Eastern', division: 'Great Lakes', colors: { primary: '#0e1d49', secondary: '#f8be3c' } },
-    { id: 'watertown', name: 'Watertown Wolves', conference: 'Eastern', division: 'Great Lakes', colors: { primary: '#16437a', secondary: '#fbfbfb' } },
+    { id: 'port-huron', name: 'Port Huron Prowlers', conference: 'East', division: 'Great Lakes', colors: { primary: '#e31937', secondary: '#ffc83f' } },
+    { id: 'motor-city', name: 'Motor City Rockers', conference: 'East', division: 'Great Lakes', colors: { primary: '#531e57', secondary: '#000000' } },
+    { id: 'indiana', name: 'Indiana Sentinels', conference: 'East', division: 'Great Lakes', colors: { primary: '#0e1d49', secondary: '#f8be3c' } },
+    { id: 'watertown', name: 'Watertown Wolves', conference: 'East', division: 'Great Lakes', colors: { primary: '#16437a', secondary: '#fbfbfb' } },
     
     // Western Conference - Delta Division
-    { id: 'baton-rouge-kingfish', name: 'Baton Rouge Kingfish', conference: 'Western', division: 'Delta', colors: { primary: '#079fbd', secondary: '#348c70' } },
-    { id: 'monroe', name: 'Monroe Moccasins', conference: 'Western', division: 'Delta', colors: { primary: '#35262b', secondary: '#610101' } },
-    { id: 'columbus', name: 'Columbus River Dragons', conference: 'Western', division: 'Delta', colors: { primary: '#43c2cc', secondary: '#a61d2f' } },
+    { id: 'baton-rouge-kingfish', name: 'Baton Rouge Kingfish', conference: 'West', division: 'Delta', colors: { primary: '#079fbd', secondary: '#348c70' } },
+    { id: 'monroe', name: 'Monroe Moccasins', conference: 'West', division: 'Delta', colors: { primary: '#35262b', secondary: '#610101' } },
+    { id: 'mid-south-monarchs', name: 'Mid-South Monarchs', conference: 'West', division: 'Delta', colors: { primary: '#0c2340', secondary: '#c8102e' } },
+    { id: 'columbus', name: 'Columbus River Dragons', conference: 'West', division: 'Delta', colors: { primary: '#43c2cc', secondary: '#a61d2f' } },
     
     // Western Conference - Frontier Division
-    { id: 'fresno', name: 'Fresno Falcons', conference: 'Western', division: 'Frontier', colors: { primary: '#0e3c70', secondary: '#bc9a5e' } },
-    { id: 'minnesota', name: 'Minnesota Northern Lights', conference: 'Western', division: 'Frontier', colors: { primary: '#7c4097', secondary: '#25ff10' } },
-    { id: 'oceanside', name: 'Oceanside', conference: 'Western', division: 'Frontier', colors: { primary: '#1a8dc8', secondary: '#d0f7fe' } },
-    { id: 'topeka', name: 'Topeka Scarecrows', conference: 'Western', division: 'Frontier', colors: { primary: '#c08448', secondary: '#67615a' } },
-    { id: 'stockton', name: 'Stockton Thunder', conference: 'Western', division: 'Frontier', colors: { primary: '#fec526', secondary: '#030302' } }
+    { id: 'fresno', name: 'Fresno Falcons', conference: 'West', division: 'Frontier', colors: { primary: '#0e3c70', secondary: '#bc9a5e' } },
+    { id: 'minnesota', name: 'Minnesota Northern Lights', conference: 'West', division: 'Frontier', colors: { primary: '#7c4097', secondary: '#25ff10' } },
+    { id: 'oceanside', name: 'Oceanside', conference: 'West', division: 'Frontier', colors: { primary: '#1a8dc8', secondary: '#d0f7fe' } },
+    { id: 'topeka', name: 'Topeka Scarecrows', conference: 'West', division: 'Frontier', colors: { primary: '#c08448', secondary: '#67615a' } },
+    { id: 'stockton', name: 'Stockton Thunder', conference: 'West', division: 'Frontier', colors: { primary: '#fec526', secondary: '#030302' } }
 ];
 
 export function getTeamLogoUrl(teamId) {

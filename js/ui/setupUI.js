@@ -1,7 +1,7 @@
 
 function getTeamNameParts(fullName) {
     if (!fullName) return { city: '', mascot: '' };
-    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants'];
+    const twoWordMascots = ['Sea Dogs', 'Wheat Kings', 'Oil Kings', 'Ice Dogs', 'IceDogs', '67\'s', 'Frontenacs', 'Greyhounds', 'Steelheads', 'Firebirds', 'Battalion', 'Winterhawks', 'Silvertips', 'Americans', 'Thunderbirds', 'Cataractes', 'Saguenéens', 'Olympiques', 'Voltigeurs', 'Foreurs', 'Huskies', 'Océanic', 'Remparts', 'Drakkar', 'Tigres', 'Eagles', 'Wildcats', 'Mooseheads', 'Islanders', 'Regiment', 'Armada', 'Titan', 'Colts', 'Petes', 'Rangers', 'Spitfires', 'Knights', 'Storm', 'Spirit', 'Sting', 'Otters', 'Attack', 'Raiders', 'Tigers', 'Hitmen', 'Blades', 'Pats', 'Rebels', 'Warriors', 'Broncos', 'Hurricanes', 'Vees', 'Cougars', 'Rockets', 'Blazers', 'Chiefs', 'Royals', 'Wild', 'Giants', 'Black Bears', 'River Dragons', 'Northern Lights', 'Hat Tricks'];
     for (let m of twoWordMascots) {
         if (fullName.endsWith(m)) {
             return { city: fullName.substring(0, fullName.length - m.length).trim(), mascot: m };
@@ -122,7 +122,7 @@ export function initLeagueSelection() {
                 <!-- WHL (Playable) -->
                 <div class="linear-card" id="league-whl" style="--card-color-light: #e2373f; --card-color-dark: #000000; width: 260px; height: 360px;">
                     <div class="linear-card-glow"></div>
-                    <img src="assets/whl-logo.svg" alt="WHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <img src="assets/logos/leagues/whl-logo.svg" alt="WHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">WHL</h3>
                     <p style="color: var(--text-muted); position: relative; z-index: 2;">Western Hockey League</p>
                 </div>
@@ -130,7 +130,7 @@ export function initLeagueSelection() {
                 <!-- OHL (Playable) -->
                 <div class="linear-card" id="league-ohl" style="--card-color-light: #60a5fa; --card-color-dark: #3b82f6; width: 260px; height: 360px;">
                     <div class="linear-card-glow"></div>
-                    <img src="assets/ohl-logo.svg" alt="OHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <img src="assets/logos/leagues/ohl-logo.svg" alt="OHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <h3 style="font-size: 2.5rem; color: #fff; font-family: 'Blockletter', sans-serif; letter-spacing: 2px; position: relative; z-index: 2;">OHL</h3>
                     <p style="color: var(--text-muted); position: relative; z-index: 2;">Ontario Hockey League</p>
                 </div>
@@ -139,7 +139,7 @@ export function initLeagueSelection() {
                 <div class="linear-card" id="league-qmjhl" style="--card-color-light: #010101; --card-color-dark: #0062b0; width: 260px; height: 360px;">
                     <div class="linear-card-glow"></div>
                     <!-- Assuming we'll add qmjhl-logo.svg later, or it will just gracefully fallback to alt text -->
-                    <img src="assets/qmjhl-logo.svg" alt="QMJHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <img src="assets/logos/leagues/qmjhl-logo.svg" alt="QMJHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">QMJHL</h3>
                     <p style="color: var(--text-muted); position: relative; z-index: 2;">Quebec Maritimes Junior HL</p>
                 </div>
@@ -147,7 +147,7 @@ export function initLeagueSelection() {
                 <!-- FPHL (Playable) -->
                 <div class="linear-card" id="league-fphl" style="--card-color-light: #c52634; --card-color-dark: #25304a; width: 260px; height: 360px;">
                     <div class="linear-card-glow"></div>
-                    <img src="assets/fphl-logo.png" alt="FPHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
+                    <img src="assets/logos/leagues/fphl-logo.png" alt="FPHL Logo" style="width: 100px; height: 100px; margin-bottom: 1.5rem; position: relative; z-index: 2; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));">
                     <h3 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #fff; position: relative; z-index: 2; font-family: 'Blockletter', sans-serif; letter-spacing: 2px;">FPHL</h3>
                     <p style="color: var(--text-muted); position: relative; z-index: 2;">Federal Prospects Hockey League</p>
                 </div>

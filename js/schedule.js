@@ -1,4 +1,4 @@
-export function generateSeasonSchedule(teams, startDate) {
+export function generateSeasonSchedule(teams, startDate, numRounds = 68) {
     let N = teams.length;
     let teamIds = teams.map(t => t.id);
     
@@ -8,8 +8,7 @@ export function generateSeasonSchedule(teams, startDate) {
         N++;
     }
     
-    // 1. Generate EXACTLY 68 Round-Robin Rounds
-    let numRounds = 68;
+    // 1. Generate EXACTLY numRounds Round-Robin Rounds
     let rounds = [];
     
     while (rounds.length < numRounds) {

@@ -1,5 +1,5 @@
 // rosterUI.js
-import { ohlTeams, whlTeams, qmjhlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams, qmjhlTeams, fphlTeams } from '../../data/teams.js';
 
 let benchSortMetric = 'overall';
 let benchSortDesc = true;
@@ -151,6 +151,7 @@ export function renderRoster(container, gameState) {
                             let lFolder = 'ohl';
                             if (typeof qmjhlTeams !== 'undefined' && qmjhlTeams.some(t => t.id === gameState.team?.id)) lFolder = 'qmjhl';
                             else if (typeof whlTeams !== 'undefined' && whlTeams.some(t => t.id === gameState.team?.id)) lFolder = 'whl';
+                            else if (typeof fphlTeams !== 'undefined' && fphlTeams.some(t => t.id === gameState.team?.id)) lFolder = 'fphl';
                             const myLogo = gameState.team?.name ? gameState.team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[']/g, '').replace(/\s+/g, '-') : '';
                             return myLogo ? `<img src="assets/logos/${lFolder}/${myLogo}.png" style="width: 50px; height: 50px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));">` : '';
                         })()}

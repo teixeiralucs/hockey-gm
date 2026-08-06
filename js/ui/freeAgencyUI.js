@@ -22,14 +22,14 @@ export function renderFreeAgencyPage(container) {
         let p = window.globalDraftPool ? window.globalDraftPool.find(x => x.id === playerId) : null;
         if (!p) return;
         
-        let price = 300;
+        let price = 450;
         let tierColor = '#b45309'; // Bronze
         
         if (p.tier === 'gold') {
-            price = 600;
+            price = 750;
             tierColor = '#fbbf24'; // Gold
         } else if (p.tier === 'silver') {
-            price = 450;
+            price = 600;
             tierColor = '#94a3b8'; // Silver
         }
 
@@ -40,7 +40,7 @@ export function renderFreeAgencyPage(container) {
                     <div style="display: flex; justify-content: center; position: relative;">
                         ${cardInnerHtml}
                         <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 20;">
-                            <span style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #ef4444; border: 5px solid #ef4444; padding: 0.5rem 2rem; transform: rotate(-15deg); text-shadow: 0 4px 6px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">SOLD</span>
+                            <span style="font-family: 'Blockletter', sans-serif; font-size: 3.5rem; color: #ef4444; border: 5px solid #ef4444; padding: 0.5rem 2rem; transform: rotate(-15deg); text-shadow: 0 4px 6px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">SIGNED</span>
                         </div>
                     </div>
                 </div>
@@ -92,14 +92,21 @@ window.signFreeAgent = function(playerId, price) {
     gameState.coins -= price;
     if (window.updateCoinsDisplay) window.updateCoinsDisplay();
     
-    // Add to players array
-    let newPlayer = {
-        ...p,
-        teamId: gameState.team.id,
-        location: 'bench',
-        stats: { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 }
-    };
-    gameState.players.push(newPlayer);
+    // Transfer or Add Player
+    let existingPlayer = gameState.players.find(x => x.id === p.id);
+    if (existingPlayer) {
+        existingPlayer.teamId = gameState.team.id;
+        existingPlayer.location = 'bench';
+        existingPlayer.stats = { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 };
+    } else {
+        let newPlayer = {
+            ...p,
+            teamId: gameState.team.id,
+            location: 'bench',
+            stats: { goals: 0, assists: 0, points: 0, games: 0, shotsAgainst: 0, saves: 0, goalsAgainst: 0 }
+        };
+        gameState.players.push(newPlayer);
+    }
     
     // Mark slot as sold
     if (!gameState.freeAgencyMarket.soldSlots) {

@@ -45,7 +45,7 @@ A Força da franquia é determinada pela média das forças dos jogadores (ver m
 
 ### 4.1 Tier da Franquia
 
-Todos os times da OHL são considerados D-List, possuindo as médias mais baixas do sistema, as médias dos jogadores serão entre 9 e 22 variando de forma aleatória todas as vezes que um novo jogo for criado. Alguns jogadores terão bônus de x1.5 em relação a média total da liga.
+Todos os times da OHL são considerados D-Tier, possuindo as médias mais baixas do sistema, as médias dos jogadores serão entre 9 e 22 variando de forma aleatória todas as vezes que um novo jogo for criado. Alguns jogadores terão bônus de x1.5 em relação a média total da liga.
 
 ## 5. Os Jogadores
 

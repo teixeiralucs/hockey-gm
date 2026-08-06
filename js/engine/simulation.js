@@ -1,4 +1,4 @@
-import { ohlTeams, whlTeams, qmjhlTeams } from '../../data/teams.js';
+import { ohlTeams, whlTeams, qmjhlTeams, fphlTeams } from '../../data/teams.js';
 import { processPlayoffMatchResult, advancePlayoffRound } from '../playoffs.js';
 import { processMemorialCupMatchResult, advanceMemorialCupPhase } from '../memorial_cup.js';
 
@@ -6,6 +6,7 @@ function getActiveTeams(gameState) {
     if (!gameState) return ohlTeams;
     if (gameState.league === 'whl') return whlTeams;
     if (gameState.league === 'qmjhl') return qmjhlTeams;
+    if (gameState.league === 'fphl') return fphlTeams;
     return ohlTeams;
 }
 
@@ -237,7 +238,9 @@ export function updateStandings(gameState, homeId, awayId, homeScore, awayScore,
     if (homeScore > awayScore) {
         if (homeStanding) { 
             homeStanding.w++; 
-            homeStanding.pts += 2; 
+            if (isOT) homeStanding.otw = (homeStanding.otw || 0) + 1;
+            else homeStanding.rw = (homeStanding.rw || 0) + 1;
+            homeStanding.pts += (gameState.league === 'fphl' ? (isOT ? 2 : 3) : 2); 
             updateStreak(homeStanding, true);
         }
         if (awayStanding) {
@@ -253,7 +256,9 @@ export function updateStandings(gameState, homeId, awayId, homeScore, awayScore,
     } else if (awayScore > homeScore) {
         if (awayStanding) { 
             awayStanding.w++; 
-            awayStanding.pts += 2; 
+            if (isOT) awayStanding.otw = (awayStanding.otw || 0) + 1;
+            else awayStanding.rw = (awayStanding.rw || 0) + 1;
+            awayStanding.pts += (gameState.league === 'fphl' ? (isOT ? 2 : 3) : 2); 
             updateStreak(awayStanding, true);
         }
         if (homeStanding) {
@@ -734,8 +739,13 @@ export function updateClinchStatuses(gameState) {
     try {
         const activeTeams = getActiveTeams(gameState);
         gameState.standings.forEach(s => {
-        s.pts = (s.w * 2) + s.otl;
-        s.maxPts = s.pts + ((68 - s.gp) * 2);
+        if (gameState.league === 'fphl') {
+            s.pts = ((s.rw || 0) * 3) + ((s.otw || 0) * 2) + (s.otl * 1);
+            s.maxPts = s.pts + (((gameState.totalMatches || 68) - s.gp) * 3);
+        } else {
+            s.pts = (s.w * 2) + s.otl;
+            s.maxPts = s.pts + (((gameState.totalMatches || 68) - s.gp) * 2);
+        }
         const info = activeTeams.find(t => t.id === s.teamId);
         s.conf = info ? info.conference : 'Unknown';
         s.div = info ? info.division : 'Unknown';
@@ -745,8 +755,9 @@ export function updateClinchStatuses(gameState) {
     const checkClinch = (team, opponents, targetRank) => {
         const sortedOpp = [...opponents].sort((a,b) => {
             if (a.maxPts !== b.maxPts) return b.maxPts - a.maxPts;
-            const maxW_a = a.w + (68 - a.gp);
-            const maxW_b = b.w + (68 - b.gp);
+            const ptsPerWin = gameState.league === 'fphl' ? 3 : 2;
+            const maxW_a = a.w + ((gameState.totalMatches || 68) - a.gp);
+            const maxW_b = b.w + ((gameState.totalMatches || 68) - b.gp);
             return maxW_b - maxW_a;
         });
         const targetOpp = sortedOpp[targetRank];
@@ -754,7 +765,7 @@ export function updateClinchStatuses(gameState) {
         
         if (team.pts > targetOpp.maxPts) return true;
         if (team.pts === targetOpp.maxPts) {
-            const targetMaxW = targetOpp.w + (68 - targetOpp.gp);
+            const targetMaxW = targetOpp.w + ((gameState.totalMatches || 68) - targetOpp.gp);
             if (team.w > targetMaxW) return true;
         }
         return false;
@@ -765,11 +776,13 @@ export function updateClinchStatuses(gameState) {
         const othersConf = othersLeague.filter(o => o.conf === s.conf);
         const othersDiv = othersLeague.filter(o => o.div === s.div);
 
+        let cutoffRank = gameState.league === 'fphl' ? 3 : 7;
+
         if (checkClinch(s, othersLeague, 0)) {
             s.clinch = 'z';
         } else if (checkClinch(s, othersDiv, 0)) {
             s.clinch = 'y';
-        } else if (checkClinch(s, othersConf, 7)) { // 8th team in opponents = 9th best overall
+        } else if (checkClinch(s, othersConf, cutoffRank)) {
             s.clinch = 'x';
         }
     });
