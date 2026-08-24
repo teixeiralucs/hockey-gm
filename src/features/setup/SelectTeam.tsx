@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, Shield, Activity, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Activity, ArrowLeft, RefreshCw } from 'lucide-react';
 import type { Team } from '../../engine/models/Team';
 import './SelectTeam.css';
+
+// Função auxiliar para embaralhar o array
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 export const SelectTeam: React.FC = () => {
   const { t } = useTranslation();
@@ -23,8 +33,11 @@ export const SelectTeam: React.FC = () => {
     }
   };
 
-  // Extrair todos os times para listar
-  const allTeams = ohl.conferences.flatMap(c => c.divisions.flatMap(d => d.teams));
+  // Sorteia 6 times aleatórios apenas na montagem (ou recarregamento)
+  const allTeams = useMemo(() => {
+    const teams = ohl.conferences.flatMap(c => c.divisions.flatMap(d => d.teams));
+    return shuffleArray(teams).slice(0, 6);
+  }, [ohl]);
 
   return (
     <div className="main-menu-container" style={{ alignItems: 'flex-start' }}>
@@ -106,7 +119,7 @@ export const SelectTeam: React.FC = () => {
         </div>
 
         {/* Coluna Direita (Detalhes táticos) */}
-        <div className="menu-right" style={{ position: 'sticky', top: '20vh' }}>
+        <div className="menu-right">
           {selectedTeam ? (
             <div className="glass-panel info-panel" style={{ position: 'relative', overflow: 'hidden' }}>
               <div style={{ backgroundColor: selectedTeam.colors.primary, height: '4px', position: 'absolute', top: 0, left: 0, right: 0 }} />
