@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { League } from '../engine/models/League';
-import { Team } from '../engine/models/Team';
+import type { League } from '../engine/models/League';
+import type { Team } from '../engine/models/Team';
 import { OHL_LEAGUE } from '../engine/data/leagues/ohl';
 import { PlayerGenerator } from '../engine/generators/PlayerGenerator';
 

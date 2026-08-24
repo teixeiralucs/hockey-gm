@@ -1,4 +1,4 @@
-import { Team } from './Team';
+import type { Team } from './Team';
 
 export type LeagueTier = 'S' | 'A' | 'B' | 'C' | 'D';
 

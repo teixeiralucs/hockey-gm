@@ -1,5 +1,5 @@
-import { League, Conference, Division } from '../../models/League';
-import { Team } from '../../models/Team';
+import type { League, Conference, Division } from '../../models/League';
+import type { Team } from '../../models/Team';
 
 // Helper for generating an empty team state (roster will be populated later by generators)
 function createEmptyTeam(

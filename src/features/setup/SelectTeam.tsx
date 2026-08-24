@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Shield, Activity, ArrowLeft } from 'lucide-react';
-import { Team } from '../../engine/models/Team';
+import type { Team } from '../../engine/models/Team';
 
 export const SelectTeam: React.FC = () => {
   const { t } = useTranslation();
