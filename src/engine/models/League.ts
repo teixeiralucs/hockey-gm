@@ -24,4 +24,5 @@ export interface League {
     primary: string;
     secondary: string;
   };
+  logoUrl: string;
 }

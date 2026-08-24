@@ -82,27 +82,26 @@ export const SelectLeague: React.FC = () => {
         {/* Direita: Painel Glassmorphism de Informações */}
         <div className="menu-right">
           {selectedLeague ? (
-            <div className="glass-panel info-panel" style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div className="glass-panel info-panel">
               <div>
-                <h3 className="font-display info-title" style={{ 
-                  fontSize: '2.5rem', 
-                  borderBottom: 'none', 
-                  paddingBottom: 0, 
-                  marginBottom: 'var(--space-2)',
-                  whiteSpace: 'nowrap',
-                  color: selectedLeague.colors.primary,
-                  textShadow: '0 2px 10px rgba(0,0,0,0.5)'
-                }}>
-                  {selectedLeague.name}
-                </h3>
+                <img 
+                  src={selectedLeague.logoUrl} 
+                  alt={selectedLeague.name} 
+                  style={{ 
+                    maxHeight: '120px', 
+                    width: 'auto', 
+                    marginBottom: 'var(--space-2)',
+                    filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.5))'
+                  }} 
+                />
                 <div className="info-stats" style={{ marginTop: 'var(--space-6)', gap: 'var(--space-8)' }}>
                   <div className="stat">
-                    <span className="stat-value font-display" style={{ fontSize: '3.5rem' }}>{selectedLeague.conferences.flatMap(c => c.divisions.flatMap(d => d.teams)).length}</span>
-                    <span className="stat-label" style={{ fontSize: '1rem' }}>Teams</span>
+                    <span className="stat-value font-display">{selectedLeague.conferences.flatMap(c => c.divisions.flatMap(d => d.teams)).length}</span>
+                    <span className="stat-label">Teams</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-value font-display" style={{ fontSize: '2rem', display: 'flex', alignItems: 'center', height: '100%', paddingBottom: '0.5rem' }}>
-                      Junior<br/>Hockey
+                    <span className="stat-value font-display">
+                      Junior Hockey
                     </span>
                   </div>
                 </div>
@@ -128,7 +127,7 @@ export const SelectLeague: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="glass-panel info-panel" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel info-panel" style={{ alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Select a league
               </span>

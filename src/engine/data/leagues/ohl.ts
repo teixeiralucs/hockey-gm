@@ -64,6 +64,7 @@ export const OHL_LEAGUE: League = {
     primary: '#047ac4',
     secondary: '#aaaaaa',
   },
+  logoUrl: '/assets/logos/leagues/ohl-logo.svg',
   conferences: [
     {
       id: 'east',

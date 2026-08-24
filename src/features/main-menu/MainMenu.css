@@ -97,6 +97,8 @@
   gap: var(--space-4);
   /* removido translateY para manter a posição correta */
   margin-top: var(--space-12); /* Empurra um pouco para baixo para alinhar com o título */
+  min-height: 320px;
+  justify-content: space-between;
 }
 
 .info-title {
@@ -126,13 +128,13 @@
   flex-direction: column;
 }
 
-.stat-value {
+.info-stats .stat-value {
   font-size: 2.5rem;
   color: var(--color-text-primary);
   line-height: 1;
 }
 
-.stat-label {
+.info-stats .stat-label {
   font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--color-text-muted);
