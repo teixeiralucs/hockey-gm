@@ -85,7 +85,7 @@
 .menu-right {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   width: 100%;
   max-width: 384px; /* w-96 to match SelectTeam details */
 }
@@ -95,7 +95,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  transform: translateY(20px);
+  /* removido translateY para manter a posição correta */
+  margin-top: var(--space-12); /* Empurra um pouco para baixo para alinhar com o título */
 }
 
 .info-title {

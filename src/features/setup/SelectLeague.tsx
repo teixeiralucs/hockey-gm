@@ -11,7 +11,7 @@ export const SelectLeague: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { supportedLeagues } = useGameStore();
-  const [selectedLeague, setSelectedLeague] = useState<League | null>(supportedLeagues[0] || null);
+  const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
 
   const handleContinue = () => {
     if (selectedLeague) {
