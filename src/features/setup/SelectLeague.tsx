@@ -84,16 +84,17 @@ export const SelectLeague: React.FC = () => {
           {selectedLeague ? (
             <div className="glass-panel info-panel">
               <div>
-                <img 
-                  src={selectedLeague.logoUrl} 
-                  alt={selectedLeague.name} 
-                  style={{ 
-                    maxHeight: '120px', 
-                    width: 'auto', 
-                    marginBottom: 'var(--space-2)',
-                    filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.5))'
-                  }} 
-                />
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-6)' }}>
+                  <img 
+                    src={selectedLeague.logoUrl} 
+                    alt={selectedLeague.name} 
+                    style={{ 
+                      maxHeight: '120px', 
+                      width: 'auto',
+                      filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.5))'
+                    }} 
+                  />
+                </div>
                 <div className="info-stats" style={{ marginTop: 'var(--space-6)', gap: 'var(--space-8)' }}>
                   <div className="stat">
                     <span className="stat-value font-display">{selectedLeague.conferences.flatMap(c => c.divisions.flatMap(d => d.teams)).length}</span>
