@@ -1,15 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
-@import "tailwindcss";
-
-@theme {
-  --font-display: 'Blockletter', 'Anton', 'Impact', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-body: 'Inter', sans-serif;
-  --color-slate-950: #0a0a0c;
-  --color-slate-900: #141418;
-  --color-accent: #00e5ff;
-  --color-accent-hover: #00b3cc;
-}
 
 @font-face {
   font-family: 'Blockletter';
@@ -40,6 +29,7 @@
   /* Fonts */
   --font-display: 'Blockletter', 'Anton', Impact, sans-serif;
   --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Spacing (Base 4) */
   --space-1: 4px;
