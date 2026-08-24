@@ -1,4 +1,4 @@
-import { Player, PlayerRole, Position, PlayerCategoryAttr, PlayerAttributes } from '../models/Player';
+import type { Player, PlayerRole, Position, PlayerCategoryAttr, PlayerAttributes } from '../models/Player';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

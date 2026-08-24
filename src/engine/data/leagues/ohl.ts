@@ -60,6 +60,10 @@ export const OHL_LEAGUE: League = {
   name: 'Ontario Hockey League',
   tier: 'D',
   totalGames: 68,
+  colors: {
+    primary: '#047ac4',
+    secondary: '#aaaaaa',
+  },
   conferences: [
     {
       id: 'east',

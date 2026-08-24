@@ -30,9 +30,9 @@ export const SelectTeam: React.FC = () => {
     <div className="select-team-container">
       {/* Botão de Voltar */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => navigate('/')} className="back-btn">
+        <button onClick={() => navigate('/select-league')} className="back-btn">
           <ArrowLeft size={16} style={{ marginRight: '8px' }} />
-          Back to Menu
+          Back to League Selection
         </button>
       </div>
 

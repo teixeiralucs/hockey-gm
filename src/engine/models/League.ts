@@ -20,4 +20,8 @@ export interface League {
   tier: LeagueTier;
   conferences: Conference[];
   totalGames: number; // e.g., 68 for OHL, 84 for NHL
+  colors: {
+    primary: string;
+    secondary: string;
+  };
 }

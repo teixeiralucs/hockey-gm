@@ -34,7 +34,7 @@ export const MainMenu: React.FC = () => {
           </header>
 
           <div className="menu-actions">
-            <Button size="lg" className="action-btn" onClick={() => navigate('/select-team')}>
+            <Button size="lg" className="action-btn" onClick={() => navigate('/select-league')}>
               <Play size={24} className="btn-icon" />
               {t('menu.newFranchise')}
             </Button>

@@ -27,19 +27,6 @@
   color: var(--color-accent);
 }
 
-.layout-asymmetric {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  flex: 1;
-}
-
-@media (min-width: 768px) {
-  .layout-asymmetric {
-    flex-direction: row;
-  }
-}
-
 /* Left Column */
 .team-list-col {
   flex: 1;
