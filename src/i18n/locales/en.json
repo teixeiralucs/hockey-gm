@@ -1,0 +1,16 @@
+{
+  "menu": {
+    "subtitle": "The Ultimate Simulation",
+    "title": "Hockey GM",
+    "newFranchise": "New Franchise",
+    "loadGame": "Load Game",
+    "hallOfFame": "Hall of Fame",
+    "settings": "Settings",
+    "latestUpdateTitle": "Latest Update",
+    "latestUpdateVersion": "Alpha 0.1.1: OHL Foundations",
+    "latestUpdateText": "The Ontario Hockey League is now fully integrated. We've established 20 real teams, dynamic player generators, and the core simulation math.",
+    "statsTeams": "Teams",
+    "statsLeagues": "Leagues",
+    "languageToggle": "PT-BR"
+  }
+}

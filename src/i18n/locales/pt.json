@@ -1,0 +1,16 @@
+{
+  "menu": {
+    "subtitle": "A Simulação Definitiva",
+    "title": "Hockey GM",
+    "newFranchise": "Nova Franquia",
+    "loadGame": "Carregar Jogo",
+    "hallOfFame": "Hall da Fama",
+    "settings": "Configurações",
+    "latestUpdateTitle": "Última Atualização",
+    "latestUpdateVersion": "Alpha 0.1.1: Fundações da OHL",
+    "latestUpdateText": "A Ontario Hockey League agora está integrada. Estabelecemos 20 times reais, geradores dinâmicos de jogadores e a matemática base de simulação.",
+    "statsTeams": "Times",
+    "statsLeagues": "Ligas",
+    "languageToggle": "EN-US"
+  }
+}
