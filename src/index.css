@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Blockletter';
+  /* O usuário precisa colocar o blockletter.otf na pasta public/fonts, ou usaremos Anton/Impact de fallback */
+  src: url('/fonts/Blockletter.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  /* Color Palette - Anti-slop Dark Mode */
+  --color-bg-base: #0a0a0c; /* Carbon deep */
+  --color-bg-surface: #141418;
+  --color-bg-glass: rgba(20, 20, 24, 0.6);
+  
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8a8a93;
+  --color-text-muted: #4f4f56;
+
+  /* Accent - Neon Ice Blue for Hockey feel */
+  --color-accent: #00e5ff;
+  --color-accent-hover: #00b3cc;
+  --color-accent-glow: rgba(0, 229, 255, 0.3);
+
+  /* Alert / Negative */
+  --color-danger: #ff2a55;
+
+  /* Fonts */
+  --font-display: 'Blockletter', 'Anton', Impact, sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+
+  /* Spacing (Base 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Typography Utilities */
+.font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: normal;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+}
+
+/* Asymmetric Layout Helpers */
+.layout-asymmetric {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--space-8);
+}
+
+@media (max-width: 768px) {
+  .layout-asymmetric {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
