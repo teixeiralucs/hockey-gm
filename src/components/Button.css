@@ -1,0 +1,71 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Variants */
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-bg-base);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  box-shadow: 0 0 16px var(--color-accent-glow);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-glass);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+  background-color: rgba(255, 42, 85, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(255, 42, 85, 0.3);
+}
+
+.btn-danger:hover {
+  background-color: rgba(255, 42, 85, 0.2);
+}
+
+/* Sizes */
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: 1rem;
+}
+
+.btn-md {
+  padding: var(--space-2) var(--space-4);
+  font-size: 1.2rem;
+}
+
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: 1.5rem;
+}
