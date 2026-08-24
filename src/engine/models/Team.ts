@@ -18,12 +18,20 @@ export interface RosterLines {
   };
 }
 
+export interface TeamColors {
+  primary: string;
+  secondary: string;
+}
+
 export interface Team {
   id: string;
-  city: string;
-  name: string;
-  abbreviation: string;
+  city: string; // Ex: 'Barrie'
+  name: string; // Ex: 'Colts'
+  abbreviation: string; // Ex: 'BAR'
   conference: string;
+  
+  colors: TeamColors;
+  logoUrl?: string;
   
   // Lista raw de jogadores pertencentes ao time
   players: Player[];
