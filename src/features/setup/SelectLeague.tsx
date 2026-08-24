@@ -53,14 +53,14 @@ export const SelectLeague: React.FC = () => {
         {/* Esquerda: Conteúdo Principal */}
         <div className="menu-left">
           <header className="game-header">
-            <h2 className="game-subtitle" style={{ color: 'var(--color-text-secondary)' }}>The Ultimate Simulation</h2>
+            <h2 className="game-subtitle">The Ultimate Simulation</h2>
             <h1 className="game-title font-display" style={{ fontSize: '4rem' }}>
               Choose Your<br/>
               <span style={{ color: 'var(--color-accent)' }}>League</span>
             </h1>
           </header>
 
-          <div className="menu-actions">
+          <div className="menu-actions" style={{ maxWidth: '450px' }}>
             {supportedLeagues.map(league => (
               <Button 
                 key={league.id} 
