@@ -87,7 +87,7 @@
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  max-width: 480px; /* Aumentado para 450px */
+  max-width: 384px; /* Voltando para 384px (w-96) agora que otimizamos o texto */
 }
 
 .info-panel {
