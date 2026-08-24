@@ -60,7 +60,7 @@ newfoundland regiment:                  #0b2240  #8a2332
 québec remparts:                        #ec0a24  #000000
 rimouski océanic:                       #041e54  #000000
 rouyn-noranda huskies:                  #d71f21  #000000
-saint jogn sea dogs:                    #044e94  #492265
+saint john sea dogs:                    #044e94  #492265
 shawinigan cataractes:                  #04265c  #001c63
 sherbooke phoenix:                      #002e62  #397ecc
 val-d'or foreurs:                       #017143  #000000

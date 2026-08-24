@@ -2,8 +2,7 @@
   min-height: 100vh;
   position: relative;
   display: flex;
-  align-items: center;
-  padding: var(--space-8);
+  padding: 20vh var(--space-8) var(--space-8) var(--space-8);
   overflow: hidden;
 }
 
