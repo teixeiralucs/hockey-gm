@@ -174,7 +174,7 @@
 
 @media (min-width: 768px) {
   .team-details-col {
-    width: 420px; /* Mantendo consistência com MainMenu */
+    width: 450px; /* Mantendo consistência com MainMenu */
   }
 }
 

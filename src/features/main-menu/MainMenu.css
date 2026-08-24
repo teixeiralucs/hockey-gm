@@ -87,7 +87,7 @@
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  max-width: 420px; /* Aumentado de 384px para caber JUNIOR HOCKEY em uma linha */
+  max-width: 450px; /* Aumentado para 450px */
 }
 
 .info-panel {

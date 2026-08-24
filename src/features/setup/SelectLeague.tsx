@@ -100,7 +100,7 @@ export const SelectLeague: React.FC = () => {
                     <span className="stat-label">Teams</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-value font-display">
+                    <span className="stat-value font-display" style={{ whiteSpace: 'nowrap' }}>
                       Junior Hockey
                     </span>
                   </div>
