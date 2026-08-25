@@ -87,58 +87,20 @@ export const SelectTeam: React.FC = () => {
               return (
                 <Button 
                   key={team.id}
-                  variant="outline"
+                  size="lg"
+                  variant={isSelected ? 'primary' : 'secondary'}
+                  className="action-btn"
                   onClick={() => setSelectedTeam(team)}
                   style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    backgroundColor: 'rgba(20, 20, 24, 0.4)',
-                    border: isSelected ? `1px solid ${team.colors.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
-                    color: isSelected ? team.colors.primary : 'var(--color-text-primary)',
                     justifyContent: 'flex-start',
-                    padding: 'var(--space-4)',
-                    height: 'auto',
-                    width: '100%',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    backgroundColor: isSelected ? team.colors.primary : undefined,
+                    borderColor: isSelected ? team.colors.primary : undefined,
+                    color: isSelected ? '#fff' : undefined,
+                    textTransform: 'uppercase'
                   }}
                 >
-                  <div 
-                    className="team-card-accent"
-                    style={{ backgroundColor: team.colors.primary }}
-                  />
-
-                  <div className="team-card-info" style={{ textAlign: 'left', flex: 1 }}>
-                    <h3 className="font-display" style={{ 
-                      fontSize: '1.5rem', 
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.05em', 
-                      margin: 0,
-                      color: isSelected ? team.colors.primary : 'var(--color-text-primary)'
-                    }}>
-                      {team.city} {team.name}
-                    </h3>
-                    <span style={{ 
-                      fontSize: '0.625rem', 
-                      fontFamily: 'var(--font-mono)', 
-                      color: 'var(--color-text-secondary)', 
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.1em'
-                    }}>
-                      {team.conference} Conference
-                    </span>
-                  </div>
-
-                  <div className="team-card-stats" style={{ display: 'flex', gap: 'var(--space-8)', textAlign: 'right', alignItems: 'center' }}>
-                    <div className="stat-block" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.5625rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-1)' }}>Tier</span>
-                      <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono)', color: '#d1d1d6' }}>D</span>
-                    </div>
-                    <div className="stat-block" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.5625rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-1)' }}>EST OVR</span>
-                      <span style={{ fontSize: '1.25rem', color: '#fff', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>15</span>
-                    </div>
-                  </div>
+                  <Play size={24} className="btn-icon" style={{ opacity: isSelected ? 1 : 0.7 }} />
+                  {team.city} {team.name}
                 </Button>
               );
             })}
