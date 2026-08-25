@@ -18,11 +18,12 @@ export const Dashboard: React.FC = () => {
   const pAbbr = team?.abbreviation || 'YOU';
   const pRecord = "0-0-0";
 
-  // Mock de próximas partidas
+  // Mock de próximas partidas (Mantemos 4 no array para a animação)
   const [matches, setMatches] = useState([
     { id: 1, opponent: 'LONDON KNIGHTS', abbr: 'LDN', date: 'OCT 12, 2026 - 19:00', status: 'upcoming', result: null, home: true },
     { id: 2, opponent: 'KITCHENER RANGERS', abbr: 'KIT', date: 'OCT 14, 2026 - 19:30', status: 'upcoming', result: null, home: false },
     { id: 3, opponent: 'WINDSOR SPITFIRES', abbr: 'WSR', date: 'OCT 16, 2026 - 19:00', status: 'upcoming', result: null, home: true },
+    { id: 4, opponent: 'GUELPH STORM', abbr: 'GUE', date: 'OCT 18, 2026 - 19:00', status: 'upcoming', result: null, home: false },
   ]);
   const [animating, setAnimating] = useState(false);
 
@@ -43,9 +44,9 @@ export const Dashboard: React.FC = () => {
         // Add a new random match to the end
         newMatches.push({
           id: Date.now(),
-          opponent: 'GUELPH STORM',
-          abbr: 'GUE',
-          date: 'OCT 18, 2026 - 19:00',
+          opponent: 'SAGINAW SPIRIT',
+          abbr: 'SAG',
+          date: 'OCT 20, 2026 - 19:00',
           status: 'upcoming',
           result: null,
           home: Math.random() > 0.5
@@ -53,7 +54,7 @@ export const Dashboard: React.FC = () => {
         return newMatches;
       });
       setAnimating(false);
-    }, 500); // tempo da animação
+    }, 500); // tempo da transição css
   };
 
   return (
@@ -92,13 +93,23 @@ export const Dashboard: React.FC = () => {
         {/* Próximos Jogos (Cards Horizontais) */}
         <div>
           <h2 className="dash-panel-title" style={{ marginBottom: 'var(--space-4)' }}>UPCOMING MATCHES</h2>
-          <div className={`matches-row ${animating ? 'slide-left' : ''}`}>
+          <div className="matches-row">
             {matches.map((match, index) => {
-              const isFirst = index === 0;
+              // Determinar o estado de animação das cartas
+              let cardClass = '';
+              if (animating) {
+                if (index === 0) cardClass = 'match-card-leaving'; // Sai da tela (encolhendo)
+                else if (index === 1) cardClass = 'match-card-primary'; // Fica grande (era index 1, vai virar 0)
+                else if (index === 3) cardClass = 'match-card-entering'; // Entra na tela (crescendo)
+              } else {
+                if (index === 0) cardClass = 'match-card-primary'; // Padrão
+                else if (index === 3) cardClass = 'match-card-hidden'; // Esconde a 4ª carta até precisar animar
+              }
+
               const isFinished = match.status === 'finished';
 
               return (
-                <div key={match.id} className={`dash-panel match-card ${isFirst ? 'match-card-primary' : ''}`}>
+                <div key={match.id} className={`dash-panel match-card ${cardClass}`}>
                   {/* Top Bar */}
                   <div className="match-card-top">
                     <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{match.date}</span>
@@ -135,7 +146,7 @@ export const Dashboard: React.FC = () => {
                   </div>
 
                   {/* Actions (Only on first card) */}
-                  {isFirst && (
+                  {index === 0 && (
                     <div className="match-card-actions">
                       {isFinished ? (
                         <Button 
