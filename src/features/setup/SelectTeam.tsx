@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Activity, ArrowLeft, RefreshCw } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Button } from '../../components/Button';
 import type { Team } from '../../engine/models/Team';
 import './SelectTeam.css';
 
