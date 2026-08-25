@@ -8,7 +8,6 @@
 .match-card {
   min-width: 320px;
   width: 320px; /* fixed width for transition */
-  height: 250px; /* fixed height prevents vertical layout thrashing when width shrinks */
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
