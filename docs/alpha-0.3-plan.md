@@ -10,28 +10,34 @@ O Ultimo passo da expansão será contar com a ultima liga junior canadense, a Q
 A QMJHL é a liga de hockey do leste do Canadá, contendo 18 times, dividos em:
 
 ### 1.1.1 Conferencia Oeste (Association de l'Ouest)
+#### 1.1.1.1 West Division
 
 - Blainville-Boisbriand Armada
 - Gatineu Olympiques
 - Rouyn-Noranda Huskies
 - Val-d'Or Foreurs
+
+#### 1.1.1.2 Central Division
 - Drummondville Voltigeurs
 - Shawinigan Cataracters
 - Sherbrooke Phoenix
 - Victoriaville Tigres
 
 ### 1.1.2 Conferencia Leste (Association de l'Est)
+#### 1.1.2.1 East Division
 
 - Baie-Comeau Drakkar
 - Chicoutimi Saguenéens
 - Quebec Remparts
 - Rimouski Océanic
+
+#### 1.1.2.2 Martimes Division
 - Acadie-Bathurst Titan
 - Cape Breton Eagles
 - Charlottetown Islanders
-- Halifaz Mooseheads
+- Halifax Mooseheads
 - Moncton Wildcats
-- Saint Jogn Sea Dogs
+- Saint John Sea Dogs
 
 A liga possui 68 rodadas, distribuidas entre os dias Sexta, Sábado e Domingo, somando 580 jogos no total. Começando na terceira sexta-feira de setembro e se estendendo até o fim de março. No fim, os 8 melhores de cada conferência são classificados para as playoffs onde jogam em formato de melhor de 7, onde o time que fizer 4 vitórias primeiro avança. o vencedor avança para a Memorial Cup onde enfrentará os times vencedores da OHL e WHL.
 

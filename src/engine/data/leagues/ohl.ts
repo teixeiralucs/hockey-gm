@@ -8,6 +8,7 @@ function createEmptyTeam(
   name: string,
   abbreviation: string,
   conference: string,
+  division: string,
   primaryColor: string,
   secondaryColor: string
 ): Team {
@@ -17,6 +18,8 @@ function createEmptyTeam(
     name,
     abbreviation,
     conference,
+    division,
+    logoUrl: `/assets/logos/ohl/${id}.png`,
     colors: { primary: primaryColor, secondary: secondaryColor },
     players: [],
     lines: {
@@ -29,30 +32,35 @@ function createEmptyTeam(
 }
 
 export const OHL_EAST_TEAMS: Team[] = [
-  createEmptyTeam('brantford-bulldogs', 'Brantford', 'Bulldogs', 'BBD', 'East', '#fcc82d', '#010101'),
-  createEmptyTeam('barrie-colts', 'Barrie', 'Colts', 'BAR', 'East', '#ec2634', '#001c63'),
-  createEmptyTeam('ottawa-67s', 'Ottawa', "67's", 'OTT', 'East', '#ab1b2c', '#010101'),
-  createEmptyTeam('peterborough-petes', 'Peterborough', 'Petes', 'PET', 'East', '#74253f', '#010101'),
-  createEmptyTeam('north-bay-battalion', 'North Bay', 'Battalion', 'NBY', 'East', '#fcd93b', '#010101'),
-  createEmptyTeam('kingston-frontenacs', 'Kingston', 'Frontenacs', 'KGN', 'East', '#cda435', '#010101'),
-  createEmptyTeam('niagara-icedogs', 'Niagara', 'IceDogs', 'NIA', 'East', '#e31a35', '#010101'),
-  createEmptyTeam('sudbury-wolves', 'Sudbury', 'Wolves', 'SUD', 'East', '#9fa8ab', '#045ea4'),
-  createEmptyTeam('brampton-steelheads', 'Brampton', 'Steelheads', 'BRA', 'East', '#a7aaac', '#002868'),
-  createEmptyTeam('oshawa-generals', 'Oshawa', 'Generals', 'OSH', 'East', '#e51937', '#041e43'),
+  // East Division
+  createEmptyTeam('brantford-bulldogs', 'Brantford', 'Bulldogs', 'BBD', 'East', 'East', '#fcc82d', '#010101'),
+  createEmptyTeam('kingston-frontenacs', 'Kingston', 'Frontenacs', 'KGN', 'East', 'East', '#cda435', '#010101'),
+  createEmptyTeam('oshawa-generals', 'Oshawa', 'Generals', 'OSH', 'East', 'East', '#e51937', '#041e43'),
+  createEmptyTeam('ottawa-67s', 'Ottawa', "67's", 'OTT', 'East', 'East', '#ab1b2c', '#010101'),
+  createEmptyTeam('peterborough-petes', 'Peterborough', 'Petes', 'PET', 'East', 'East', '#74253f', '#010101'),
+  
+  // Central Division
+  createEmptyTeam('barrie-colts', 'Barrie', 'Colts', 'BAR', 'East', 'Central', '#ec2634', '#001c63'),
+  createEmptyTeam('north-bay-battalion', 'North Bay', 'Battalion', 'NBY', 'East', 'Central', '#fcd93b', '#010101'),
+  createEmptyTeam('niagara-icedogs', 'Niagara', 'IceDogs', 'NIA', 'East', 'Central', '#e31a35', '#010101'),
+  createEmptyTeam('sudbury-wolves', 'Sudbury', 'Wolves', 'SUD', 'East', 'Central', '#9fa8ab', '#045ea4'),
+  createEmptyTeam('brampton-steelheads', 'Brampton', 'Steelheads', 'BRA', 'East', 'Central', '#a7aaac', '#002868'),
 ];
 
 export const OHL_WEST_TEAMS: Team[] = [
-  createEmptyTeam('kitchener-rangers', 'Kitchener', 'Rangers', 'KIT', 'West', '#0460ac', '#e31e37'),
-  createEmptyTeam('windsor-spitfires', 'Windsor', 'Spitfires', 'WSR', 'West', '#e51e25', '#10284b'),
-  createEmptyTeam('flint-firebirds', 'Flint', 'Firebirds', 'FLNT', 'West', '#f48226', '#002d62'),
-  createEmptyTeam('london-knights', 'London', 'Knights', 'LDN', 'West', '#005030', '#f4cb55'),
-  createEmptyTeam('soo-greyhounds', 'Soo', 'Greyhounds', 'SOO', 'West', '#cf2128', '#a4aaac'),
-  createEmptyTeam('guelph-storm', 'Guelph', 'Storm', 'GUE', 'West', '#900028', '#010101'),
-  createEmptyTeam('saginaw-spirit', 'Saginaw', 'Spirit', 'SAG', 'West', '#bf3139', '#042a5c'),
-  createEmptyTeam('sarnia-sting', 'Sarnia', 'Sting', 'SAR', 'West', '#fdc426', '#010101'),
-  createEmptyTeam('erie-otters', 'Erie', 'Otters', 'ERI', 'West', '#fcc611', '#001e43'),
-  // Adicionado Owen Sound Attack baseado em cores.txt e ser time real
-  createEmptyTeam('owen-sound-attack', 'Owen Sound', 'Attack', 'OS', 'West', '#d53b36', '#010101'),
+  // Midwest Division
+  createEmptyTeam('erie-otters', 'Erie', 'Otters', 'ERI', 'West', 'Midwest', '#fcc611', '#001e43'),
+  createEmptyTeam('guelph-storm', 'Guelph', 'Storm', 'GUE', 'West', 'Midwest', '#900028', '#010101'),
+  createEmptyTeam('kitchener-rangers', 'Kitchener', 'Rangers', 'KIT', 'West', 'Midwest', '#0460ac', '#e31e37'),
+  createEmptyTeam('london-knights', 'London', 'Knights', 'LDN', 'West', 'Midwest', '#005030', '#f4cb55'),
+  createEmptyTeam('owen-sound-attack', 'Owen Sound', 'Attack', 'OSA', 'West', 'Midwest', '#d53b36', '#010101'),
+  
+  // West Division
+  createEmptyTeam('windsor-spitfires', 'Windsor', 'Spitfires', 'WSR', 'West', 'West', '#e51e25', '#10284b'),
+  createEmptyTeam('flint-firebirds', 'Flint', 'Firebirds', 'FLNT', 'West', 'West', '#f48226', '#002d62'),
+  createEmptyTeam('soo-greyhounds', 'Soo', 'Greyhounds', 'SOO', 'West', 'West', '#cf2128', '#a4aaac'),
+  createEmptyTeam('saginaw-spirit', 'Saginaw', 'Spirit', 'SAG', 'West', 'West', '#bf3139', '#042a5c'),
+  createEmptyTeam('sarnia-sting', 'Sarnia', 'Sting', 'SAR', 'West', 'West', '#fdc426', '#010101'),
 ];
 
 export const OHL_LEAGUE: League = {
@@ -71,22 +79,32 @@ export const OHL_LEAGUE: League = {
       name: 'Eastern Conference',
       divisions: [
         {
-          id: 'east-div',
+          id: 'east',
           name: 'East Division',
-          teams: OHL_EAST_TEAMS,
-        }
-      ]
+          teams: OHL_EAST_TEAMS.filter(t => t.division === 'East'),
+        },
+        {
+          id: 'central',
+          name: 'Central Division',
+          teams: OHL_EAST_TEAMS.filter(t => t.division === 'Central'),
+        },
+      ],
     },
     {
       id: 'west',
       name: 'Western Conference',
       divisions: [
         {
-          id: 'west-div',
+          id: 'midwest',
+          name: 'Midwest Division',
+          teams: OHL_WEST_TEAMS.filter(t => t.division === 'Midwest'),
+        },
+        {
+          id: 'west',
           name: 'West Division',
-          teams: OHL_WEST_TEAMS,
-        }
-      ]
-    }
+          teams: OHL_WEST_TEAMS.filter(t => t.division === 'West'),
+        },
+      ],
+    },
   ]
 };

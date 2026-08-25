@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Activity, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Button } from '../ui/Button';
 import type { Team } from '../../engine/models/Team';
 import './SelectTeam.css';
 
@@ -125,34 +126,47 @@ export const SelectTeam: React.FC = () => {
               <div style={{ backgroundColor: selectedTeam.colors.primary, height: '4px', position: 'absolute', top: 0, left: 0, right: 0 }} />
               
               <div>
-                <h3 className="font-display info-title" style={{ 
-                  fontSize: '2.5rem', 
-                  borderBottom: 'none', 
-                  paddingBottom: 0, 
-                  marginBottom: 'var(--space-2)',
-                  color: selectedTeam.colors.primary,
-                  textShadow: '0 2px 10px rgba(0,0,0,0.5)',
-                  lineHeight: '1.1'
-                }}>
-                  {selectedTeam.city} {selectedTeam.name}
-                </h3>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-6)' }}>
-                  {selectedTeam.conference} Conference
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-2)' }}>
+                  <img 
+                    src={selectedTeam.logoUrl} 
+                    alt={selectedTeam.name} 
+                    style={{ 
+                      maxHeight: '120px', 
+                      width: 'auto',
+                      filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.5))'
+                    }} 
+                  />
+                </div>
+                
+                <div style={{ textAlign: 'center', marginBottom: 'var(--space-6)' }}>
+                  <h3 className="font-display" style={{ 
+                    fontSize: '1.5rem', 
+                    color: selectedTeam.colors.primary,
+                    textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                    margin: 0
+                  }}>
+                    {selectedTeam.city}
+                  </h3>
                 </div>
 
-                <div className="info-stats" style={{ marginTop: 'var(--space-6)', gap: 'var(--space-8)' }}>
+                <div className="info-stats" style={{ marginTop: 'var(--space-6)', gap: 'var(--space-8)', justifyContent: 'center' }}>
                   <div className="stat">
-                    <span className="stat-value font-display" style={{ fontSize: '2.5rem' }}>~15</span>
-                    <span className="stat-label" style={{ fontSize: '0.75rem' }}>Est OVR</span>
+                    <span className="stat-value font-display">15</span>
+                    <span className="stat-label">OVR</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-value font-display" style={{ fontSize: '2.5rem' }}>D</span>
-                    <span className="stat-label" style={{ fontSize: '0.75rem' }}>Tier</span>
+                    <span className="stat-value font-display">D</span>
+                    <span className="stat-label">Tier</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-value font-display">{selectedTeam.conference}</span>
+                    <span className="stat-label">Conf.</span>
                   </div>
                 </div>
               </div>
               
-              <button 
+              <Button 
+                size="lg"
                 onClick={handleStart} 
                 className="action-btn"
                 style={{ 
@@ -162,14 +176,13 @@ export const SelectTeam: React.FC = () => {
                   backgroundColor: selectedTeam.colors.primary,
                   color: '#fff',
                   border: 'none',
-                  padding: 'var(--space-4) var(--space-6)'
                 }}
                 onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.2)'}
                 onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
               >
                 Sign Contract
                 <ChevronRight size={24} />
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="glass-panel info-panel" style={{ alignItems: 'center', justifyContent: 'center' }}>

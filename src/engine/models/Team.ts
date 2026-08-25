@@ -29,9 +29,10 @@ export interface Team {
   name: string; // Ex: 'Colts'
   abbreviation: string; // Ex: 'BAR'
   conference: string;
+  division: string;
+  logoUrl: string;
   
   colors: TeamColors;
-  logoUrl?: string;
   
   // Lista raw de jogadores pertencentes ao time
   players: Player[];

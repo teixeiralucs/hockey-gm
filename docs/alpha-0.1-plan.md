@@ -13,29 +13,36 @@ O Jogador terá disponivel a OHL como liga inicial, podendo escolher entre seus 
 A OHL (Ontario Hockey League) é a liga de hockey da província de Ontário, Canada. Com 20 times dividios em:
 
 ### 3.1 Conferência Leste
+#### 3.1.1 East Division
 
 - Brantford Bulldogs
-- Barrie Colts
+- Kingston Frontenacs
+- Oshawa Generals
 - Ottawa 67's
 - Peterborough Petes
+
+#### 3.1.2 East Division
+- Barrie Central
 - North Bay Battalion
-- Kingston Frontenacs
 - Niagara IceDogs
 - Sudbury Wolves
 - Brampton Steelheads
-- Oshawa Generals
+
 
 ### 3.2 Conferência Oeste
-
+#### 3.2.1 Midwest Division
+- Erie Otters
+- Guelph Storm
 - Kitchener Rangers
+- London Knights
+- Owen Sound Attack
+
+#### 3.2.2 West Division
 - Windsor Spitfires
 - Flint Firebirds
-- London Knights
 - Soo Greyhounds
-- Guelph Storm
 - Saginaw Spirit
 - Sarnia Sting
-- Erie Otters
 
 A liga possui 68 rodadas, distribuidas entre os dias Quinta, Sexta, Sábado e Domingo, somando 681 jogos no total. Começando na terceira quinta-feira de setembro e se estendendo até o fim de março. No fim, os 8 melhores de cada conferência são classificados para as playoffs onde jogam em formato de melhor de 7, onde o time que fizer 4 vitórias primeiro avança. o vencedor avança para a Memorial Cup onde enfrentará os times vencedores da WHL e QMJHL.
 

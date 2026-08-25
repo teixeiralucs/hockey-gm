@@ -9,33 +9,37 @@ Com o fim da 0.1 a consoldiação do sistema está finalizada. O primeiro passo 
 A WHL é a liga de hockey do oeste do Canadá e Estados Unidos, contendo 23 times, dividos em:
 
 #### 1.1.1 Conferência Leste
-
-- Prince Albert Raiders
-- Medicine Hat Tigers
-- Edmonton Oil Kings
-- Calgary Hitmen
+##### 1.1.1.1 East Division
 - Brandon Wheat Kings
-- Saskatoon Blades
-- Regina Pats
-- Red Deer Rebels
 - Moose Jaw Warriors
-- Siwft Current Broncos
+- Prince Albert Raiders
+- Regina Pats
+- Saskatoon Blades
+- Swift Current Broncos
+
+##### 1.1.1.2 Central Division
+- Calgary Hitmen
+- Edmonton Oil Kings
 - Lethbridge Hurricanes
+- Medicine Hat Tigers
+- Red Deer Rebels
 
 #### 1.1.2 Conferência Oeste
+##### 1.1.2.1 B.C. Division
+- Kamloops Blazers
+- Kelowna Rockets
+- Prince George Cougars
+- Vancouver Giants
+- Victoria Royals
 
+#### 1.1.2.2 U.S. Division
 - Everett Silvertips
 - Pentiction Vees
-- Prince George Cougars
-- Kelowna Rockets
-- Kamloops Blazers
 - Spokane Chiefs
 - Seattle Thunderbirds
 - Portland Winterhawks
-- Victoria Royals
 - Tri-City Americans
 - Wenatchee Wild
-- Vancouver Giants
 
 A liga possui 68 rodadas, distribuidas entre os dias Sexta, Sábado e Domingo, somando 781 jogos no total. Começando na terceira sexta-feira de setembro e se estendendo até o fim de março. No fim, os 8 melhores de cada conferência são classificados para as playoffs onde jogam em formato de melhor de 7, onde o time que fizer 4 vitórias primeiro avança. o vencedor avança para a Memorial Cup onde enfrentará os times vencedores da WHL e QMJHL.
 
