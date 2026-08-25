@@ -8,6 +8,7 @@
 .match-card {
   min-width: 320px;
   width: 320px; /* fixed width for transition */
+  height: 250px; /* fixed height prevents vertical layout thrashing when width shrinks */
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
@@ -17,6 +18,7 @@
   transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow: hidden; /* important when width shrinks */
   margin-right: 0;
+  white-space: nowrap;
 }
 
 .match-card-primary {
