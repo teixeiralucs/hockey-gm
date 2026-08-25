@@ -81,7 +81,7 @@ export const SelectTeam: React.FC = () => {
             </h1>
           </header>
 
-          <div className="team-list custom-scrollbar" style={{ marginTop: 'var(--space-8)' }}>
+          <div className="team-list custom-scrollbar menu-actions" style={{ maxWidth: '450px' }}>
             {allTeams.map(team => {
               const isSelected = selectedTeam?.id === team.id;
               return (
