@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { MainMenu } from './features/main-menu/MainMenu'
 import { SelectTeam } from './features/setup/SelectTeam'
 import { SelectLeague } from './features/setup/SelectLeague'
-
-const DashboardPlaceholder = () => <div className="p-8 text-white"><h1 className="font-display text-4xl">Dashboard</h1></div>
+import { DashboardLayout } from './features/dashboard/DashboardLayout'
+import { Dashboard } from './features/dashboard/Dashboard'
 
 function App() {
   return (
@@ -13,7 +13,14 @@ function App() {
         <Route path="/" element={<MainMenu />} />
         <Route path="/select-league" element={<SelectLeague />} />
         <Route path="/select-team" element={<SelectTeam />} />
-        <Route path="/dashboard" element={<DashboardPlaceholder />} />
+        
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="roster" element={<div style={{ color: 'white', padding: '20px' }}>ROSTER (Em Breve)</div>} />
+          <Route path="standings" element={<div style={{ color: 'white', padding: '20px' }}>STANDINGS (Em Breve)</div>} />
+          <Route path="calendar" element={<div style={{ color: 'white', padding: '20px' }}>CALENDAR (Em Breve)</div>} />
+          <Route path="shop" element={<div style={{ color: 'white', padding: '20px' }}>SHOP (Em Breve)</div>} />
+        </Route>
       </Routes>
     </BrowserRouter>
   )
