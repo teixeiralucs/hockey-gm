@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, Activity, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '../../components/Button';
 import type { Team } from '../../engine/models/Team';
+import '../main-menu/MainMenu.css';
 import './SelectTeam.css';
 
 // Função auxiliar para embaralhar o array
@@ -84,36 +85,61 @@ export const SelectTeam: React.FC = () => {
             {allTeams.map(team => {
               const isSelected = selectedTeam?.id === team.id;
               return (
-                <div 
+                <Button 
                   key={team.id}
+                  variant="outline"
                   onClick={() => setSelectedTeam(team)}
-                  className={`team-card ${isSelected ? 'selected' : ''}`}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(20, 20, 24, 0.4)',
+                    border: isSelected ? `1px solid ${team.colors.primary}` : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: isSelected ? team.colors.primary : 'var(--color-text-primary)',
+                    justifyContent: 'flex-start',
+                    padding: 'var(--space-4)',
+                    height: 'auto',
+                    width: '100%',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
                 >
                   <div 
                     className="team-card-accent"
                     style={{ backgroundColor: team.colors.primary }}
                   />
 
-                  <div className="team-card-info">
-                    <h3 className="team-card-name">
+                  <div className="team-card-info" style={{ textAlign: 'left', flex: 1 }}>
+                    <h3 className="font-display" style={{ 
+                      fontSize: '1.5rem', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.05em', 
+                      margin: 0,
+                      color: isSelected ? team.colors.primary : 'var(--color-text-primary)'
+                    }}>
                       {team.city} {team.name}
                     </h3>
-                    <span className="team-card-conf">
+                    <span style={{ 
+                      fontSize: '0.625rem', 
+                      fontFamily: 'var(--font-mono)', 
+                      color: 'var(--color-text-secondary)', 
+                      textTransform: 'uppercase', 
+                      letterSpacing: '0.1em'
+                    }}>
                       {team.conference} Conference
                     </span>
                   </div>
 
-                  <div className="team-card-stats">
-                    <div className="stat-block">
-                      <span className="stat-label" style={{ fontSize: '0.5625rem' }}>Tier</span>
-                      <span className="stat-value" style={{ fontSize: '0.875rem' }}>D</span>
+                  <div className="team-card-stats" style={{ display: 'flex', gap: 'var(--space-8)', textAlign: 'right', alignItems: 'center' }}>
+                    <div className="stat-block" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.5625rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-1)' }}>Tier</span>
+                      <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono)', color: '#d1d1d6' }}>D</span>
                     </div>
-                    <div className="stat-block">
-                      <span className="stat-label" style={{ fontSize: '0.5625rem' }}>EST OVR</span>
-                      <span className="stat-value highlight" style={{ fontSize: '1.25rem' }}>~15</span>
+                    <div className="stat-block" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.5625rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-1)' }}>EST OVR</span>
+                      <span style={{ fontSize: '1.25rem', color: '#fff', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>15</span>
                     </div>
                   </div>
-                </div>
+                </Button>
               );
             })}
           </div>
