@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { Play } from 'lucide-react';
+import { Play, FastForward, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/Button';
 import './Dashboard.css';
+import './DashboardMatches.css';
 
 export const Dashboard: React.FC = () => {
   const { playerTeam } = useGameStore();
@@ -14,8 +15,46 @@ export const Dashboard: React.FC = () => {
   const pTeamName = team ? `${team.city} ${team.name}` : 'MOCK TEAM';
   const pLogo = team ? team.logoUrl : '';
   const pColor = team ? team.colors.primary : '#00ffd0';
+  const pAbbr = team?.abbreviation || 'YOU';
   const pRecord = "0-0-0";
-  const pNextOpponent = "LONDON KNIGHTS";
+
+  // Mock de próximas partidas
+  const [matches, setMatches] = useState([
+    { id: 1, opponent: 'LONDON KNIGHTS', abbr: 'LDN', date: 'OCT 12, 2026 - 19:00', status: 'upcoming', result: null, home: true },
+    { id: 2, opponent: 'KITCHENER RANGERS', abbr: 'KIT', date: 'OCT 14, 2026 - 19:30', status: 'upcoming', result: null, home: false },
+    { id: 3, opponent: 'WINDSOR SPITFIRES', abbr: 'WSR', date: 'OCT 16, 2026 - 19:00', status: 'upcoming', result: null, home: true },
+  ]);
+  const [animating, setAnimating] = useState(false);
+
+  const handleSimulate = (matchId: number) => {
+    setMatches(prev => prev.map(m => {
+      if (m.id === matchId) {
+        return { ...m, status: 'finished', result: { us: Math.floor(Math.random() * 5) + 1, them: Math.floor(Math.random() * 5) } };
+      }
+      return m;
+    }));
+  };
+
+  const handleAdvance = () => {
+    setAnimating(true);
+    setTimeout(() => {
+      setMatches(prev => {
+        const newMatches = [...prev.slice(1)];
+        // Add a new random match to the end
+        newMatches.push({
+          id: Date.now(),
+          opponent: 'GUELPH STORM',
+          abbr: 'GUE',
+          date: 'OCT 18, 2026 - 19:00',
+          status: 'upcoming',
+          result: null,
+          home: Math.random() > 0.5
+        });
+        return newMatches;
+      });
+      setAnimating(false);
+    }, 500); // tempo da animação
+  };
 
   return (
     <div className="dashboard-grid">
@@ -50,24 +89,79 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Próximo Jogo */}
-        <div className="dash-panel" style={{ padding: 'var(--space-8)' }}>
-          <div className="dash-panel-header">
-            <h2 className="dash-panel-title">NEXT MATCH</h2>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>OCT 12, 2026 - 19:00</span>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--space-6)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>OPPONENT</span>
-              <h2 className="font-display" style={{ fontSize: '2.5rem', margin: 0, color: '#fff' }}>{pNextOpponent}</h2>
-              <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-mono)', color: '#ec2634', marginTop: 'var(--space-2)' }}>17 OVR (A)</span>
-            </div>
-            
-            <Button size="lg" variant="primary" style={{ backgroundColor: pColor, border: 'none', color: '#000' }}>
-              <Play size={24} style={{ marginRight: '8px' }} />
-              SIMULATE MATCH
-            </Button>
+        {/* Próximos Jogos (Cards Horizontais) */}
+        <div>
+          <h2 className="dash-panel-title" style={{ marginBottom: 'var(--space-4)' }}>UPCOMING MATCHES</h2>
+          <div className={`matches-row ${animating ? 'slide-left' : ''}`}>
+            {matches.map((match, index) => {
+              const isFirst = index === 0;
+              const isFinished = match.status === 'finished';
+
+              return (
+                <div key={match.id} className={`dash-panel match-card ${isFirst ? 'match-card-primary' : ''}`}>
+                  {/* Top Bar */}
+                  <div className="match-card-top">
+                    <span style={{ fontSize: '0.625rem', fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{match.date}</span>
+                    <span className="match-card-badge">OHL REGULAR</span>
+                  </div>
+
+                  {/* Matchup */}
+                  <div className="match-card-teams">
+                    <div className="match-team">
+                      <div className="match-logo-box" style={{ borderColor: match.home ? pColor : 'rgba(255,255,255,0.1)' }}>
+                        {match.home ? (pLogo ? <img src={pLogo} alt="Us" /> : <div className="placeholder-logo">{pAbbr}</div>) : <div className="placeholder-logo">{match.abbr}</div>}
+                      </div>
+                      <span className="match-team-name">{match.home ? pAbbr : match.abbr}</span>
+                    </div>
+
+                    <div className="match-score">
+                      {isFinished ? (
+                        <div className="score-display">
+                          <span style={{ color: match.result.us > match.result.them ? pColor : '#fff' }}>{match.home ? match.result.us : match.result.them}</span>
+                          <span>-</span>
+                          <span style={{ color: match.result.them > match.result.us ? '#ec2634' : '#fff' }}>{match.home ? match.result.them : match.result.us}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '1rem', fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>VS</span>
+                      )}
+                    </div>
+
+                    <div className="match-team">
+                      <div className="match-logo-box" style={{ borderColor: !match.home ? pColor : 'rgba(255,255,255,0.1)' }}>
+                        {!match.home ? (pLogo ? <img src={pLogo} alt="Us" /> : <div className="placeholder-logo">{pAbbr}</div>) : <div className="placeholder-logo">{match.abbr}</div>}
+                      </div>
+                      <span className="match-team-name">{!match.home ? pAbbr : match.abbr}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions (Only on first card) */}
+                  {isFirst && (
+                    <div className="match-card-actions">
+                      {isFinished ? (
+                        <Button 
+                          style={{ width: '100%', justifyContent: 'center', backgroundColor: '#fff', color: '#000', border: 'none' }}
+                          onClick={handleAdvance}
+                        >
+                          ADVANCE TO NEXT MATCH <ArrowRight size={16} style={{ marginLeft: '8px' }} />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button variant="outline" style={{ flex: 1, justifyContent: 'center' }}>
+                            <Play size={16} style={{ marginRight: '8px' }} /> PLAY
+                          </Button>
+                          <Button 
+                            style={{ flex: 1, justifyContent: 'center', backgroundColor: pColor, color: '#000', border: 'none' }}
+                            onClick={() => handleSimulate(match.id)}
+                          >
+                            <FastForward size={16} style={{ marginRight: '8px' }} /> SIMULATE
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
