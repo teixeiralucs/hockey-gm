@@ -1,122 +1,152 @@
-import type { Player, PlayerRole, Position, PlayerCategoryAttr, PlayerAttributes } from '../models/Player';
-import { v4 as uuidv4 } from 'uuid';
-
-/**
- * Utilitário responsável por gerar jogadores baseados na liga e seus Tiers.
- * A geração de atributos respeita os ratios descritos no documento alpha-0.1.
- */
-
-// Nomes aleatórios simples para o protótipo inicial (poderão vir de um banco de dados de nomes no futuro)
-const FIRST_NAMES = ['Connor', 'Sidney', 'Alex', 'Auston', 'Nathan', 'Leon', 'Cale', 'Quinn', 'Elias', 'Mitch', 'Jack', 'Brady', 'Matthew'];
-const LAST_NAMES = ['McDavid', 'Crosby', 'Ovechkin', 'Matthews', 'MacKinnon', 'Draisaitl', 'Makar', 'Hughes', 'Pettersson', 'Marner', 'Eichel', 'Tkachuk'];
-
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function getRandomName() {
-  return {
-    firstName: FIRST_NAMES[randomInt(0, FIRST_NAMES.length - 1)],
-    lastName: LAST_NAMES[randomInt(0, LAST_NAMES.length - 1)],
-  };
-}
+import type { Player, PlayerRole, Position, PlayerCategoryAttr } from '../models/Player';
 
 export class PlayerGenerator {
   
-  /**
-   * Gera um jogador D-Tier (OHL). Médias entre 9 e 22 (Overall).
-   */
-  public static generateDTierPlayer(position?: Position): Player {
-    const role = this.determineRole(position);
-    const pos = position || this.randomPositionForRole(role);
-    const { firstName, lastName } = getRandomName();
+  static async generateTeamRoster(): Promise<{ activeLines: Player[], bench: Player[] }> {
+    // Buscar o pool de jogadores do mock
+    const response = await fetch('/data/ohl_players.json');
+    const allPlayers: any[] = await response.json();
     
-    // Para D-Tier, o range base de atributos (antes do ratio) é baixo. 
-    // Para atingir media 9~22, a base seria em torno de 15.
-    const baseMin = 5;
-    const baseMax = 20;
+    // Sortear exatamente as cotas: 4 C, 4 LW, 4 RW, 3 LD, 3 RD, 2 G
+    const roster: Player[] = [];
+    
+    const quotas: Record<string, number> = {
+      'C': 4,
+      'LW': 4,
+      'RW': 4,
+      'LD': 3,
+      'RD': 3,
+      'G': 2
+    };
 
-    const attributes = this.generateAttributesByRole(role, baseMin, baseMax);
-    const overall = this.calculateOverall(attributes);
+    for (const [pos, count] of Object.entries(quotas)) {
+      const available = allPlayers.filter(p => p.position === pos);
+      // Shuffle
+      const shuffled = available.sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, count);
+      
+      let lineCounter = 1;
+      selected.forEach((p, idx) => {
+        roster.push(this.hydratePlayer(p, pos as Position, lineCounter++));
+      });
+    }
+
+    return { activeLines: roster, bench: [] };
+  }
+
+  private static hydratePlayer(raw: any, pos: Position, lineHint: number): Player {
+    const role = this.getRole(pos);
+    
+    // Tier D: OHL. Overall base 9 a 22.
+    // Usaremos as stats simuladas dele para influenciar o Overall dentro dessa régua.
+    let statScore = 0;
+    if (role === 'Goalie') {
+      const svPct = parseFloat(raw.stats.svPct);
+      statScore = Math.max(0, (svPct - 0.880) / 0.050); 
+    } else {
+      statScore = Math.min(1, Math.max(0, (raw.stats.points - 10) / 80));
+    }
+
+    // Overall D-Tier = 9 a 22
+    const baseOverall = Math.floor(9 + (statScore * 13));
+
+    // Aplicar os ratios de atributos baseados na Role
+    const attrs = this.generateAttributes(baseOverall, role);
+
+    const birthYear = new Date(raw.dateOfBirth).getFullYear();
+    const age = 2026 - birthYear; 
+
+    let finalBaseOverall = baseOverall;
+    let tier: 'Bronze' | 'Silver' | 'Gold' | 'Diamond' = 'Bronze';
+    let draftPick: number | undefined = undefined;
+
+    // Draft Prospects 2026
+    const prospects: Record<string, number> = {
+      'Caleb Malhotra': 3,
+      'Chase Reid': 7,
+      'Nikita Klepov': 15,
+      'Ethan Belchetz': 17,
+      'Adam Novotnǫ': 24,
+      'Maksim Sokolovskii': 27,
+      'Jaxon Cover': 32
+    };
+
+    if (prospects[raw.fullName]) {
+      finalBaseOverall += 2;
+      tier = 'Diamond';
+      draftPick = prospects[raw.fullName];
+    } else {
+      // Normal Tier based on overall
+      if (finalBaseOverall >= 19) {
+        tier = 'Gold';
+      } else if (finalBaseOverall >= 14) {
+        tier = 'Silver';
+      }
+    }
 
     return {
-      id: uuidv4(),
-      firstName,
-      lastName,
-      age: randomInt(16, 20), // OHL age range
+      id: raw.id,
+      firstName: raw.firstName,
+      lastName: raw.lastName,
+      fullName: raw.fullName,
+      age,
       position: pos,
       role,
-      attributes,
-      overall,
-      tier: 'D'
+      height: raw.height,
+      weight: raw.weight,
+      hometown: raw.hometown,
+      photo: raw.photo,
+      shootsCatches: raw.shootsCatches,
+      teamAbbr: raw.teamAbbr,
+      stats: raw.stats,
+      attributes: attrs,
+      baseOverall: finalBaseOverall,
+      currentOverall: finalBaseOverall,
+      tier,
+      draftPick,
+      currentLine: lineHint > this.getMaxLines(role) ? null : lineHint 
     };
   }
 
-  private static determineRole(pos?: Position): PlayerRole {
-    if (!pos) {
-      const rand = Math.random();
-      if (rand < 0.6) return 'Forward';     // 12/20
-      if (rand < 0.9) return 'Defenceman';  // 6/20
-      return 'Goalie';                      // 2/20
-    }
-    if (['C', 'LW', 'RW'].includes(pos)) return 'Forward';
-    if (['LD', 'RD'].includes(pos)) return 'Defenceman';
-    return 'Goalie';
+  private static getMaxLines(role: PlayerRole) {
+    if (role === 'Forward') return 4;
+    if (role === 'Defenceman') return 3;
+    return 2; 
   }
 
-  private static randomPositionForRole(role: PlayerRole): Position {
-    if (role === 'Forward') {
-      const pos = ['C', 'LW', 'RW'];
-      return pos[randomInt(0, 2)] as Position;
-    }
-    if (role === 'Defenceman') {
-      const pos = ['LD', 'RD'];
-      return pos[randomInt(0, 1)] as Position;
-    }
-    return 'G';
+  private static getRole(pos: Position): PlayerRole {
+    if (pos === 'G') return 'Goalie';
+    if (pos === 'LD' || pos === 'RD') return 'Defenceman';
+    return 'Forward';
   }
 
-  private static generateAttributesByRole(role: PlayerRole, min: number, max: number): PlayerAttributes {
-    const baseSkating = randomInt(min, max);
-    const baseCreativity = randomInt(min, max);
-    const baseShooting = randomInt(min, max);
-    const baseDefense = randomInt(min, max);
-
-    // Ratios from Alpha 0.1 Plan
-    let ratios = { skating: 1, creativity: 1, shooting: 1, defense: 1 };
+  private static generateAttributes(ovr: number, role: PlayerRole): any {
+    let ratios = { sk: 1, cr: 1, sh: 1, de: 1 };
     
     if (role === 'Forward') {
-      ratios = { skating: 2.0, creativity: 1.0, shooting: 2.0, defense: 1.25 };
+      ratios = { sk: 2.0, cr: 1.0, sh: 2.0, de: 1.25 };
     } else if (role === 'Defenceman') {
-      ratios = { skating: 1.75, creativity: 1.75, shooting: 1.75, defense: 2.0 };
-    } else if (role === 'Goalie') {
-      ratios = { skating: 1.0, creativity: 2.0, shooting: 1.0, defense: 1.75 };
+      ratios = { sk: 1.75, cr: 1.75, sh: 1.75, de: 2.0 };
+    } else {
+      ratios = { sk: 1.0, cr: 2.0, sh: 1.0, de: 1.75 };
     }
+
+    const avgRatio = (ratios.sk + ratios.cr + ratios.sh + ratios.de) / 4;
+    
+    const buildCat = (ratio: number) => {
+      const val = Math.round(ovr * (ratio / avgRatio));
+      return {
+        value1: Math.ceil(val / 2),
+        value2: Math.floor(val / 2),
+        total: val
+      } as PlayerCategoryAttr;
+    };
 
     return {
-      skating: this.createCategory(baseSkating * ratios.skating),
-      creativity: this.createCategory(baseCreativity * ratios.creativity),
-      shooting: this.createCategory(baseShooting * ratios.shooting),
-      defense: this.createCategory(baseDefense * ratios.defense),
+      skating: buildCat(ratios.sk),
+      creativity: buildCat(ratios.cr),
+      shooting: buildCat(ratios.sh),
+      defense: buildCat(ratios.de),
     };
-  }
-
-  private static createCategory(totalRaw: number): PlayerCategoryAttr {
-    // Normaliza para não passar de 99 nem ficar abaixo de 1
-    const total = Math.min(99, Math.max(1, Math.round(totalRaw)));
-    
-    // Split the total slightly randomly into two sub-attributes
-    const variance = randomInt(-5, 5);
-    const value1 = Math.min(99, Math.max(1, Math.round(total + variance)));
-    const value2 = Math.min(99, Math.max(1, Math.round(total - variance)));
-    
-    // Recalcula o total baseado nos valores (a média deles)
-    const finalTotal = Math.round((value1 + value2) / 2);
-
-    return { value1, value2, total: finalTotal };
-  }
-
-  private static calculateOverall(attrs: PlayerAttributes): number {
-    return Math.round((attrs.skating.total + attrs.creativity.total + attrs.shooting.total + attrs.defense.total) / 4);
   }
 }

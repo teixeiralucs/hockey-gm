@@ -1,0 +1,38 @@
+.roster-slot {
+  position: relative;
+  width: 90px;
+  height: 120px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.roster-slot.empty {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.roster-slot.is-over {
+  background: rgba(31, 124, 182, 0.3); /* Accent color */
+  border-color: var(--color-accent);
+  transform: scale(1.05);
+}
+
+.slot-label {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #888;
+  letter-spacing: 1px;
+}
+
+.empty-placeholder {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 1.2rem;
+  font-weight: 800;
+}

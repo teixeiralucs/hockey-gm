@@ -1,0 +1,250 @@
+.player-details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0aec0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  align-self: flex-start;
+  transition: all 0.2s;
+}
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Top Profile Area */
+.profile-header-area {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.profile-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* Hero */
+.hero-section {
+  position: relative;
+  width: 140px;
+  min-width: 140px;
+  height: 180px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  overflow: hidden;
+  border: 2px solid #333;
+}
+.hero-section.tier-bronze { border-color: #cd7f32; }
+.hero-section.tier-silver { border-color: #c0c0c0; }
+.hero-section.tier-gold { border-color: #ffd700; }
+.hero-section.tier-diamond { border-color: #4b9cff; }
+
+.hero-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.hero-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background: linear-gradient(0deg, #0f172a 0%, transparent 100%);
+}
+
+.draft-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #3284ff, #6bc7ff);
+  color: #fff;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  font-family: 'Oswald', sans-serif;
+  letter-spacing: 1px;
+}
+
+/* Title Section */
+.title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.player-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+}
+.text-bronze { color: #cd7f32; }
+.text-silver { color: #c0c0c0; }
+.text-gold { color: #ffd700; }
+.text-diamond { color: #4b9cff; }
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  color: #a0aec0;
+}
+.subtitle-pos {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+/* Pills */
+.pills-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.info-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+.team-pill {
+  border-left-width: 4px;
+}
+.team-pill img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.flag-emoji {
+  font-size: 1.2rem;
+}
+
+/* Stats Block */
+.stats-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stat-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.stat-label {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.stat-value {
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Chart Block */
+.chart-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chart-title {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.ovr-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+.ovr-label {
+  color: #a0aec0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.ovr-value {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+.text-green { color: #2ecc71; }
+.text-red { color: #e74c3c; }
+
+.chart-container {
+  margin-top: 8px;
+}
+
+.buff-msg {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 8px;
+}
+.buff-msg.positive {
+  background: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.2);
+}
+.buff-msg.negative {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.2);
+}
+.buff-msg.neutral {
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+}

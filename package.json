@@ -7,25 +7,34 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "update:rosters": "tsx scripts/update-rosters-monthly.ts"
   },
   "dependencies": {
     "i18next": "^26.4.0",
     "lucide-react": "^1.34.0",
+    "puppeteer": "^25.9.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.12",
     "react-router-dom": "^7.18.2",
+    "recharts": "^3.10.1",
     "uuid": "^14.0.2",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^6.1.0",
+    "axios": "^1.19.0",
+    "cheerio": "^1.2.0",
     "oxlint": "^1.79.0",
+    "tsx": "^4.23.12",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
   }

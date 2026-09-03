@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Users, Trophy, CalendarDays, ShoppingCart } from 'lucide-react';
+import { Home, Users, Trophy, CalendarDays, ShoppingCart, LogOut } from 'lucide-react';
 import './Dashboard.css';
 
 export const DashboardLayout: React.FC = () => {
@@ -27,6 +27,10 @@ export const DashboardLayout: React.FC = () => {
         </NavLink>
         <NavLink to="/dashboard/shop" className={({ isActive }) => `dock-item ${isActive ? 'active' : ''}`}>
           <ShoppingCart size={24} />
+        </NavLink>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: 'var(--space-2) 0' }}></div>
+        <NavLink to="/" className="dock-item" title="Exit to Main Menu">
+          <LogOut size={24} style={{ color: 'var(--color-danger)' }} />
         </NavLink>
       </nav>
     </div>

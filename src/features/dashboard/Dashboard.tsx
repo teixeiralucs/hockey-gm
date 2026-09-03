@@ -157,11 +157,15 @@ export const Dashboard: React.FC = () => {
                         </Button>
                       ) : (
                         <>
-                          <Button variant="outline" style={{ flex: 1, justifyContent: 'center' }}>
+                          <Button 
+                            variant="primary" 
+                            style={{ flex: 1, justifyContent: 'center', color: pColor, borderColor: pColor, boxShadow: `0 0 10px ${pColor}40`, backgroundColor: '#111114' }}
+                          >
                             <Play size={16} style={{ marginRight: '8px' }} /> PLAY
                           </Button>
                           <Button 
-                            style={{ flex: 1, justifyContent: 'center', backgroundColor: pColor, color: '#000', border: 'none' }}
+                            variant="secondary"
+                            style={{ flex: 1, justifyContent: 'center', color: playerTeam?.colors.secondary || '#fff', borderColor: playerTeam?.colors.secondary || '#fff', backgroundColor: '#111114' }}
                             onClick={() => handleSimulate(match.id)}
                           >
                             <FastForward size={16} style={{ marginRight: '8px' }} /> SIMULATE

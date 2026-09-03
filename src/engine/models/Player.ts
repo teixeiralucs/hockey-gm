@@ -18,14 +18,41 @@ export interface PlayerAttributes {
   defense: PlayerCategoryAttr;    // Hitting + Positioning
 }
 
+export interface PlayerStats {
+  points: number;
+  goals: number;
+  assists: number;
+  wins?: number;
+  gaa?: number;
+  svPct?: number;
+}
+
 export interface Player {
   id: string;
   firstName: string;
   lastName: string;
-  age: number; // 16 a 20 para júniores
+  fullName: string;
+  age: number;
   position: Position;
   role: PlayerRole;
+  
+  // Real Info
+  height: string;
+  weight: string;
+  hometown: string;
+  photo: string;
+  shootsCatches: string;
+  teamAbbr: string;
+  
+  stats: PlayerStats;
   attributes: PlayerAttributes;
-  overall: number;
-  tier: 'D' | 'C' | 'B' | 'A' | 'S'; // OHL é D-Tier
+  
+  baseOverall: number;
+  currentOverall: number;
+  
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Diamond';
+  draftPick?: number;
+  
+  // Placement
+  currentLine?: number | null; // 1, 2, 3, 4 (null = bench)
 }
